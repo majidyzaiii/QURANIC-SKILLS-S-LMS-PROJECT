@@ -4212,81 +4212,6 @@ function renderAdminDashboardView() {
   const endDayName = dayNames[endDate.getDay()];
   const attendanceDateRangeText = `${startDayName} 01, ${activeMonthName} – ${endDayName} 28, ${activeMonthName} (28 Days)`;
 
-  // Helper to extract student's real progress score or sabaq grade (defaults to 0 if not yet graded)
-  function getStudentProgress(s) {
-    if (typeof s.progressScore === 'number' && !isNaN(s.progressScore)) {
-      return Math.max(0, Math.min(100, s.progressScore));
-    }
-    if (typeof s.sabaqGrade === 'number' && !isNaN(s.sabaqGrade)) {
-      return Math.max(0, Math.min(100, s.sabaqGrade));
-    }
-    if (s.lastSabaq) {
-      if (typeof s.lastSabaq.progressScore === 'number' && !isNaN(s.lastSabaq.progressScore)) {
-        return Math.max(0, Math.min(100, s.lastSabaq.progressScore));
-      }
-      if (typeof s.lastSabaq.sabaqGrade === 'number' && !isNaN(s.lastSabaq.sabaqGrade)) {
-        return Math.max(0, Math.min(100, s.lastSabaq.sabaqGrade));
-      }
-      if (s.lastSabaq.type === 'Daily Sabaq' && typeof s.lastSabaq.rating === 'number') {
-        return Math.max(0, Math.min(100, Math.round((s.lastSabaq.rating / 5) * 100)));
-      }
-    }
-    return 0; // Default to 0 if not yet graded
-  }
-
-  // Filter students strictly by Course / Track
-  const hifzStudents = AppState.students.filter(s => {
-    const c = (s.course || '').toLowerCase();
-    return c.includes('hifz') || c.includes('memorization') || c.includes('daur');
-  });
-
-  const qaidaStudents = AppState.students.filter(s => {
-    const c = (s.course || '').toLowerCase();
-    return c.includes('qaida') || c.includes('beginner');
-  });
-
-  const tajweedStudents = AppState.students.filter(s => {
-    const c = (s.course || '').toLowerCase();
-    return c.includes('tajweed') || c.includes('nazra') || c.includes('makharij') || c.includes('qiraat');
-  });
-
-  // Calculate track averages: exactly 0 if 0 students, otherwise real average
-  let hifzKpi = 0;
-  if (hifzStudents.length > 0) {
-    const hifzTotal = hifzStudents.reduce((sum, s) => sum + getStudentProgress(s), 0);
-    hifzKpi = Number((hifzTotal / hifzStudents.length).toFixed(1));
-  }
-
-  let qaidaKpi = 0;
-  if (qaidaStudents.length > 0) {
-    const qaidaTotal = qaidaStudents.reduce((sum, s) => sum + getStudentProgress(s), 0);
-    qaidaKpi = Number((qaidaTotal / qaidaStudents.length).toFixed(1));
-  }
-
-  let tajweedKpi = 0;
-  if (tajweedStudents.length > 0) {
-    const tajweedTotal = tajweedStudents.reduce((sum, s) => sum + getStudentProgress(s), 0);
-    tajweedKpi = Number((tajweedTotal / tajweedStudents.length).toFixed(1));
-  }
-
-  // True mathematical average of active tracks ONLY (exclude tracks with 0 students)
-  const activeTrackAverages = [];
-  if (hifzStudents.length > 0) activeTrackAverages.push(hifzKpi);
-  if (qaidaStudents.length > 0) activeTrackAverages.push(qaidaKpi);
-  if (tajweedStudents.length > 0) activeTrackAverages.push(tajweedKpi);
-
-  let overallKpiNum = 0;
-  if (activeTrackAverages.length > 0) {
-    overallKpiNum = activeTrackAverages.reduce((sum, v) => sum + v, 0) / activeTrackAverages.length;
-  } else if (totalStudents > 0) {
-    const allScores = AppState.students.map(s => getStudentProgress(s));
-    overallKpiNum = allScores.reduce((sum, v) => sum + v, 0) / allScores.length;
-  }
-
-  const overallSabaqKpi = overallKpiNum % 1 === 0 ? overallKpiNum.toFixed(0) : overallKpiNum.toFixed(1);
-  const sabaqTrendText = overallKpiNum > 0 ? `${overallSabaqKpi}% Real-time` : 'Pending Assessment';
-  const sabaqTrendBadgeClass = overallKpiNum > 0 ? 'ts-badge-paid' : 'ts-badge-sage';
-
   let paidCount = 0;
   let partialCount = 0;
   let defaulterCount = 0;
@@ -4589,69 +4514,12 @@ function renderAdminDashboardView() {
 
     </div>
 
-    <!-- Bottom 2-Column Grid (Academic KPI & Attendance Overview Heatmap) -->
+    <!-- Bottom 2-Column Grid (At-Risk Students & Attendance Overview) -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
       
-      <!-- Card 1: Academic KPI & Sabaq Completion Rate -->
-      <div class="ts-card p-6">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-base font-bold text-[#141F1E]">Average Academy Sabaq KPI</h3>
-          <span class="text-xs text-[#7A8684] cursor-pointer">•••</span>
-        </div>
-
-        ${totalStudents === 0 ? `
-          <div class="flex items-baseline gap-3 mb-2">
-            <span class="text-3xl font-extrabold text-[#141F1E]">—</span>
-            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#F8F6F1] text-[#7A8684] border border-[#ECEAE4]">Pending</span>
-          </div>
-          <p class="text-xs text-[#7A8684] mb-6">Target: 90% syllabus clearance across Hifz, Nazra, and Tajweed tracks.</p>
-
-          <div class="py-10 px-4 text-center rounded-xl bg-[#F8F6F1]/50 border border-dashed border-[#ECEAE4] flex flex-col items-center justify-center">
-            <div class="w-10 h-10 rounded-full bg-[#E8EFEE] text-[#0E4D45] flex items-center justify-center mb-2.5">
-              <svg class="w-5 h-5 text-[#0E4D45]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25"/></svg>
-            </div>
-            <p class="text-xs font-semibold text-[#7A8684]">KPI metrics will generate once students are enrolled and active.</p>
-          </div>
-        ` : `
-          <div class="flex items-baseline gap-3 mb-4">
-            <span class="text-3xl font-extrabold text-[#141F1E]">${overallSabaqKpi}%</span>
-            <span class="ts-badge ${sabaqTrendBadgeClass}">${sabaqTrendText}</span>
-          </div>
-          <p class="text-xs text-[#7A8684] mb-6">Target: 90% syllabus clearance across Hifz, Nazra, and Tajweed tracks.</p>
-
-          <!-- Metric Bars -->
-          <div class="space-y-3">
-            <div>
-              <div class="flex justify-between text-xs font-semibold mb-1">
-                <span class="text-[#141F1E]">Hifz Retention & Daur</span>
-                <span class="${hifzKpi > 0 ? 'text-[#0E4D45]' : 'text-[#7A8684]'} font-bold">${hifzKpi}%</span>
-              </div>
-              <div class="w-full h-2 bg-[#ECEAE4] rounded-full overflow-hidden">
-                <div class="h-full bg-[#0E4D45] rounded-full transition-all" style="width: ${hifzKpi}%"></div>
-              </div>
-            </div>
-
-            <div>
-              <div class="flex justify-between text-xs font-semibold mb-1">
-                <span class="text-[#141F1E]">Noorani Qaida Progression</span>
-                <span class="${qaidaKpi > 0 ? 'text-[#0E4D45]' : 'text-[#7A8684]'} font-bold">${qaidaKpi}%</span>
-              </div>
-              <div class="w-full h-2 bg-[#ECEAE4] rounded-full overflow-hidden">
-                <div class="h-full bg-[#3B7A72] rounded-full transition-all" style="width: ${qaidaKpi}%"></div>
-              </div>
-            </div>
-
-            <div>
-              <div class="flex justify-between text-xs font-semibold mb-1">
-                <span class="text-[#141F1E]">Tajweed Rules Mastery (Makharij)</span>
-                <span class="${tajweedKpi > 0 ? 'text-[#0E4D45]' : 'text-[#7A8684]'} font-bold">${tajweedKpi}%</span>
-              </div>
-              <div class="w-full h-2 bg-[#ECEAE4] rounded-full overflow-hidden">
-                <div class="h-full bg-[#14534B] rounded-full transition-all" style="width: ${tajweedKpi}%"></div>
-              </div>
-            </div>
-          </div>
-        `}
+      <!-- Card 1: At-Risk Students (Action Required) Widget -->
+      <div class="ts-card p-6" id="at-risk-students-card">
+        ${renderAtRiskStudentsWidgetMarkup()}
       </div>
 
       <!-- Card 2: Dual-Metric Total Attendance vs Total Pass Chart -->
@@ -4745,6 +4613,295 @@ function renderAdminDashboardView() {
       </div>
     </div>
   `;
+}
+
+// ============================================================
+// AT-RISK STUDENTS ENGINE (ACTION REQUIRED)
+// Analyzes student body for critical flags:
+// 1. Fee Defaulters (Unpaid 1-3+ Months / Overdue)
+// 2. Attendance flags (Absent 3+ Days, Attendance < 75%)
+// 3. Academic Stalls (Failing Progress < 50%, Needs Revision)
+// 4. Status Flags ('Defaulter', 'At Risk', 'Probation')
+// ============================================================
+
+function getAtRiskStudents(customStudents) {
+  const students = customStudents || (AppState.students && AppState.students.length > 0 ? AppState.students : loadFromStorage('lms_students', []));
+  if (!Array.isArray(students) || students.length === 0) return [];
+
+  const atRiskList = [];
+
+  students.forEach(student => {
+    if (!student) return;
+
+    // 1. Fee Defaulter / Overdue Risk Analysis
+    let feeIssue = null;
+    let overdueMonthsCount = 0;
+    let overdueTotalAmount = 0;
+
+    if (Array.isArray(student.months) && student.months.length > 0) {
+      const maxMonth = Math.min((typeof CURRENT_MONTH_INDEX !== 'undefined' ? CURRENT_MONTH_INDEX : 9), student.months.length - 1);
+      for (let i = 0; i <= maxMonth; i++) {
+        const m = student.months[i];
+        if (m) {
+          const isOverdue = m.status === 'defaulter' || m.feeStatus === 'Overdue' || m.feeStatus === 'Unpaid' || m.feeStatus === 'Defaulter';
+          const isPartial = m.status === 'partial' || m.feeStatus === 'Partial';
+          if (isOverdue) {
+            overdueMonthsCount++;
+            const fee = Number(student.monthlyFee) || Number(m.amount) || 50;
+            const paid = Number(m.paidAmount) || 0;
+            overdueTotalAmount += Math.max(0, fee - paid);
+          } else if (isPartial) {
+            const fee = Number(student.monthlyFee) || Number(m.amount) || 50;
+            const paid = Number(m.paidAmount) || 0;
+            overdueTotalAmount += Math.max(0, fee - paid);
+          }
+        }
+      }
+    }
+
+    const feeStatus = typeof getStudentFeeStatus === 'function' ? getStudentFeeStatus(student) : null;
+    const isFeeDefaulter = (feeStatus && feeStatus.code === 'defaulter') || overdueMonthsCount > 0 || student.academicStatus === 'Defaulter';
+
+    if (isFeeDefaulter) {
+      if (overdueMonthsCount >= 2) {
+        feeIssue = {
+          badge: `Unpaid ${overdueMonthsCount} Months`,
+          severity: 'critical',
+          description: `Overdue tuition balance of $${overdueTotalAmount || (overdueMonthsCount * 50)} pending clearance`,
+          priority: 1
+        };
+      } else {
+        feeIssue = {
+          badge: overdueTotalAmount > 0 ? `Unpaid $${overdueTotalAmount}` : 'Unpaid 1 Month',
+          severity: 'critical',
+          description: `Outstanding tuition payment overdue`,
+          priority: 2
+        };
+      }
+    } else if (feeStatus && feeStatus.code === 'partial') {
+      feeIssue = {
+        badge: 'Partial Due',
+        severity: 'warning',
+        description: `Remaining balance pending for current cycle`,
+        priority: 4
+      };
+    }
+
+    // 2. Attendance Risk Analysis (Absent 3+ Days, Low Attendance Rate)
+    let attendanceIssue = null;
+    const consecutiveAbsences = Number(student.consecutiveAbsences) || Number(student.absentDays) || 0;
+    const attendanceRate = typeof student.attendanceRate === 'number' ? student.attendanceRate : null;
+
+    if (consecutiveAbsences >= 3) {
+      attendanceIssue = {
+        badge: `Absent ${consecutiveAbsences}+ Days`,
+        severity: 'critical',
+        description: `Missed ${consecutiveAbsences} consecutive Quran lessons without leave notice`,
+        priority: 1
+      };
+    } else if (attendanceRate !== null && attendanceRate > 0 && attendanceRate < 75) {
+      attendanceIssue = {
+        badge: `Low Attendance (${Math.round(attendanceRate)}%)`,
+        severity: 'warning',
+        description: `Lesson attendance has dropped below 75% academy threshold`,
+        priority: 3
+      };
+    } else if (student.academicStatus === 'At Risk' || student.academicStatus === 'Probation') {
+      attendanceIssue = {
+        badge: `Absenteeism Alert`,
+        severity: 'warning',
+        description: `Flagged for repeated lesson absenteeism`,
+        priority: 3
+      };
+    }
+
+    // 3. Academic Progress Risk Analysis (Failing Progress / Low Sabaq Score)
+    let progressIssue = null;
+    let score = null;
+    if (typeof student.progressScore === 'number' && student.progressScore > 0) score = student.progressScore;
+    else if (typeof student.sabaqGrade === 'number' && student.sabaqGrade > 0) score = student.sabaqGrade;
+    else if (student.lastSabaq) {
+      if (typeof student.lastSabaq.progressScore === 'number' && student.lastSabaq.progressScore > 0) score = student.lastSabaq.progressScore;
+      else if (typeof student.lastSabaq.sabaqGrade === 'number' && student.lastSabaq.sabaqGrade > 0) score = student.lastSabaq.sabaqGrade;
+      else if (student.lastSabaq.rating && student.lastSabaq.type === 'Daily Sabaq') score = (student.lastSabaq.rating / 5) * 100;
+    }
+
+    if (score !== null && score > 0 && score < 50) {
+      progressIssue = {
+        badge: `Failing Progress (${Math.round(score)}%)`,
+        severity: 'critical',
+        description: `Sabaq score is below 50% passing threshold; needs revision`,
+        priority: 2
+      };
+    } else if (score !== null && score >= 50 && score < 65) {
+      progressIssue = {
+        badge: `Needs Revision (${Math.round(score)}%)`,
+        severity: 'warning',
+        description: `Tajweed retention score indicates student is struggling`,
+        priority: 4
+      };
+    }
+
+    // 4. Custom Risk Badge override if provided on student
+    let primaryIssue = null;
+    if (student.riskBadge) {
+      primaryIssue = {
+        badge: student.riskBadge,
+        severity: student.riskSeverity || 'critical',
+        description: student.riskReason || 'Administrative attention required'
+      };
+    } else {
+      // Pick highest priority issue (lower number = higher priority)
+      const issues = [feeIssue, attendanceIssue, progressIssue].filter(Boolean);
+      if (issues.length > 0) {
+        issues.sort((a, b) => (a.priority || 5) - (b.priority || 5));
+        primaryIssue = issues[0];
+      }
+    }
+
+    if (primaryIssue) {
+      atRiskList.push({
+        student: student,
+        badge: primaryIssue.badge,
+        severity: primaryIssue.severity,
+        description: primaryIssue.description
+      });
+    }
+  });
+
+  return atRiskList;
+}
+
+function renderAtRiskStudentsWidgetMarkup() {
+  const atRiskList = getAtRiskStudents();
+  const alertCount = atRiskList.length;
+
+  return `
+    <!-- Widget Header: Title with Subtle Red Warning & Subtitle -->
+    <div class="flex items-center justify-between gap-4 mb-3">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-xl ${alertCount > 0 ? 'bg-[#FEE2E2] text-[#EF4444]' : 'bg-[#E8EFEE] text-[#0E4D45]'} flex items-center justify-center shrink-0">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/>
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-base font-bold text-[#141F1E] tracking-tight">At-Risk Students</h3>
+          <p class="text-xs text-[#7A8684]">Students requiring immediate admin attention</p>
+        </div>
+      </div>
+
+      <!-- Header Counter Badge -->
+      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
+        alertCount > 0 
+          ? 'bg-[#FEE2E2] text-[#991B1B] border border-[#FECACA]' 
+          : 'bg-[#E0F2F1] text-[#0E4D45] border border-[#B2DFDB]/60'
+      }">
+        ${alertCount > 0 ? `
+          <span class="w-1.5 h-1.5 rounded-full bg-[#EF4444] animate-pulse"></span>
+          <span>${alertCount} Action Required</span>
+        ` : `
+          <span>0 Alerts</span>
+        `}
+      </span>
+    </div>
+
+    <!-- Subheader Note / Counter -->
+    <div class="flex items-center justify-between text-xs text-[#7A8684] mb-3 pb-2 border-b border-[#ECEAE4]">
+      <span>Status Priority: Fee Defaulters, Absences, Failing Progress</span>
+      <span class="font-medium">${alertCount} ${alertCount === 1 ? 'student flagged' : 'students flagged'}</span>
+    </div>
+
+    <!-- Body: List of At-Risk Students or Positive Empty State -->
+    ${alertCount === 0 ? `
+      <div class="py-12 px-4 text-center rounded-2xl bg-[#F8F6F1]/50 border border-dashed border-[#ECEAE4] flex flex-col items-center justify-center my-2">
+        <div class="w-12 h-12 rounded-full bg-[#E0F2F1] text-[#0E4D45] flex items-center justify-center mb-3 shadow-2xs">
+          <svg class="w-6 h-6 text-[#0E4D45]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/>
+          </svg>
+        </div>
+        <p class="text-sm font-bold text-[#141F1E]">All students are performing well. No critical alerts.</p>
+        <p class="text-xs text-[#7A8684] mt-1 max-w-sm">Zero attendance flags, failing progress scores, or overdue fee balances detected across the academy.</p>
+      </div>
+    ` : `
+      <div class="space-y-2.5 max-h-[295px] overflow-y-auto pr-1">
+        ${atRiskList.map(item => {
+          const s = item.student;
+          const studentName = s.firstName ? `${s.firstName} ${s.lastName || ''}`.trim() : (s.name || 'Student');
+          const courseName = s.course || 'Quran Track';
+          const avatarUrl = s.avatar || s.photo;
+          const badge = item.badge;
+          const isCritical = item.severity === 'critical';
+          const badgeClass = isCritical 
+            ? 'bg-[#FEE2E2] text-[#991B1B] border border-[#FECACA]' 
+            : 'bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]';
+
+          return `
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 rounded-xl bg-[#F8F6F1]/60 hover:bg-[#F8F6F1] border border-[#ECEAE4] transition-all">
+              <!-- Student Info: Avatar, Name & Track -->
+              <div class="flex items-center gap-3 min-w-0">
+                ${avatarUrl ? `
+                  <img src="${avatarUrl}" alt="${studentName}" class="w-9 h-9 rounded-full object-cover border border-[#ECEAE4] shrink-0" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(studentName)}&background=0E4D45&color=fff';">
+                ` : `
+                  <div class="w-9 h-9 rounded-full bg-[#E8EFEE] text-[#0E4D45] flex items-center justify-center font-bold text-xs shrink-0 border border-[#ECEAE4]">
+                    ${studentName.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
+                  </div>
+                `}
+                <div class="min-w-0">
+                  <h4 class="text-xs sm:text-sm font-bold text-[#141F1E] truncate">${studentName}</h4>
+                  <p class="text-[11px] text-[#7A8684] truncate">${courseName}</p>
+                </div>
+              </div>
+
+              <!-- Right Side: Warning Badge & Action Button -->
+              <div class="flex items-center gap-2.5 shrink-0 self-end sm:self-center">
+                <!-- Warning Badge -->
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold ${badgeClass} whitespace-nowrap shadow-2xs" title="${item.description}">
+                  ${badge}
+                </span>
+
+                <!-- Minimalist Ghost Action Button: Contact Guardian -->
+                <button type="button" onclick="contactStudentGuardian('${s.id}', event)" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#ECEAE4] bg-white hover:bg-[#F8F6F1] hover:border-[#CBD5E1] text-[#141F1E] text-xs font-semibold transition-all shadow-2xs cursor-pointer" title="Contact Guardian on WhatsApp (${s.guardianName || 'Guardian'})">
+                  <svg class="w-3.5 h-3.5 text-[#25D366]" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+                  </svg>
+                  <span class="hidden sm:inline">Contact Guardian</span>
+                  <span class="sm:hidden">Contact</span>
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `}
+  `;
+}
+
+function contactStudentGuardian(studentId, event) {
+  if (event) event.stopPropagation();
+  const students = (AppState.students && AppState.students.length > 0) ? AppState.students : loadFromStorage('lms_students', []);
+  const student = students.find(s => s.id === studentId);
+  if (!student) {
+    showToastNotification('Student record not found.');
+    return;
+  }
+
+  const studentName = student.firstName ? `${student.firstName} ${student.lastName || ''}`.trim() : (student.name || 'Student');
+  const parentName = student.guardianName || 'Guardian';
+  const phone = (student.whatsapp || student.phone || '').trim();
+  const cleanPhone = phone.replace(/[^0-9]/g, '');
+
+  const atRiskList = getAtRiskStudents([student]);
+  const alertReason = atRiskList.length > 0 ? atRiskList[0].badge : 'attendance and progress';
+
+  if (cleanPhone) {
+    const message = `Assalam-o-Alaikum ${parentName},\n\nThis is an administrative update from Quranic Skills Academy regarding ${studentName} (${student.id}).\n\nNotice: ${alertReason}.\nWe kindly request a brief conversation to discuss recent updates and support their studies.\n\nJazakAllah Khair,\nAdmin Office - Quranic Skills Academy`;
+    const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+    showToastNotification(`✓ Opening WhatsApp for ${parentName} (${studentName})`);
+  } else {
+    showToastNotification(`Alert: ${studentName} has no phone on file. Guardian: ${parentName}`);
+  }
 }
 
 // ============================================================

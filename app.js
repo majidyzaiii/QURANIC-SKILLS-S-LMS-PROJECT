@@ -554,16 +554,21 @@ function renderWeeklyMatrixEditor(containerId, scheduleData, studentTz) {
               </label>
             </div>
 
-            <!-- Single Clean Time Input on Right / Off Day State -->
-            <div class="flex-1 flex items-center justify-end">
-              <input 
-                type="text" 
-                id="${containerId}-time-${dayKey}" 
-                value="${day.active ? defaultTime : ''}" 
-                placeholder="e.g. 10:00 AM - 10:45 AM" 
-                ${!day.active ? 'disabled' : ''} 
-                class="w-full max-w-[280px] bg-white border border-[#E5E7EB] rounded-xl px-3 py-1.5 text-xs text-[#141F1E] font-medium outline-none transition-all focus:border-[#0E4D45] focus:ring-1 focus:ring-[#0E4D45] ${!day.active ? 'hidden' : ''}"
-              >
+            <!-- Single Clean Time Input on Right with Locked PKT Hint / Off Day State -->
+            <div class="flex-1 flex items-center justify-end gap-2">
+              <div id="${containerId}-time-wrap-${dayKey}" class="relative w-full max-w-[280px] flex items-center ${!day.active ? 'hidden' : ''}">
+                <input 
+                  type="text" 
+                  id="${containerId}-time-${dayKey}" 
+                  value="${day.active ? defaultTime : ''}" 
+                  placeholder="10:00 AM - 10:45 AM (PKT)" 
+                  ${!day.active ? 'disabled' : ''} 
+                  class="w-full bg-white border border-[#E5E7EB] rounded-xl pl-3 pr-14 py-1.5 text-xs text-[#141F1E] font-medium outline-none transition-all focus:border-[#0E4D45] focus:ring-1 focus:ring-[#0E4D45]"
+                >
+                <span class="absolute right-2 px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wider bg-[#F8F6F1] border border-[#ECEAE4] text-[#0E4D45] pointer-events-none select-none">
+                  PKT
+                </span>
+              </div>
               <span id="${containerId}-off-${dayKey}" class="text-xs text-[#94A3B8] font-medium pr-2 ${day.active ? 'hidden' : ''}">Off Day</span>
               <span id="${containerId}-pkt-${dayKey}" class="hidden"></span>
             </div>
@@ -579,6 +584,7 @@ function toggleMatrixDay(containerId, dayKey, tz) {
   const input = document.getElementById(`${containerId}-time-${dayKey}`);
   const row = document.getElementById(`${containerId}-row-${dayKey}`);
   const offSpan = document.getElementById(`${containerId}-off-${dayKey}`);
+  const wrap = document.getElementById(`${containerId}-time-wrap-${dayKey}`);
   if (!chk || !input || !row) return;
 
   const isActive = chk.checked;
@@ -591,6 +597,7 @@ function toggleMatrixDay(containerId, dayKey, tz) {
       input.value = '10:00 AM - 10:45 AM';
     }
     input.classList.remove('hidden');
+    if (wrap) wrap.classList.remove('hidden');
     if (offSpan) offSpan.classList.add('hidden');
     row.classList.remove('bg-[#F9FAFB]', 'border-[#F1F3F5]');
     row.classList.add('bg-white', 'border-[#E5E7EB]');
@@ -600,6 +607,7 @@ function toggleMatrixDay(containerId, dayKey, tz) {
     }
   } else {
     input.classList.add('hidden');
+    if (wrap) wrap.classList.add('hidden');
     if (offSpan) offSpan.classList.remove('hidden');
     row.classList.remove('bg-white', 'border-[#E5E7EB]');
     row.classList.add('bg-[#F9FAFB]', 'border-[#F1F3F5]');
@@ -1035,6 +1043,17 @@ function handleEditCountryChange(country) {
   const tzDiffBadge = document.getElementById('edit-schedule-tz-diff');
   if (tzDiffBadge) tzDiffBadge.textContent = getTimezoneDiffLabel(tzInput ? tzInput.value : newTz);
 
+  const tzCallout = document.getElementById('edit-schedule-student-tz-callout');
+  const activeTz = tzInput ? tzInput.value : newTz;
+  if (tzCallout) {
+    if (activeTz) {
+      tzCallout.textContent = `• Student Local: ${activeTz}`;
+      tzCallout.classList.remove('hidden');
+    } else {
+      tzCallout.classList.add('hidden');
+    }
+  }
+
   const currentSched = getMatrixScheduleData('edit-schedule-matrix-container');
   renderWeeklyMatrixEditor('edit-schedule-matrix-container', currentSched, tzInput ? tzInput.value : newTz);
 }
@@ -1043,6 +1062,16 @@ function handleEditTimezoneInput(tzVal) {
   const cleanTz = tzVal ? tzVal.trim() : 'GMT+0';
   const tzDiffBadge = document.getElementById('edit-schedule-tz-diff');
   if (tzDiffBadge) tzDiffBadge.textContent = getTimezoneDiffLabel(cleanTz);
+
+  const tzCallout = document.getElementById('edit-schedule-student-tz-callout');
+  if (tzCallout) {
+    if (cleanTz) {
+      tzCallout.textContent = `• Student Local: ${cleanTz}`;
+      tzCallout.classList.remove('hidden');
+    } else {
+      tzCallout.classList.add('hidden');
+    }
+  }
 
   const currentSched = getMatrixScheduleData('edit-schedule-matrix-container');
   renderWeeklyMatrixEditor('edit-schedule-matrix-container', currentSched, cleanTz);
@@ -2384,6 +2413,17 @@ function openEditScheduleModal(studentId) {
   const avatarPreview = document.getElementById('edit-student-avatar-preview');
   if (avatarPreview) {
     avatarPreview.src = student.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(student.firstName)}+${encodeURIComponent(student.lastName||'')}&background=0E4D45&color=fff`;
+  }
+
+  // Update Student Timezone Callout in Schedule Header
+  const tzCallout = document.getElementById('edit-schedule-student-tz-callout');
+  if (tzCallout) {
+    if (currentTz) {
+      tzCallout.textContent = `• Student Local: ${currentTz}`;
+      tzCallout.classList.remove('hidden');
+    } else {
+      tzCallout.classList.add('hidden');
+    }
   }
 
   // Render 7-Day Matrix Editor

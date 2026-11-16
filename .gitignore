@@ -1,0 +1,6 @@
+# Dependencies & Scratch
+scratch/
+temp_*.html
+*.log
+.DS_Store
+Thumbs.db

@@ -1,0 +1,2012 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Online Quran Academy LMS - Administrative & Learning Portal</title>
+
+  <!-- Google Fonts: Plus Jakarta Sans & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN (v3) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            tsTeal: {
+              DEFAULT: '#0E4D45',
+              dark: '#09342E',
+              active: '#236058',
+              light: '#14534B',
+              subtle: '#3B7A72',
+              muted: '#A3C2BE'
+            },
+            tsCream: '#F8F6F1',
+            tsCharcoal: '#141F1E',
+            tsSlate: '#7A8684',
+            tsBorder: '#ECEAE4'
+          },
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'Inter', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="styles.css">
+
+  <!-- Inline Sparkline Attendance Trend Styles -->
+  <style>
+    .attendance-sparkline-wrap {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+    }
+    .attendance-sparkline-svg {
+      overflow: visible;
+      display: block;
+    }
+  </style>
+</head>
+<body class="bg-[#F8F6F1] text-[#141F1E] min-h-screen flex flex-col font-sans selection:bg-[#0E4D45] selection:text-white">
+
+  <!-- ==========================================================================
+       TOP DARK FOREST TEAL HEADER & HERO BANNER (#0E4D45) - EXACT TALENTSYNC GEOMETRY
+       ========================================================================== -->
+  <header class="bg-[#0E4D45] text-white pt-6 pb-20 w-full transition-colors">
+    <div class="max-w-7xl w-full mx-auto px-6 lg:px-10">
+      
+      <!-- Row 1: Brand Logo & User Profile Controls -->
+      <div class="flex items-center justify-between gap-4 pb-4">
+        
+        <!-- Left: Academy Official Brand Logo -->
+        <div class="flex items-center shrink-0">
+          <img id="academy-brand-logo" src="assets/logo.png" alt="Quranic Skills" 
+            class="h-11 sm:h-12 w-auto max-w-[220px] object-contain cursor-pointer transition-opacity hover:opacity-95" 
+            onclick="switchRole('admin')" title="Quranic Skills Academy" />
+        </div>
+
+        <!-- Right: Utility Icons & Sleek Profile Dropdown (Portal Switcher) -->
+        <div class="flex items-center gap-3 shrink-0">
+          
+          <!-- Notification Bell Dropdown Container -->
+          <div class="relative" id="notifications-dropdown-container">
+            <button onclick="toggleNotificationsDropdown(event)" id="notifications-dropdown-trigger" class="relative w-9 h-9 rounded-full bg-[#14534B]/60 hover:bg-[#14534B] flex items-center justify-center text-[#A3C2BE] hover:text-white transition-colors cursor-pointer" title="System Notifications & Activity">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+              <span id="notification-badge-dot" class="absolute top-2 right-2 w-2 h-2 rounded-full bg-amber-400 hidden"></span>
+            </button>
+
+            <!-- Floating White Notification Dropdown Menu -->
+            <div id="notifications-dropdown-menu" class="hidden absolute right-0 mt-2 w-80 sm:w-96 bg-[#FFFFFF] rounded-2xl border border-[#ECEAE4] shadow-2xl p-4 z-50 text-[#141F1E]">
+              <div class="flex items-center justify-between pb-3 border-b border-[#ECEAE4] mb-3">
+                <div class="flex items-center gap-2">
+                  <span class="text-xs font-bold text-[#141F1E]">Notifications</span>
+                  <span id="notification-unread-count" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#F8F6F1] text-[#7A8684]">0 New</span>
+                </div>
+                <button type="button" onclick="markAllNotificationsAsRead(event)" class="text-[11px] font-semibold text-[#0E4D45] hover:underline cursor-pointer">Mark all read</button>
+              </div>
+              <div id="notifications-dropdown-list" class="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+                <!-- Dynamically populated by renderNotificationsDropdownContent() -->
+              </div>
+              <div class="pt-3 mt-3 border-t border-[#ECEAE4] text-center">
+                <button onclick="closeNotificationsDropdown(); openNotificationsModal()" class="text-xs font-semibold text-[#0E4D45] hover:underline cursor-pointer">View All Activity Logs →</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Settings Button Matching TalentSync -->
+          <button onclick="openSettingsModal()" class="w-9 h-9 rounded-full bg-[#14534B]/60 hover:bg-[#14534B] flex items-center justify-center text-[#A3C2BE] hover:text-white transition-colors cursor-pointer" title="Academy Settings & Global Policies">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          </button>
+
+          <!-- User Profile & Portal Switcher Dropdown -->
+          <div class="relative pl-1 border-l border-[#236058]" id="profile-dropdown-container">
+            <button onclick="toggleProfileDropdown(event)" id="profile-dropdown-trigger" class="flex items-center gap-2.5 p-1 pl-2 pr-2.5 rounded-full hover:bg-[#14534B]/60 transition-all border border-transparent hover:border-[#236058] cursor-pointer" title="Click to Switch Portal or View Profile">
+              <div id="top-user-avatar" class="w-9 h-9 rounded-full bg-[#14534B] border border-[#236058] flex items-center justify-center font-bold text-xs text-white shadow-sm flex-shrink-0">
+                AF
+              </div>
+              <div class="hidden lg:block text-left pr-1">
+                <div id="top-user-name" class="text-xs font-bold text-white leading-tight">Admin Farhan Al-Husseini</div>
+                <div id="top-user-role" class="text-[10px] text-[#A3C2BE] leading-tight">Super Administrator</div>
+              </div>
+              <svg class="w-3.5 h-3.5 text-[#A3C2BE] hidden lg:block transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 9l-7 7-7-7"/></svg>
+            </button>
+
+            <!-- Floating White Dropdown Menu -->
+            <div id="profile-dropdown-menu" class="hidden absolute right-0 mt-2 w-72 bg-[#FFFFFF] rounded-2xl border border-[#ECEAE4] shadow-2xl p-3 z-50 text-[#141F1E]">
+              <!-- Dynamically populated by renderProfileDropdownContent() -->
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- Row 2: Dedicated Navigation Row Below Logo, Centered & Aligned from Both Sides -->
+      <div class="py-3 border-y border-[#236058]/50 flex items-center justify-center">
+        <nav id="header-nav-links" class="flex items-center justify-center gap-1.5 bg-[#09342E]/70 p-1.5 rounded-full border border-[#236058]/60 overflow-x-auto max-w-full mx-auto">
+          <!-- Dynamically populated by app.js based on role -->
+        </nav>
+      </div>
+
+      <!-- Hero Greeting Row Matching TalentSync -->
+      <div class="pt-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div>
+          <span class="text-[15px] font-medium text-[#A3C2BE] block">Assalam-o-Alaikum,</span>
+          <h1 id="hero-user-name" class="text-2xl sm:text-[28px] font-bold text-white tracking-tight mt-0.5">Admin Farhan</h1>
+        </div>
+
+        <!-- Right Controls: Interactive Month/Year Selector, + Add Student, & White Receive Fee Pill -->
+        <div class="flex flex-wrap items-center gap-2.5">
+
+          <!-- + Add Student Global Header Button -->
+          <button onclick="openAddStudentModal()" class="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-full bg-[#14534B]/90 hover:bg-[#236058] text-white border border-[#236058] transition-all shadow-sm cursor-pointer" title="Enroll New Student">
+            <svg class="w-3.5 h-3.5 text-[#A3C2BE]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
+            <span>+ Add Student</span>
+          </button>
+          
+          <!-- Interactive Calendar / Month & Year Selector Popover Trigger -->
+          <div class="relative flex items-center bg-[#14534B]/90 border border-[#236058] rounded-full p-0.5 shadow-sm">
+            <button type="button" onclick="stepAcademicMonth(-1)" class="w-7 h-7 rounded-full flex items-center justify-center text-[#A3C2BE] hover:text-white hover:bg-[#236058] transition-colors cursor-pointer" title="Previous Month">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            <button onclick="toggleMonthYearDropdown(event)" id="hero-date-pill" class="flex items-center gap-2 px-2.5 py-1 text-xs font-semibold text-white hover:text-[#A3C2BE] transition-colors cursor-pointer">
+              <svg class="w-3.5 h-3.5 text-[#A3C2BE]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+              <span id="hero-date-text">October 2026</span>
+              <svg class="w-3 h-3 text-[#A3C2BE]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 9l-7 7-7-7"></path></svg>
+            </button>
+            <button type="button" onclick="stepAcademicMonth(1)" class="w-7 h-7 rounded-full flex items-center justify-center text-[#A3C2BE] hover:text-white hover:bg-[#236058] transition-colors cursor-pointer" title="Next Month">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </button>
+
+            <!-- Month & Year Interactive Popover Dropdown -->
+            <div id="month-year-dropdown" class="hidden absolute right-0 mt-2 w-72 bg-[#FFFFFF] rounded-2xl border border-[#ECEAE4] shadow-2xl p-4 z-50 text-[#141F1E]">
+              <div class="flex items-center justify-between pb-3 border-b border-[#ECEAE4] mb-3">
+                <span class="text-xs font-bold text-[#141F1E]">Select Billing Month</span>
+                <div class="flex items-center gap-1">
+                  <button type="button" onclick="stepYear(-1)" class="w-6 h-6 rounded-lg border border-[#ECEAE4] bg-[#F8F6F1] flex items-center justify-center text-xs font-bold text-[#334E4B] hover:bg-[#E8EFEE] hover:text-[#0E4D45] transition-colors" title="Previous Year">‹</button>
+                  <select id="select-active-year" onchange="changeYearSelection(this.value)" class="text-xs bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg px-2 py-1 font-bold text-[#0E4D45] outline-none cursor-pointer">
+                    <option value="2020">2020</option>
+                    <option value="2021">2021</option>
+                    <option value="2022">2022</option>
+                    <option value="2023">2023</option>
+                    <option value="2024">2024</option>
+                    <option value="2025">2025</option>
+                    <option value="2026" selected>2026</option>
+                    <option value="2027">2027</option>
+                    <option value="2028">2028</option>
+                    <option value="2029">2029</option>
+                    <option value="2030">2030</option>
+                    <option value="2031">2031</option>
+                    <option value="2032">2032</option>
+                    <option value="2033">2033</option>
+                    <option value="2034">2034</option>
+                    <option value="2035">2035</option>
+                    <option value="2036">2036</option>
+                    <option value="2037">2037</option>
+                    <option value="2038">2038</option>
+                    <option value="2039">2039</option>
+                    <option value="2040">2040</option>
+                    <option value="2041">2041</option>
+                    <option value="2042">2042</option>
+                    <option value="2043">2043</option>
+                    <option value="2044">2044</option>
+                    <option value="2045">2045</option>
+                    <option value="2046">2046</option>
+                    <option value="2047">2047</option>
+                    <option value="2048">2048</option>
+                    <option value="2049">2049</option>
+                    <option value="2050">2050</option>
+                  </select>
+                  <button type="button" onclick="stepYear(1)" class="w-6 h-6 rounded-lg border border-[#ECEAE4] bg-[#F8F6F1] flex items-center justify-center text-xs font-bold text-[#334E4B] hover:bg-[#E8EFEE] hover:text-[#0E4D45] transition-colors" title="Next Year">›</button>
+                </div>
+              </div>
+
+              <!-- 12 Months 3x4 Grid -->
+              <div id="dropdown-months-grid" class="grid grid-cols-3 gap-1.5 text-xs">
+                <!-- Dynamically populated by app.js -->
+              </div>
+            </div>
+          </div>
+
+          <!-- End of Calendar / Month & Year Selector -->
+
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ==========================================================================
+       MAIN PAGE BODY (WARM ALABASTER / SOFT CREAM: #F8F6F1)
+       Holds Overlapping KPI cards, Bento Grid, and Dynamic Module Views
+       ========================================================================== -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-6 lg:px-10 pb-16">
+    <div id="main-dynamic-content" class="w-full">
+      <!-- Dynamic Views injected here via app.js -->
+    </div>
+  </main>
+
+  <!-- ==========================================================================
+       FOOTER
+       ========================================================================== -->
+  <footer class="mt-auto border-t border-[#ECEAE4] bg-[#FFFFFF] py-6 w-full text-center text-xs text-[#7A8684]">
+    <div class="max-w-7xl w-full mx-auto px-6 lg:px-10 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-[#0E4D45]"></span>
+        <span class="font-semibold text-[#141F1E]">Online Quran Academy LMS</span>
+        <span>• Production SaaS Architecture</span>
+      </div>
+      <div>
+        <span>Strict Privacy PII Guard • Chronological FIFO Waterfall Engine</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ==========================================================================
+       MODAL 1: + RECEIVE FEE MODAL (FIFO WATERFALL ENGINE PREVIEW)
+       ========================================================================== -->
+  <div id="receive-fee-modal" class="modal-backdrop">
+    <div class="modal-content">
+      <div class="p-6 border-b border-[#ECEAE4] flex items-center justify-between bg-[#F8F6F1]">
+        <div>
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-full bg-[#E8EFEE] text-[#0E4D45] flex items-center justify-center font-bold text-xs">
+              <svg class="w-4 h-4 text-[#0E4D45]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+            </div>
+            <h3 class="text-base font-bold text-[#141F1E]">Receive Tuition Fee (FIFO Waterfall Engine)</h3>
+          </div>
+          <p class="text-xs text-[#7A8684] mt-0.5">Chronologically allocates payment starting from the oldest overdue/partial month.</p>
+        </div>
+        <button onclick="closeReceiveFeeModal()" class="w-8 h-8 rounded-full border border-[#ECEAE4] bg-white text-[#7A8684] hover:text-[#141F1E] flex items-center justify-center text-sm font-bold">✕</button>
+      </div>
+
+      <div class="p-6 space-y-5">
+        
+        <!-- Student Selection -->
+        <div>
+          <label class="block text-xs font-bold text-[#141F1E] mb-1">Select Student / Family Account</label>
+          <select id="modal-fee-student-select" onchange="handleFeeTargetChange()" class="w-full text-xs bg-[#FFFFFF] border border-[#ECEAE4] rounded-xl px-3 py-2.5 text-[#141F1E] font-medium outline-none focus:border-[#0E4D45] cursor-pointer">
+            <!-- Injected by app.js -->
+          </select>
+        </div>
+
+        <!-- Payment Amount & Payment Method -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-[#141F1E] mb-1">Payment Amount Received</label>
+            <div class="relative">
+              <input type="number" id="modal-fee-amount-input" oninput="updateFIFOPreview()" value="50" min="1" step="any"
+                class="w-full text-sm font-bold bg-[#FFFFFF] border border-[#ECEAE4] rounded-xl pl-8 pr-3 py-2 text-[#0E4D45] outline-none focus:border-[#0E4D45]">
+              <span class="absolute left-3 top-2 text-xs font-bold text-[#7A8684]">$</span>
+            </div>
+            <span class="text-[11px] text-[#7A8684] mt-1 block">Allocates chronologically across oldest unpaid months to newest.</span>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-[#141F1E] mb-1">Payment Gateway / Method</label>
+            <select id="modal-fee-method-select" class="w-full text-xs bg-[#FFFFFF] border border-[#ECEAE4] rounded-xl px-3 py-2.5 text-[#141F1E] font-medium outline-none focus:border-[#0E4D45] cursor-pointer">
+              <option value="Online Portal (Stripe)">Online Portal (Stripe Credit/Debit)</option>
+              <option value="Direct Bank Transfer">Direct Bank Wire / Transfer</option>
+              <option value="PayPal Gateway">PayPal Gateway</option>
+              <option value="Cash / Manual QSA Receipt">Cash / Manual Academy Office</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Quick Settlement Amount Presets -->
+        <div class="flex items-center justify-between text-xs pt-1">
+          <span class="text-[11px] font-semibold text-[#7A8684]">Quick Presets:</span>
+          <div class="flex items-center gap-1.5">
+            <button type="button" onclick="setModalAmount(50)" class="px-2.5 py-1 rounded-full bg-[#F8F6F1] hover:bg-[#E8EFEE] text-[#0E4D45] text-[11px] font-bold border border-[#ECEAE4] transition-colors cursor-pointer shadow-2xs">
+              1 Month ($50)
+            </button>
+            <button type="button" onclick="setModalAmount(100)" class="px-2.5 py-1 rounded-full bg-[#F8F6F1] hover:bg-[#E8EFEE] text-[#0E4D45] text-[11px] font-bold border border-[#ECEAE4] transition-colors cursor-pointer shadow-2xs">
+              2 Months ($100)
+            </button>
+            <button type="button" onclick="setModalAmount('full')" class="px-2.5 py-1 rounded-full bg-[#F8F6F1] hover:bg-[#E8EFEE] text-[#0E4D45] text-[11px] font-bold border border-[#ECEAE4] transition-colors cursor-pointer shadow-2xs">
+              Full Clear Due
+            </button>
+          </div>
+        </div>
+
+        <!-- Live Chronological FIFO Allocation Preview Container -->
+        <div>
+          <label class="block text-xs font-bold text-[#141F1E] mb-1.5">Live FIFO Allocation Distribution</label>
+          <div id="fifo-allocation-preview">
+            <!-- Dynamically calculated table generated in app.js -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="p-4 bg-[#F8F6F1] border-t border-[#ECEAE4] flex items-center justify-between">
+        <span class="text-[11px] text-[#7A8684]">Audited transaction logged to tamper-evident ledger</span>
+        <div class="flex items-center gap-2">
+          <button onclick="closeReceiveFeeModal()" class="px-4 py-2 text-xs font-bold rounded-full bg-white border border-[#ECEAE4] text-[#7A8684] hover:text-[#141F1E]">Cancel</button>
+          <button onclick="handleSaveFeePayment()" class="px-6 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-sm">Confirm & Commit Payment</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL 2: 30-SECOND ZERO-TYPING SABAQ LOGGER MODAL (TEACHER)
+       ========================================================================== -->
+  <div id="sabaq-logger-modal" class="modal-backdrop">
+    <div class="modal-content">
+      <div class="p-6 border-b border-[#ECEAE4] flex items-center justify-between bg-[#F8F6F1]">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-lg">⏱️</span>
+            <h3 class="text-base font-bold text-[#141F1E]">30-Second Post-Class Sabaq Logger</h3>
+          </div>
+          <p class="text-xs text-[#7A8684]">Zero-typing workflow: select pills and save in under 30 seconds.</p>
+        </div>
+        <button onclick="closeSabaqLoggerModal()" class="w-8 h-8 rounded-full border border-[#ECEAE4] bg-white text-[#7A8684] hover:text-[#141F1E] flex items-center justify-center text-sm font-bold">✕</button>
+      </div>
+
+      <div class="p-6 space-y-4">
+        
+        <!-- Student Selector (Masked) -->
+        <div>
+          <label class="block text-xs font-bold text-[#141F1E] mb-1">Student (PII Protected)</label>
+          <select id="logger-student-select" class="w-full text-xs bg-[#FFFFFF] border border-[#ECEAE4] rounded-xl px-3 py-2 text-[#141F1E] font-medium outline-none focus:border-[#0E4D45]">
+            <!-- Injected by app.js -->
+          </select>
+        </div>
+
+        <!-- 1-Click Attendance Pills -->
+        <div>
+          <label class="block text-xs font-bold text-[#141F1E] mb-1.5">Class Attendance (1-Click)</label>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" onclick="selectAttendancePill(this)" data-status="Present" class="attendance-pill pill-choice selected">Present</button>
+            <button type="button" onclick="selectAttendancePill(this)" data-status="Late" class="attendance-pill pill-choice">Late</button>
+            <button type="button" onclick="selectAttendancePill(this)" data-status="Absent" class="attendance-pill pill-choice">Absent</button>
+            <button type="button" onclick="selectAttendancePill(this)" data-status="Excused" class="attendance-pill pill-choice">Excused</button>
+          </div>
+        </div>
+
+        <!-- Lesson Selection -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-[#141F1E] mb-1">Course Track</label>
+            <select class="w-full text-xs bg-[#FFFFFF] border border-[#ECEAE4] rounded-xl px-3 py-2 text-[#141F1E] font-medium outline-none">
+              <option>Hifz-ul-Quran (Memorization)</option>
+              <option>Nazra Quran (Recitation with Tajweed)</option>
+              <option>Noorani Qaida for Beginners</option>
+              <option>Advanced Qiraat & Ijazah</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-[#141F1E] mb-1">Lesson / Surah / Para</label>
+            <input type="text" id="logger-surah-input" value="Surah Maryam (Ayah 1-22)" 
+              class="w-full text-xs bg-[#FFFFFF] border border-[#ECEAE4] rounded-xl px-3 py-2 text-[#141F1E] font-medium outline-none focus:border-[#0E4D45]">
+          </div>
+        </div>
+
+        <!-- 1-Click Fast Remark Tags -->
+        <div>
+          <label class="block text-xs font-bold text-[#141F1E] mb-1.5">Quick Remark Tags (Click to Toggle)</label>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" onclick="toggleRemarkTag(this)" class="remark-tag-pill pill-choice selected">MashaAllah Good</button>
+            <button type="button" onclick="toggleRemarkTag(this)" class="remark-tag-pill pill-choice">Needs Revision</button>
+            <button type="button" onclick="toggleRemarkTag(this)" class="remark-tag-pill pill-choice selected">Tajweed Focus</button>
+            <button type="button" onclick="toggleRemarkTag(this)" class="remark-tag-pill pill-choice">Makharij Practice</button>
+            <button type="button" onclick="toggleRemarkTag(this)" class="remark-tag-pill pill-choice">Hifz Strong</button>
+            <button type="button" onclick="toggleRemarkTag(this)" class="remark-tag-pill pill-choice">Slow Pace</button>
+          </div>
+        </div>
+
+        <!-- 1-Click Star Rating -->
+        <div>
+          <label class="block text-xs font-bold text-[#141F1E] mb-1">Performance Rating</label>
+          <div class="flex items-center gap-1 text-xl text-amber-400 cursor-pointer">
+            <span>⭐</span><span>⭐</span><span>⭐</span><span>⭐</span><span>⭐</span>
+            <span class="text-xs text-[#7A8684] ml-2 font-medium">(5/5 Excellent)</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="p-4 bg-[#F8F6F1] border-t border-[#ECEAE4] flex items-center justify-between">
+        <span class="text-[11px] text-[#7A8684]">Takes under 30 seconds per student</span>
+        <div class="flex items-center gap-2">
+          <button onclick="closeSabaqLoggerModal()" class="px-4 py-2 text-xs font-bold rounded-full bg-white border border-[#ECEAE4] text-[#7A8684]">Cancel</button>
+          <button onclick="handleSaveSabaq()" class="px-6 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B]">Save Sabaq & Attendance</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL 3: SUBSTITUTE TEACHER DISPATCHER (MANAGER)
+       ========================================================================== -->
+  <div id="substitute-modal" class="modal-backdrop">
+    <div class="modal-content">
+      <div class="p-6 border-b border-[#ECEAE4] flex items-center justify-between bg-[#F8F6F1]">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-full bg-[#E8EFEE] text-[#0E4D45] flex items-center justify-center">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+          </div>
+          <h3 class="text-base font-bold text-[#141F1E]">Substitute Teacher Assignment</h3>
+        </div>
+        <button onclick="closeSubstituteModal()" class="w-8 h-8 rounded-full border border-[#ECEAE4] bg-white text-[#7A8684] hover:text-[#141F1E] flex items-center justify-center text-sm font-bold">✕</button>
+      </div>
+
+      <div class="p-6 space-y-4 text-xs">
+        <div>
+          <label class="block font-bold text-[#141F1E] mb-1">Original Teacher (Absent / Unavailable)</label>
+          <select class="w-full bg-[#FFFFFF] border border-[#ECEAE4] rounded-xl px-3 py-2 text-[#141F1E] font-medium outline-none">
+            <option>Sheikh Ismail Noor (On Leave - Medical)</option>
+            <option>Qari Abdul Rahman (Emergency)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block font-bold text-[#141F1E] mb-1">Available Substitute Qari / Ustadha</label>
+          <select class="w-full bg-[#FFFFFF] border border-[#ECEAE4] rounded-xl px-3 py-2 text-[#141F1E] font-medium outline-none">
+            <option>Ustadh Huzaifa Amin (Available Now • Canada)</option>
+            <option>Qari Abdul Rahman (Available at 11:30 AM • Egypt)</option>
+          </select>
+        </div>
+
+        <div class="p-3 bg-[#E8EFEE] rounded-xl border border-[#CBD5E1] text-[#334E4B]">
+          ℹ️ System will automatically update the classroom link and dispatch an encrypted alert to the substitute teacher without exposing student contact information.
+        </div>
+      </div>
+
+      <div class="p-4 bg-[#F8F6F1] border-t border-[#ECEAE4] flex items-center justify-end gap-2">
+        <button onclick="closeSubstituteModal()" class="px-4 py-2 text-xs font-bold rounded-full bg-white border border-[#ECEAE4] text-[#7A8684]">Cancel</button>
+        <button onclick="handleAssignSubstitute()" class="px-6 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B]">Confirm Assignment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL 4: OFFICIAL AUDITED RECEIPT MODAL
+       ========================================================================== -->
+  <div id="receipt-modal" class="modal-backdrop">
+    <div class="modal-content" id="receipt-modal-content">
+      <!-- Injected by app.js -->
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL 5: MONTH DETAIL BREAKDOWN MODAL (STRIPE-STYLE QUICK ACTION DRAWER)
+       ========================================================================== -->
+  <div id="month-detail-modal" class="modal-backdrop">
+    <div class="modal-content max-w-lg" id="month-detail-content">
+      <!-- Injected by app.js -->
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL 5: ENROLL NEW STUDENT MODAL (ADMIN REGISTRATION) - STRIPE SAAS STYLE
+       ========================================================================== -->
+  <div id="add-student-modal" class="modal-backdrop">
+    <div class="modal-content max-w-xl w-full bg-white rounded-2xl shadow-xl overflow-hidden border border-[#ECEAE4] transition-all">
+      
+      <!-- Modal Header -->
+      <div class="px-6 py-5 border-b border-[#ECEAE4] flex items-center justify-between bg-white">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-[#0E4D45] text-white flex items-center justify-center shrink-0 shadow-xs">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="text-base font-bold text-[#141F1E]">Add New Student</h3>
+              <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-[#F8F6F1] text-[#7A8684] border border-[#ECEAE4]">Manual ID</span>
+            </div>
+            <p class="text-xs text-[#7A8684] mt-0.5">Enroll new student into the academy with automated FIFO ledger setup.</p>
+          </div>
+        </div>
+        <button onclick="closeAddStudentModal()" class="w-8 h-8 rounded-full border border-[#ECEAE4] bg-[#F8F6F1] text-[#7A8684] hover:text-[#141F1E] hover:bg-[#ECEAE4] flex items-center justify-center text-sm font-bold transition-colors cursor-pointer">✕</button>
+      </div>
+
+      <!-- Modal Body (2-Column Grid) -->
+      <div class="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+        
+        <!-- Top Section (Full Width): Clean Blank Photo Upload Zone -->
+        <div>
+          <label class="block text-[10px] font-semibold text-[#7A8684] uppercase tracking-wider mb-1.5">Official Student Photo</label>
+          <div 
+            id="add-student-dropzone" 
+            onclick="document.getElementById('add-student-photo-file').click()"
+            ondragover="event.preventDefault(); this.classList.add('border-[#0E4D45]', 'bg-[#E8EFEE]/30');"
+            ondragleave="this.classList.remove('border-[#0E4D45]', 'bg-[#E8EFEE]/30');"
+            ondrop="handlePhotoDrop(event, 'student'); this.classList.remove('border-[#0E4D45]', 'bg-[#E8EFEE]/30');"
+            class="flex items-center gap-4 p-3.5 bg-[#F8F6F1] border border-dashed border-[#CBD5E1] rounded-xl hover:border-[#0E4D45] transition-all cursor-pointer group"
+          >
+            <div class="relative shrink-0">
+              <!-- Empty state placeholder: dashed circular border with subtle camera icon -->
+              <div id="add-student-photo-placeholder" class="w-14 h-14 rounded-full border-2 border-dashed border-[#CBD5E1] bg-white flex items-center justify-center text-[#7A8684] group-hover:border-[#0E4D45] group-hover:text-[#0E4D45] transition-colors shadow-2xs">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z"/></svg>
+              </div>
+              <!-- Uploaded preview: hidden by default until user uploads a photo -->
+              <img 
+                id="add-student-photo-preview" 
+                src="" 
+                alt="Student Photo Preview" 
+                class="w-14 h-14 rounded-full object-cover ring-2 ring-[#0E4D45]/30 bg-white shadow-xs hidden" 
+              />
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-bold text-[#141F1E] group-hover:text-[#0E4D45] transition-colors" id="add-student-photo-label">Click or drag image to upload official photo</span>
+                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white text-[#7A8684] border border-[#ECEAE4]" id="add-student-photo-badge">Upload Photo</span>
+              </div>
+              <p class="text-[11px] text-[#7A8684] mt-0.5">Supports PNG, JPG, or WebP. Facial portrait for student identity verification.</p>
+            </div>
+            <input type="file" id="add-student-photo-file" accept="image/*" class="hidden" onchange="handleStudentPhotoSelected(event)">
+            <input type="hidden" id="add-student-avatar" value="">
+          </div>
+        </div>
+
+        <!-- 2-Column Grid Fields -->
+        <div class="grid grid-cols-2 gap-4">
+          
+          <!-- Manual Student ID -->
+          <div>
+            <label class="block text-[10px] font-semibold text-[#7A8684] uppercase tracking-wider mb-1">Student ID *</label>
+            <input 
+              type="text" 
+              id="add-student-id" 
+              placeholder="" 
+              class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#141F1E] font-mono font-bold outline-none focus:border-[#0E4D45] focus:bg-white transition-all"
+            >
+          </div>
+
+          <!-- Full Name -->
+          <div>
+            <label class="block text-[10px] font-semibold text-[#7A8684] uppercase tracking-wider mb-1">Full Name *</label>
+            <input 
+              type="text" 
+              id="add-student-full-name" 
+              placeholder="" 
+              class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#141F1E] outline-none focus:border-[#0E4D45] focus:bg-white transition-all"
+            >
+          </div>
+
+          <!-- Father / Guardian Name -->
+          <div>
+            <label class="block text-[10px] font-semibold text-[#7A8684] uppercase tracking-wider mb-1">Father / Guardian Name *</label>
+            <input 
+              type="text" 
+              id="add-student-guardian-name" 
+              placeholder="" 
+              class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#141F1E] outline-none focus:border-[#0E4D45] focus:bg-white transition-all"
+            >
+          </div>
+
+          <!-- WhatsApp Number -->
+          <div>
+            <label class="block text-[10px] font-semibold text-[#7A8684] uppercase tracking-wider mb-1">WhatsApp Number *</label>
+            <input 
+              type="text" 
+              id="add-student-whatsapp" 
+              placeholder="" 
+              class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#141F1E] outline-none focus:border-[#0E4D45] focus:bg-white transition-all"
+            >
+          </div>
+
+          <!-- Email Address -->
+          <div>
+            <label class="block text-[10px] font-semibold text-[#7A8684] uppercase tracking-wider mb-1">Email Address *</label>
+            <input 
+              type="email" 
+              id="add-student-email" 
+              placeholder="" 
+              class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#141F1E] outline-none focus:border-[#0E4D45] focus:bg-white transition-all"
+            >
+          </div>
+
+          <!-- Country -->
+          <div>
+            <label class="block text-[10px] font-semibold text-[#7A8684] uppercase tracking-wider mb-1">Country *</label>
+            <select 
+              id="add-student-country" 
+              onchange="handleStudentCountryChange(this.value)" 
+              class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#141F1E] font-medium outline-none focus:border-[#0E4D45] focus:bg-white transition-all cursor-pointer"
+            >
+              <option value="" disabled selected>Select Country</option>
+              <!-- Injected dynamically by populateCountryOptions -->
+            </select>
+          </div>
+
+          <!-- Timezone -->
+          <div>
+            <label class="block text-[10px] font-semibold text-[#7A8684] uppercase tracking-wider mb-1">Timezone *</label>
+            <input 
+              type="text" 
+              id="add-student-timezone" 
+              placeholder="" 
+              class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#141F1E] outline-none focus:border-[#0E4D45] focus:bg-white transition-all"
+            >
+          </div>
+
+          <!-- Family ID Tag -->
+          <div>
+            <label class="block text-[10px] font-semibold text-[#7A8684] uppercase tracking-wider mb-1">Family ID Tag *</label>
+            <input 
+              list="family-id-datalist" 
+              id="add-student-family-id" 
+              placeholder="" 
+              class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#141F1E] font-medium outline-none focus:border-[#0E4D45] focus:bg-white transition-all"
+            >
+            <datalist id="family-id-datalist">
+              <!-- Injected dynamically -->
+            </datalist>
+          </div>
+
+          <!-- Course / Track -->
+          <div>
+            <label class="block text-[10px] font-semibold text-[#7A8684] uppercase tracking-wider mb-1">Course / Track *</label>
+            <select 
+              id="add-student-course" 
+              class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#141F1E] font-medium outline-none focus:border-[#0E4D45] focus:bg-white transition-all cursor-pointer"
+            >
+              <option value="" disabled selected>Select Course / Track</option>
+              <option value="Hifz-ul-Quran (Memorization)">Hifz-ul-Quran (Memorization)</option>
+              <option value="Nazra Quran with Tajweed">Nazra Quran with Tajweed</option>
+              <option value="Noorani Qaida for Beginners">Noorani Qaida for Beginners</option>
+              <option value="Advanced Tajweed & Makharij">Advanced Tajweed & Makharij</option>
+              <option value="Ten Qiraat Certification">Ten Qiraat Certification</option>
+              <option value="Islamic Studies & Daily Duaa">Islamic Studies & Daily Duaa</option>
+            </select>
+          </div>
+
+          <!-- Monthly Fee & Currency -->
+          <div>
+            <label class="block text-[10px] font-semibold text-[#7A8684] uppercase tracking-wider mb-1">Monthly Fee & Currency *</label>
+            <div class="flex items-center gap-2">
+              <select 
+                id="add-student-currency" 
+                class="w-36 shrink-0 bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-2.5 text-xs text-[#141F1E] font-semibold outline-none focus:border-[#0E4D45] focus:bg-white transition-all cursor-pointer"
+              >
+                <option value="" disabled selected>Select Currency</option>
+                <option value="USD">$ USD</option>
+                <option value="GBP">£ GBP</option>
+                <option value="EUR">€ EUR</option>
+                <option value="CAD">C$ CAD</option>
+                <option value="PKR">Rs PKR</option>
+              </select>
+              <input 
+                type="number" 
+                id="add-student-fee" 
+                value="" 
+                min="5" 
+                step="any" 
+                placeholder="" 
+                class="flex-1 min-w-0 bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#0E4D45] font-bold outline-none focus:border-[#0E4D45] focus:bg-white transition-all"
+              >
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-6 py-4 bg-white border-t border-[#ECEAE4] flex items-center justify-end gap-4">
+        <button 
+          type="button" 
+          onclick="closeAddStudentModal()" 
+          class="text-xs font-semibold text-[#7A8684] hover:text-[#141F1E] transition-colors cursor-pointer"
+        >
+          Cancel
+        </button>
+        <button 
+          type="button" 
+          onclick="handleSaveNewStudent()" 
+          class="px-6 py-2.5 text-xs font-bold rounded-lg bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
+        >
+          <span>Save & Enroll</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL: HIGH-PRECISION 1:1 IMAGE CROPPER & PORTRAIT ALIGNER
+       ========================================================================== -->
+  <div id="image-cropper-modal" class="modal-backdrop" style="z-index: 200;">
+    <div class="modal-content max-w-md w-full bg-white rounded-2xl shadow-2xl border border-[#ECEAE4] overflow-hidden transition-all">
+      
+      <!-- Cropper Header -->
+      <div class="px-5 py-4 border-b border-[#ECEAE4] flex items-center justify-between bg-white">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-[#0E4D45] text-white flex items-center justify-center shrink-0 shadow-xs">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 3.75H6A2.25 2.25 0 003.75 6v1.5M3.75 16.5V18A2.25 2.25 0 006 20.25h1.5m9-16.5H18A2.25 2.25 0 0120.25 6v1.5m0 9V18A2.25 2.25 0 0118 20.25h-1.5M9 9h6v6H9z" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-[#141F1E]">Crop & Frame Photo</h3>
+            <p class="text-[11px] text-[#7A8684] mt-0.5">Drag to reposition, slider to zoom into 1:1 circular portrait</p>
+          </div>
+        </div>
+        <button onclick="closeImageCropper()" class="w-7 h-7 rounded-full border border-[#ECEAE4] bg-[#F8F6F1] text-[#7A8684] hover:text-[#141F1E] hover:bg-[#ECEAE4] flex items-center justify-center text-xs font-bold transition-colors cursor-pointer">✕</button>
+      </div>
+
+      <!-- Cropper Viewport / Canvas Container -->
+      <div class="p-5 bg-[#F8F6F1] flex flex-col items-center select-none">
+        <div class="relative w-[300px] h-[300px] rounded-xl overflow-hidden bg-[#0A1211] shadow-inner flex items-center justify-center border border-[#CBD5E1]">
+          <canvas id="cropper-canvas" width="300" height="300" class="cursor-grab active:cursor-grabbing w-full h-full block"></canvas>
+        </div>
+
+        <!-- Toolbar: Zoom Slider + Rotate + Reset -->
+        <div class="w-full max-w-[300px] mt-4 space-y-3">
+          <div class="flex items-center justify-between text-[11px] font-semibold text-[#7A8684]">
+            <span class="flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 text-[#0E4D45]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM10.5 7.5v6m3-3h-6"/></svg>
+              <span>Zoom</span>
+            </span>
+            <span id="cropper-zoom-level" class="text-[10px] font-mono text-[#0E4D45] bg-[#E8EFEE] px-1.5 py-0.5 rounded">1.0x</span>
+          </div>
+          <div class="flex items-center gap-2.5">
+            <button type="button" onclick="cropperStepZoom(-0.1)" class="w-7 h-7 rounded-lg bg-white border border-[#ECEAE4] text-[#141F1E] hover:bg-[#ECEAE4] flex items-center justify-center text-xs font-bold cursor-pointer transition-colors">−</button>
+            <input 
+              type="range" 
+              id="cropper-zoom-slider" 
+              min="1" 
+              max="3" 
+              step="0.02" 
+              value="1" 
+              oninput="cropperSetZoom(parseFloat(this.value))"
+              class="flex-1 accent-[#0E4D45] cursor-pointer h-1.5 bg-[#E2E8F0] rounded-lg"
+            >
+            <button type="button" onclick="cropperStepZoom(0.1)" class="w-7 h-7 rounded-lg bg-white border border-[#ECEAE4] text-[#141F1E] hover:bg-[#ECEAE4] flex items-center justify-center text-xs font-bold cursor-pointer transition-colors">+</button>
+            <button type="button" onclick="cropperRotate()" title="Rotate 90° clockwise" class="w-7 h-7 rounded-lg bg-white border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#ECEAE4] flex items-center justify-center text-xs font-bold cursor-pointer transition-colors">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+            </button>
+            <button type="button" onclick="cropperReset()" title="Reset Alignment" class="w-7 h-7 rounded-lg bg-white border border-[#ECEAE4] text-[#7A8684] hover:text-[#141F1E] hover:bg-[#ECEAE4] flex items-center justify-center text-xs font-bold cursor-pointer transition-colors">↺</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cropper Footer -->
+      <div class="px-5 py-3.5 bg-white border-t border-[#ECEAE4] flex items-center justify-between">
+        <button 
+          type="button" 
+          onclick="closeImageCropper()" 
+          class="text-xs font-semibold text-[#7A8684] hover:text-[#141F1E] transition-colors cursor-pointer"
+        >
+          Cancel
+        </button>
+        <button 
+          type="button" 
+          onclick="applyImageCrop()" 
+          class="px-5 py-2 text-xs font-bold rounded-lg bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+          <span>Apply Crop</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL: VIEW STUDENT COMPLETE WEEKLY TIMETABLE & DUAL TIMEZONE
+       ========================================================================== -->
+  <div id="view-weekly-schedule-modal" class="modal-backdrop">
+    <div class="modal-content max-w-2xl sm:max-w-3xl">
+      <div class="p-6 border-b border-[#ECEAE4] flex items-center justify-between bg-[#F8F6F1]">
+        <div>
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-full bg-[#0E4D45] text-white flex items-center justify-center">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+            </div>
+            <h3 class="text-base font-bold text-[#141F1E]">Weekly Class Timetable & Dual Timezone</h3>
+          </div>
+          <p class="text-xs text-[#7A8684] mt-0.5">Day-by-day class schedule with live Pakistan Time (PKT) synchronization.</p>
+        </div>
+        <button onclick="closeViewWeeklyScheduleModal()" class="w-8 h-8 rounded-full border border-[#ECEAE4] bg-white text-[#7A8684] hover:text-[#141F1E] flex items-center justify-center text-sm font-bold cursor-pointer">✕</button>
+      </div>
+
+      <div id="view-weekly-schedule-body" class="p-6 space-y-4 max-h-[calc(88vh-140px)] overflow-y-auto text-xs">
+        <!-- Injected dynamically by openViewWeeklyScheduleModal(studentId) -->
+      </div>
+
+      <div class="p-4 bg-[#F8F6F1] border-t border-[#ECEAE4] flex items-center justify-between">
+        <span class="text-[11px] text-[#7A8684]">Times automatically synchronized with Academy Master Calendar</span>
+        <div class="flex items-center gap-2">
+          <button id="view-schedule-copy-btn" onclick="copyWeeklyScheduleToClipboard()" class="px-4 py-2 text-xs font-bold rounded-full bg-white border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#E8EFEE] cursor-pointer">
+            📋 Copy Timetable
+          </button>
+          <button id="view-schedule-edit-btn" onclick="openEditScheduleFromView()" class="px-5 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-sm cursor-pointer">
+            ✏️ Edit Full Record & Schedule
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL: EDIT STUDENT RECORD (APPLE / STRIPE MINIMALIST STANDARD)
+       ========================================================================== -->
+  <div id="edit-schedule-modal" class="modal-backdrop">
+    <div class="modal-content max-w-2xl w-full mx-auto bg-white rounded-3xl shadow-2xl border border-[#ECEAE4] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150">
+      
+      <!-- Modal Header (Apple/Stripe Clean Typography, No Heavy Green Icon Badge) -->
+      <div class="px-6 py-4 border-b border-[#ECEAE4] flex items-center justify-between bg-white">
+        <div>
+          <h3 class="text-[18px] font-bold text-[#141F1E] leading-tight">Edit Student Record</h3>
+          <p id="edit-schedule-subtitle" class="text-xs text-[#7A8684] mt-0.5">Update personal details, contact information, tuition fee, and weekly timetable.</p>
+        </div>
+        <button 
+          onclick="closeEditScheduleModal()" 
+          class="w-8 h-8 rounded-full border border-[#E5E7EB] bg-white text-[#7A8684] hover:text-[#141F1E] hover:bg-[#F8F6F1] flex items-center justify-center text-sm font-bold transition-colors cursor-pointer"
+          title="Close"
+        >✕</button>
+      </div>
+
+      <!-- Scrollable Modal Body -->
+      <div class="px-6 py-5 space-y-4 max-h-[calc(88vh-140px)] overflow-y-auto text-xs">
+        <input type="hidden" id="edit-schedule-original-id" />
+        <input type="hidden" id="edit-schedule-avatar" value="" />
+        <!-- Hidden diff badge to preserve any script references without visual noise -->
+        <span id="edit-schedule-tz-diff" class="hidden"></span>
+
+        <!-- 1. Profile Photo & ID Bar -->
+        <div class="p-3 bg-[#F8F6F1]/60 rounded-2xl border border-[#E5E7EB] flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="relative shrink-0">
+              <img 
+                id="edit-student-avatar-preview" 
+                src="https://images.unsplash.com/photo-1544717305-2782549b5136?w=100&h=100&fit=crop&crop=faces" 
+                alt="Profile Preview" 
+                class="w-12 h-12 rounded-full object-cover border-2 border-[#0E4D45] shadow-2xs bg-white"
+                onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=Student&background=0E4D45&color=fff';"
+              />
+            </div>
+            <div>
+              <button 
+                type="button" 
+                onclick="openAvatarPickerModal('edit')" 
+                class="px-3 py-1.5 rounded-full bg-white hover:bg-[#F8F6F1] text-[#0E4D45] border border-[#CBD5E1] text-xs font-semibold transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
+              >
+                <span>📷</span>
+                <span>Change Photo / Avatar</span>
+              </button>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="edit-schedule-student-id-badge" class="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-white text-[#475569] border border-[#E2E8F0]">ID: QA-1008</span>
+            <span id="edit-schedule-family-badge" class="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-[#E8EFEE] text-[#0E4D45] border border-[#CBD5E1]">FAM-108</span>
+          </div>
+        </div>
+
+        <!-- 2. Student Identity (2-Column Grids) -->
+        <div class="space-y-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div>
+              <label class="block text-xs font-semibold text-[#141F1E] mb-1">Student ID / Roll No *</label>
+              <input 
+                type="text" 
+                id="edit-schedule-student-id-input" 
+                oninput="handleEditStudentIdInput(this.value)" 
+                placeholder="e.g. QA-1008" 
+                class="w-full bg-white border border-[#E5E7EB] rounded-xl px-3.5 py-2 text-xs font-mono font-bold text-[#141F1E] outline-none focus:border-[#0E4D45] focus:ring-1 focus:ring-[#0E4D45]"
+              >
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-[#141F1E] mb-1">Academic Status *</label>
+              <select 
+                id="edit-schedule-status" 
+                class="w-full bg-white border border-[#E5E7EB] rounded-xl px-3.5 py-2 text-xs font-semibold text-[#141F1E] outline-none focus:border-[#0E4D45] focus:ring-1 focus:ring-[#0E4D45] cursor-pointer"
+              >
+                <option value="Active">Active (Enrolled)</option>
+                <option value="On Trial">On Trial</option>
+                <option value="On Leave">On Leave / Paused</option>
+                <option value="Inactive">Inactive / Dropped</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div>
+              <label class="block text-xs font-semibold text-[#141F1E] mb-1">Student First Name *</label>
+              <input 
+                type="text" 
+                id="edit-schedule-first-name" 
+                placeholder="e.g. Tariq" 
+                class="w-full bg-white border border-[#E5E7EB] rounded-xl px-3.5 py-2 text-xs font-medium text-[#141F1E] outline-none focus:border-[#0E4D45] focus:ring-1 focus:ring-[#0E4D45]"
+              >
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-[#141F1E] mb-1">Student Last Name</label>
+              <input 
+                type="text" 
+                id="edit-schedule-last-name" 
+                placeholder="e.g. Mansoor" 
+                class="w-full bg-white border border-[#E5E7EB] rounded-xl px-3.5 py-2 text-xs font-medium text-[#141F1E] outline-none focus:border-[#0E4D45] focus:ring-1 focus:ring-[#0E4D45]"
+              >
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Guardian & Contact Details (2-Column Grids) -->
+        <div class="pt-2 border-t border-[#E5E7EB] space-y-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div>
+              <label class="block text-xs font-semibold text-[#141F1E] mb-1">Guardian Full Name *</label>
+              <input 
+                type="text" 
+                id="edit-schedule-guardian-name" 
+                placeholder="e.g. Mansoor Al-Hadi" 
+                class="w-full bg-white border border-[#E5E7EB] rounded-xl px-3.5 py-2 text-xs font-medium text-[#141F1E] outline-none focus:border-[#0E4D45] focus:ring-1 focus:ring-[#0E4D45]"
+              >
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-[#141F1E] mb-1">Primary Phone Number *</label>
+              <input 
+                type="text" 
+                id="edit-schedule-phone" 
+                placeholder="e.g. +1 (555) 382-9104" 
+                class="w-full bg-white border border-[#E5E7EB] rounded-xl px-3.5 py-2 text-xs font-medium text-[#141F1E] outline-none focus:border-[#0E4D45] focus:ring-1 focus:ring-[#0E4D45]"
+              >
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div>
+              <label class="block text-xs font-semibold text-[#141F1E] mb-1">WhatsApp Number</label>
+              <input 
+                type="text" 
+                id="edit-schedule-whatsapp" 
+                placeholder="e.g. +15553829104" 
+                class="w-full bg-white border border-[#E5E7EB] rounded-xl px-3.5 py-2 text-xs font-medium text-[#141F1E] outline-none focus:border-[#0E4D45] focus:ring-1 focus:ring-[#0E4D45]"
+              >
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-[#141F1E] mb-1">Email Address</label>
+              <input 
+                type="email" 
+                id="edit-schedule-email" 
+                placeholder="e.g. parent@email.com" 
+                class="w-full bg-white border border-[#E5E7EB] rounded-xl px-3.5 py-2 text-xs font-medium text-[#141F1E] outline-none focus:border-[#0E4D45] focus:ring-1 focus:ring-[#0E4D45]"
+              >
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-[#141F1E] mb-1">Residential Street Address</label>
+            <input 
+              type="text" 
+              id="edit-schedule-address" 
+              placeholder="e.g. 422 Islamic Way, Dallas, TX, USA" 
+              class="w-full bg-white border border-[#E5E7EB] rounded-xl px-3.5 py-2 text-xs font-medium text-[#141F1E] outline-none focus:border-[#0E4D45] focus:ring-1 focus:ring-[#0E4D45]"
+            >
+          </div>
+        </div>
+
+        <!-- 4. Location & Academic Track (2-Column Grids) -->
+        <div class="pt-2 border-t border-[#E5E7EB] space-y-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div>
+              <label class="block text-xs font-semibold text-[#141F1E] mb-1">Country *</label>
+              <select 
+                id="edit-schedule-country" 
+                onchange="handleEditCountryChange(this.value)" 
+                class="w-full bg-white border border-[#E5E7EB] rounded-xl px-3.5 py-2 text-xs font-medium text-[#141F1E] outline-none focus:border-[#0E4D45] focus:ring-1 focus:ring-[#0E4D45] cursor-pointer"
+              ></select>
+              <input 
+                type="text" 
+                id="edit-schedule-custom-country" 
+                placeholder="Type custom country name..." 
+                class="mt-2 w-full bg-white border border-[#E5E7EB] rounded-xl px-3.5 py-2 text-xs font-medium text-[#141F1E] outline-none focus:border-[#0E4D45] focus:ring-1 focus:ring-[#0E4D45] hidden"
+              >
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-[#141F1E] mb-1">Student Local Timezone *</label>
+              <input 
+                type="text" 
+                id="edit-schedule-timezone" 
+                oninput="handleEditTimezoneInput(this.value)" 
+                placeholder="e.g. GMT-5 (CST)" 
+                class="w-full bg-white border border-[#E5E7EB] rounded-xl px-3.5 py-2 text-xs font-medium text-[#141F1E] outline-none focus:border-[#0E4D45] focus:ring-1 focus:ring-[#0E4D45]"
+              >
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div>
+              <label class="block text-xs font-semibold text-[#141F1E] mb-1">Assigned Teacher *</label>
+              <select 
+                id="edit-schedule-teacher" 
+                class="w-full bg-white border border-[#E5E7EB] rounded-xl px-3.5 py-2 text-xs font-medium text-[#141F1E] outline-none focus:border-[#0E4D45] focus:ring-1 focus:ring-[#0E4D45] cursor-pointer"
+              ></select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-[#141F1E] mb-1">Course Track *</label>
+              <select 
+                id="edit-schedule-course" 
+                class="w-full bg-white border border-[#E5E7EB] rounded-xl px-3.5 py-2 text-xs font-medium text-[#141F1E] outline-none focus:border-[#0E4D45] focus:ring-1 focus:ring-[#0E4D45] cursor-pointer"
+              >
+                <option value="Hifz-ul-Quran (Memorization)">Hifz-ul-Quran (Memorization)</option>
+                <option value="Nazra Quran with Tajweed">Nazra Quran with Tajweed</option>
+                <option value="Noorani Qaida for Beginners">Noorani Qaida for Beginners</option>
+                <option value="Advanced Tajweed & Makharij">Advanced Tajweed & Makharij</option>
+                <option value="Ten Qiraat Certification">Ten Qiraat Certification</option>
+                <option value="Islamic Studies & Daily Duaa">Islamic Studies & Daily Duaa</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. Monthly Fee & Family Tag (2-Column Grid) -->
+        <div class="pt-2 border-t border-[#E5E7EB] space-y-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div>
+              <label class="block text-xs font-semibold text-[#141F1E] mb-1">Monthly Tuition Fee *</label>
+              <div class="flex items-center gap-2">
+                <select 
+                  id="edit-schedule-currency" 
+                  class="w-24 bg-white border border-[#E5E7EB] rounded-xl px-3 py-2 text-xs font-semibold text-[#141F1E] outline-none focus:border-[#0E4D45] cursor-pointer shrink-0"
+                >
+                  <option value="USD">$ USD</option>
+                  <option value="GBP">£ GBP</option>
+                  <option value="EUR">€ EUR</option>
+                  <option value="CAD">C$ CAD</option>
+                  <option value="PKR">Rs PKR</option>
+                </select>
+                <input 
+                  type="number" 
+                  id="edit-schedule-fee" 
+                  min="0" 
+                  step="any" 
+                  placeholder="50" 
+                  class="flex-1 bg-white border border-[#E5E7EB] rounded-xl px-3.5 py-2 text-xs font-bold text-[#141F1E] outline-none focus:border-[#0E4D45] focus:ring-1 focus:ring-[#0E4D45]"
+                >
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-[#141F1E] mb-1">Family Group Tag</label>
+              <input 
+                type="text" 
+                id="edit-schedule-family-id" 
+                oninput="handleEditFamilyIdInput(this.value)" 
+                placeholder="e.g. FAM-108" 
+                class="w-full bg-white border border-[#E5E7EB] rounded-xl px-3.5 py-2 text-xs font-mono font-bold text-[#141F1E] outline-none focus:border-[#0E4D45] focus:ring-1 focus:ring-[#0E4D45]"
+              >
+            </div>
+          </div>
+        </div>
+
+        <!-- 6. Streamlined 7-Day Timetable Matrix -->
+        <div class="pt-2 border-t border-[#E5E7EB] space-y-3">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-bold text-[#141F1E]">Weekly Class Schedule (7 Days)</label>
+            <span class="text-[11px] text-[#7A8684]">Toggle active days & set class times</span>
+          </div>
+          <div id="edit-schedule-matrix-container" class="space-y-1.5">
+            <!-- Populated dynamically by app.js -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Modal Footer (Right Aligned: Cancel & Save Changes) -->
+      <div class="px-6 py-4 bg-[#F8F6F1]/50 border-t border-[#ECEAE4] flex items-center justify-end gap-3">
+        <button 
+          type="button" 
+          onclick="closeEditScheduleModal()" 
+          class="px-5 py-2 text-xs font-semibold rounded-full bg-white border border-[#CBD5E1] text-[#475569] hover:bg-[#F8F6F1] transition-colors cursor-pointer shadow-2xs"
+        >
+          Cancel
+        </button>
+        <button 
+          type="button" 
+          onclick="handleSaveEditSchedule()" 
+          class="px-6 py-2 text-xs font-bold rounded-full bg-[#0E4D45] hover:bg-[#14534B] text-white transition-all shadow-xs cursor-pointer"
+        >
+          Save Changes
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL: SNAPCHAT-STYLE CARTOON AVATAR STUDIO & DEVICE IMAGE CROPPER
+       ========================================================================== -->
+  <div id="avatar-picker-modal" class="modal-backdrop" style="z-index: 120;">
+    <div class="modal-content max-w-2xl w-full bg-white rounded-3xl border border-[#ECEAE4] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      
+      <!-- Modal Header -->
+      <div class="px-6 py-3.5 border-b border-[#ECEAE4] flex items-center justify-between bg-[#F8F6F1]">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-full bg-[#0E4D45] text-white flex items-center justify-center font-bold text-sm shadow-xs">
+            ✨
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-[#141F1E]">Avatar Studio & Profile Photo</h3>
+            <p class="text-[11px] text-[#7A8684]">Snapchat-style cartoon avatar creator, device image cropper, & presets</p>
+          </div>
+        </div>
+        <button onclick="closeAvatarPickerModal()" class="w-8 h-8 rounded-full border border-[#ECEAE4] bg-white text-[#7A8684] hover:text-[#141F1E] flex items-center justify-center text-sm font-bold cursor-pointer">✕</button>
+      </div>
+
+      <!-- Navigation Tabs (Studio, Crop & Upload, Presets, Initials) -->
+      <div class="px-6 pt-3 border-b border-[#ECEAE4] bg-white">
+        <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap" id="avatar-picker-tab-buttons">
+          <button 
+            type="button"
+            onclick="switchAvatarPickerTab('studio')" 
+            id="avatar-tab-btn-studio" 
+            class="px-3.5 py-2 rounded-t-xl text-xs font-bold border-b-2 border-[#0E4D45] text-[#0E4D45] bg-[#F8F6F1] flex items-center gap-1.5 transition-all cursor-pointer"
+          >
+            <span>✨</span>
+            <span>Cartoon Studio</span>
+          </button>
+          <button 
+            type="button"
+            onclick="switchAvatarPickerTab('device')" 
+            id="avatar-tab-btn-device" 
+            class="px-3.5 py-2 rounded-t-xl text-xs font-bold border-b-2 border-transparent text-[#7A8684] hover:text-[#141F1E] flex items-center gap-1.5 transition-all cursor-pointer"
+          >
+            <span>📷</span>
+            <span>Upload & Crop</span>
+          </button>
+          <button 
+            type="button"
+            onclick="switchAvatarPickerTab('presets')" 
+            id="avatar-tab-btn-presets" 
+            class="px-3.5 py-2 rounded-t-xl text-xs font-bold border-b-2 border-transparent text-[#7A8684] hover:text-[#141F1E] flex items-center gap-1.5 transition-all cursor-pointer"
+          >
+            <span>🎨</span>
+            <span>Presets</span>
+          </button>
+          <button 
+            type="button"
+            onclick="switchAvatarPickerTab('initials')" 
+            id="avatar-tab-btn-initials" 
+            class="px-3.5 py-2 rounded-t-xl text-xs font-bold border-b-2 border-transparent text-[#7A8684] hover:text-[#141F1E] flex items-center gap-1.5 transition-all cursor-pointer"
+          >
+            <span>🔤</span>
+            <span>Initials</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Tab Content Area -->
+      <div class="p-5 text-xs max-h-[62vh] overflow-y-auto">
+        
+        <!-- TAB 1: SNAPCHAT-STYLE CARTOON AVATAR STUDIO -->
+        <div id="avatar-tab-pane-studio" class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-5">
+            
+            <!-- Left Column: Live SVG Character Preview -->
+            <div class="md:col-span-5 flex flex-col items-center justify-center p-4 bg-[#F8F6F1] rounded-2xl border border-[#ECEAE4] text-center gap-3">
+              <div class="relative group">
+                <div id="cartoon-avatar-svg-container" class="w-36 h-36 rounded-full overflow-hidden border-4 border-[#0E4D45] shadow-lg bg-white flex items-center justify-center transition-transform duration-200">
+                  <!-- Injected dynamically by app.js -->
+                </div>
+                <span class="absolute bottom-1 right-1 w-5 h-5 rounded-full bg-[#A3E635] text-[#0E4D45] border-2 border-white flex items-center justify-center text-[10px] font-bold shadow-xs">✓</span>
+              </div>
+
+              <div>
+                <span id="cartoon-character-title" class="font-bold text-xs text-[#141F1E] block">Student Vector Avatar</span>
+                <p class="text-[10px] text-[#7A8684]">Snapchat-style vector portrait</p>
+              </div>
+
+              <div class="w-full flex flex-col gap-1.5">
+                <button 
+                  type="button" 
+                  onclick="randomizeCartoonAvatar()"
+                  class="w-full py-1.5 px-3 rounded-full bg-[#0E4D45] hover:bg-[#14534B] text-white font-bold text-xs transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <span>🎲</span>
+                  <span>Randomize Avatar</span>
+                </button>
+                <button 
+                  type="button" 
+                  onclick="resetCartoonAvatar()"
+                  class="text-[11px] text-[#7A8684] hover:text-[#141F1E] font-medium py-1 transition-colors cursor-pointer"
+                >
+                  ↺ Reset Defaults
+                </button>
+              </div>
+            </div>
+
+            <!-- Right Column: Interactive Studio Controls -->
+            <div class="md:col-span-7 space-y-3.5 pr-1 max-h-[48vh] overflow-y-auto">
+              
+              <!-- 1. Quick Personas / Presets -->
+              <div>
+                <label class="block font-bold text-[11px] text-[#141F1E] mb-1.5">1. Quick Persona:</label>
+                <div class="flex items-center gap-1.5 flex-wrap" id="cartoon-persona-chips">
+                  <button type="button" onclick="setCartoonPersona('boy_kufi')" class="px-2.5 py-1 rounded-full text-[11px] font-semibold border border-[#CBD5E1] bg-white hover:border-[#0E4D45] cursor-pointer">👳 Kufi Boy</button>
+                  <button type="button" onclick="setCartoonPersona('girl_hijab')" class="px-2.5 py-1 rounded-full text-[11px] font-semibold border border-[#CBD5E1] bg-white hover:border-[#0E4D45] cursor-pointer">🧕 Hijab Girl</button>
+                  <button type="button" onclick="setCartoonPersona('scholar_glasses')" class="px-2.5 py-1 rounded-full text-[11px] font-semibold border border-[#CBD5E1] bg-white hover:border-[#0E4D45] cursor-pointer">🤓 Scholar</button>
+                  <button type="button" onclick="setCartoonPersona('casual_girl')" class="px-2.5 py-1 rounded-full text-[11px] font-semibold border border-[#CBD5E1] bg-white hover:border-[#0E4D45] cursor-pointer">👧 Girl</button>
+                  <button type="button" onclick="setCartoonPersona('keffiyeh_boy')" class="px-2.5 py-1 rounded-full text-[11px] font-semibold border border-[#CBD5E1] bg-white hover:border-[#0E4D45] cursor-pointer">🧣 Keffiyeh</button>
+                </div>
+              </div>
+
+              <!-- 2. Skin Tone Palette -->
+              <div>
+                <label class="block font-bold text-[11px] text-[#141F1E] mb-1.5">2. Skin Tone:</label>
+                <div class="flex items-center gap-2" id="cartoon-skintone-picker">
+                  <!-- Populated by app.js -->
+                </div>
+              </div>
+
+              <!-- 3. Headwear & Hair Style -->
+              <div>
+                <label class="block font-bold text-[11px] text-[#141F1E] mb-1.5">3. Headwear / Hair Style:</label>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5" id="cartoon-headwear-chips">
+                  <!-- Populated by app.js -->
+                </div>
+              </div>
+
+              <!-- 4. Hair & Headwear Color -->
+              <div>
+                <label class="block font-bold text-[11px] text-[#141F1E] mb-1.5">4. Hair / Hijab Color:</label>
+                <div class="flex items-center gap-2 flex-wrap" id="cartoon-color-picker">
+                  <!-- Populated by app.js -->
+                </div>
+              </div>
+
+              <!-- 5. Facial Expression -->
+              <div>
+                <label class="block font-bold text-[11px] text-[#141F1E] mb-1.5">5. Face Expression:</label>
+                <div class="flex items-center gap-1.5 flex-wrap" id="cartoon-expression-chips">
+                  <!-- Populated by app.js -->
+                </div>
+              </div>
+
+              <!-- 6. Eyewear & Glasses -->
+              <div>
+                <label class="block font-bold text-[11px] text-[#141F1E] mb-1.5">6. Glasses / Eyewear:</label>
+                <div class="flex items-center gap-1.5 flex-wrap" id="cartoon-glasses-chips">
+                  <!-- Populated by app.js -->
+                </div>
+              </div>
+
+              <!-- 7. Outfit / Attire -->
+              <div>
+                <label class="block font-bold text-[11px] text-[#141F1E] mb-1.5">7. Outfit / Attire:</label>
+                <div class="flex items-center gap-1.5 flex-wrap" id="cartoon-outfit-chips">
+                  <!-- Populated by app.js -->
+                </div>
+              </div>
+
+              <!-- 8. Background Color -->
+              <div>
+                <label class="block font-bold text-[11px] text-[#141F1E] mb-1.5">8. Background Tone:</label>
+                <div class="flex items-center gap-2 flex-wrap" id="cartoon-bg-picker">
+                  <!-- Populated by app.js -->
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 2: DEVICE UPLOAD & INTERACTIVE IMAGE CROPPER -->
+        <div id="avatar-tab-pane-device" class="hidden space-y-4">
+          
+          <!-- Drop Zone (when no image selected) -->
+          <div 
+            onclick="document.getElementById('avatar-device-file-input').click()"
+            ondragover="handleAvatarDragOver(event)"
+            ondragleave="handleAvatarDragLeave(event)"
+            ondrop="handleAvatarDrop(event)"
+            id="avatar-drop-zone"
+            class="border-2 border-dashed border-[#CBD5E1] hover:border-[#0E4D45] bg-[#F8F6F1] hover:bg-[#E8EFEE]/60 rounded-2xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 group"
+          >
+            <div class="w-14 h-14 rounded-full bg-white shadow-xs border border-[#ECEAE4] flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+              📷
+            </div>
+            <p class="font-bold text-sm text-[#141F1E] mt-1">Upload Photo from Computer / Mobile</p>
+            <p class="text-[11px] text-[#7A8684]">Click to browse files or drag & drop (JPG, PNG, WEBP)</p>
+            <span class="mt-2 px-3 py-1 rounded-full bg-[#0E4D45] text-white font-bold text-[11px] shadow-2xs">
+              Choose File
+            </span>
+            <input type="file" id="avatar-device-file-input" accept="image/*" class="hidden" onchange="handleDeviceAvatarFile(event)">
+          </div>
+
+          <!-- Interactive Circular Canvas Cropper Workbench (shown when image is loaded) -->
+          <div id="avatar-cropper-workbench" class="hidden space-y-3">
+            <div class="flex items-center justify-between pb-2 border-b border-[#ECEAE4]">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-bold text-[#141F1E]" id="cropper-filename">photo.jpg</span>
+                <span class="text-[10px] text-[#0E4D45] bg-[#E8EFEE] px-2 py-0.5 rounded-full font-semibold">Image Loaded</span>
+              </div>
+              <button 
+                type="button" 
+                onclick="document.getElementById('avatar-device-file-input').click()"
+                class="text-[11px] text-[#0E4D45] hover:underline font-bold flex items-center gap-1 cursor-pointer"
+              >
+                📁 Choose Different Photo
+              </button>
+            </div>
+
+            <!-- Canvas Viewport -->
+            <div class="relative w-[280px] h-[280px] mx-auto rounded-2xl overflow-hidden bg-[#091F1C] border border-[#ECEAE4] shadow-inner select-none flex items-center justify-center">
+              <canvas 
+                id="avatar-crop-canvas" 
+                width="280" 
+                height="280" 
+                class="cursor-grab active:cursor-grabbing block w-full h-full"
+                title="Click and drag to pan image inside circle"
+              ></canvas>
+              <div class="absolute bottom-2 left-2 right-2 pointer-events-none text-center">
+                <span class="text-[10px] font-semibold text-white/80 bg-black/50 px-2.5 py-0.5 rounded-full backdrop-blur-xs">
+                  🖱️ Drag to pan • Slider to zoom
+                </span>
+              </div>
+            </div>
+
+            <!-- Cropper Controls (Zoom, Rotate, Reset) -->
+            <div class="flex items-center justify-between gap-3 p-3 bg-[#F8F6F1] rounded-2xl border border-[#ECEAE4] flex-wrap">
+              <div class="flex items-center gap-2">
+                <span class="text-[11px] font-bold text-[#141F1E]">Zoom:</span>
+                <button type="button" onclick="adjustCropZoom(-0.2)" class="w-6 h-6 rounded-md bg-white border border-[#CBD5E1] text-xs font-bold hover:bg-[#ECEAE4] cursor-pointer">-</button>
+                <input 
+                  type="range" 
+                  id="crop-zoom-slider" 
+                  min="50" 
+                  max="350" 
+                  value="100" 
+                  class="w-28 accent-[#0E4D45] cursor-pointer"
+                  oninput="handleCropZoomSlider(this.value)"
+                />
+                <button type="button" onclick="adjustCropZoom(0.2)" class="w-6 h-6 rounded-md bg-white border border-[#CBD5E1] text-xs font-bold hover:bg-[#ECEAE4] cursor-pointer">+</button>
+                <span id="crop-zoom-label" class="text-[10px] font-mono font-bold text-[#7A8684] w-9">100%</span>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <button 
+                  type="button" 
+                  onclick="rotateCropImage(90)" 
+                  class="px-2.5 py-1 rounded-lg bg-white border border-[#CBD5E1] hover:border-[#0E4D45] text-[11px] font-bold text-[#141F1E] flex items-center gap-1 cursor-pointer"
+                >
+                  <span>⟳</span>
+                  <span>Rotate 90°</span>
+                </button>
+                <button 
+                  type="button" 
+                  onclick="resetCropTransform()" 
+                  class="px-2 py-1 rounded-lg bg-white border border-[#CBD5E1] text-[11px] font-bold text-[#7A8684] hover:text-[#141F1E] cursor-pointer"
+                >
+                  ↺ Reset
+                </button>
+              </div>
+            </div>
+
+            <!-- Execute Crop Action Button -->
+            <button 
+              type="button" 
+              onclick="executeCropAndApply()" 
+              class="w-full py-2.5 rounded-full bg-[#0E4D45] hover:bg-[#14534B] text-white font-bold text-xs transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <span>✂️</span>
+              <span>Crop & Use Perfect Circular Photo</span>
+            </button>
+            <div id="crop-success-banner" class="hidden text-center text-xs text-[#065F46] bg-[#D1FAE5] py-1.5 px-3 rounded-xl font-bold border border-[#A7F3D0]">
+              ✓ Photo cropped and ready! Click "Apply Photo / Avatar" below to save.
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: PRESETS GRID -->
+        <div id="avatar-tab-pane-presets" class="hidden space-y-3">
+          <p class="text-xs text-[#7A8684]">Select a pre-made student or kid avatar illustration:</p>
+          <div class="grid grid-cols-3 sm:grid-cols-4 gap-3" id="preset-avatars-grid">
+            <!-- Populated dynamically by app.js -->
+          </div>
+        </div>
+
+        <!-- TAB 4: AUTO INITIALS -->
+        <div id="avatar-tab-pane-initials" class="hidden space-y-4">
+          <div class="flex items-center gap-4 p-4 bg-[#F8F6F1] rounded-2xl border border-[#ECEAE4]">
+            <div id="initials-preview-badge" class="w-16 h-16 rounded-full bg-[#0E4D45] text-white flex items-center justify-center font-bold text-xl shadow-md border-2 border-white shrink-0">
+              TM
+            </div>
+            <div>
+              <span class="text-xs font-bold text-[#141F1E] block">Auto-Generated Name Badge</span>
+              <p class="text-[11px] text-[#7A8684] mt-0.5">Generates a clean circular monogram badge using the student's initials.</p>
+              <div class="flex items-center gap-1.5 mt-2">
+                <span class="text-[11px] font-semibold text-[#141F1E]">Initials:</span>
+                <input 
+                  type="text" 
+                  id="initials-custom-text" 
+                  maxlength="3" 
+                  class="w-14 px-2 py-0.5 text-center font-bold text-xs uppercase bg-white border border-[#CBD5E1] rounded-lg focus:outline-none focus:border-[#0E4D45]"
+                  oninput="handleCustomInitialsInput(this.value)"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label class="block font-bold text-xs text-[#141F1E] mb-2">Choose Badge Color Tone:</label>
+            <div class="flex items-center gap-2.5 flex-wrap" id="initials-color-picker">
+              <!-- Rendered by app.js -->
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-6 py-3 border-t border-[#ECEAE4] bg-[#F8F6F1] flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <span class="text-[11px] text-[#7A8684] font-medium">Selected:</span>
+          <img id="avatar-modal-current-selection-thumb" src="" alt="Selected Preview" class="w-9 h-9 rounded-full object-cover border-2 border-[#0E4D45] bg-white shadow-2xs" />
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="closeAvatarPickerModal()" class="px-4 py-2 rounded-full border border-[#ECEAE4] bg-white text-[#7A8684] hover:text-[#141F1E] font-bold text-xs transition-colors cursor-pointer">
+            Cancel
+          </button>
+          <button type="button" onclick="applySelectedAvatar()" class="px-5 py-2 rounded-full bg-[#0E4D45] hover:bg-[#14534B] text-white font-bold text-xs transition-all shadow-sm cursor-pointer flex items-center gap-1.5">
+            <span>✓</span>
+            <span>Apply Photo / Avatar</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL 7: ADD NEW TEACHER MODAL (ADMIN ONLY) - STRIPE SAAS STYLE
+       ========================================================================== -->
+  <div id="add-teacher-modal" class="modal-backdrop">
+    <div class="modal-content max-w-xl w-full bg-white rounded-2xl shadow-xl overflow-hidden border border-[#ECEAE4] transition-all">
+      
+      <!-- Modal Header -->
+      <div class="px-6 py-5 border-b border-[#ECEAE4] flex items-center justify-between bg-white">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-[#0E4D45] text-white flex items-center justify-center shrink-0 shadow-xs">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="text-base font-bold text-[#141F1E]">Add New Teacher</h3>
+              <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-[#F8F6F1] text-[#7A8684] border border-[#ECEAE4]">Manual ID</span>
+            </div>
+            <p class="text-xs text-[#7A8684] mt-0.5">Onboard certified Quran faculty into academy payroll and teaching roster.</p>
+          </div>
+        </div>
+        <button onclick="closeAddTeacherModal()" class="w-8 h-8 rounded-full border border-[#ECEAE4] bg-[#F8F6F1] text-[#7A8684] hover:text-[#141F1E] hover:bg-[#ECEAE4] flex items-center justify-center text-sm font-bold transition-colors cursor-pointer">✕</button>
+      </div>
+
+      <!-- Modal Body (2-Column Grid) -->
+      <div class="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+        
+        <!-- Top Section (Full Width): Clean Blank Photo Upload Zone -->
+        <div>
+          <label class="block text-[10px] font-semibold text-[#7A8684] uppercase tracking-wider mb-1.5">Official Teacher Photo</label>
+          <div 
+            id="add-teacher-dropzone" 
+            onclick="document.getElementById('add-teacher-photo-file').click()"
+            ondragover="event.preventDefault(); this.classList.add('border-[#0E4D45]', 'bg-[#E8EFEE]/30');"
+            ondragleave="this.classList.remove('border-[#0E4D45]', 'bg-[#E8EFEE]/30');"
+            ondrop="handlePhotoDrop(event, 'teacher'); this.classList.remove('border-[#0E4D45]', 'bg-[#E8EFEE]/30');"
+            class="flex items-center gap-4 p-3.5 bg-[#F8F6F1] border border-dashed border-[#CBD5E1] rounded-xl hover:border-[#0E4D45] transition-all cursor-pointer group"
+          >
+            <div class="relative shrink-0">
+              <!-- Empty state placeholder: dashed circular border with subtle camera icon -->
+              <div id="add-teacher-photo-placeholder" class="w-14 h-14 rounded-full border-2 border-dashed border-[#CBD5E1] bg-white flex items-center justify-center text-[#7A8684] group-hover:border-[#0E4D45] group-hover:text-[#0E4D45] transition-colors shadow-2xs">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z"/></svg>
+              </div>
+              <!-- Uploaded preview: hidden by default until user uploads a photo -->
+              <img 
+                id="add-teacher-photo-preview" 
+                src="" 
+                alt="Teacher Photo Preview" 
+                class="w-14 h-14 rounded-full object-cover ring-2 ring-[#0E4D45]/30 bg-white shadow-xs hidden" 
+              />
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-bold text-[#141F1E] group-hover:text-[#0E4D45] transition-colors" id="add-teacher-photo-label">Click or drag image to upload teacher photo</span>
+                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white text-[#7A8684] border border-[#ECEAE4]" id="add-teacher-photo-badge">Upload Photo</span>
+              </div>
+              <p class="text-[11px] text-[#7A8684] mt-0.5">Supports PNG, JPG, or WebP. Professional photo for faculty directory & credentials.</p>
+            </div>
+            <input type="file" id="add-teacher-photo-file" accept="image/*" class="hidden" onchange="handleTeacherPhotoSelected(event)">
+            <input type="hidden" id="add-teacher-avatar" value="">
+          </div>
+        </div>
+
+        <!-- 2-Column Grid Fields -->
+        <div class="grid grid-cols-2 gap-4">
+          
+          <!-- Manual Teacher ID -->
+          <div>
+            <label class="block text-[10px] font-semibold text-[#7A8684] uppercase tracking-wider mb-1">Teacher ID *</label>
+            <input 
+              type="text" 
+              id="add-teacher-id" 
+              placeholder="" 
+              class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#141F1E] font-mono font-bold outline-none focus:border-[#0E4D45] focus:bg-white transition-all"
+            >
+          </div>
+
+          <!-- Full Name -->
+          <div>
+            <label class="block text-[10px] font-semibold text-[#7A8684] uppercase tracking-wider mb-1">Full Name *</label>
+            <input 
+              type="text" 
+              id="add-teacher-name" 
+              placeholder="" 
+              class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#141F1E] outline-none focus:border-[#0E4D45] focus:bg-white transition-all"
+            >
+          </div>
+
+          <!-- Father Name -->
+          <div>
+            <label class="block text-[10px] font-semibold text-[#7A8684] uppercase tracking-wider mb-1">Father Name *</label>
+            <input 
+              type="text" 
+              id="add-teacher-father-name" 
+              placeholder="" 
+              class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#141F1E] outline-none focus:border-[#0E4D45] focus:bg-white transition-all"
+            >
+          </div>
+
+          <!-- CNIC (National ID) -->
+          <div>
+            <label class="block text-[10px] font-semibold text-[#7A8684] uppercase tracking-wider mb-1">CNIC (National ID) *</label>
+            <input 
+              type="text" 
+              id="add-teacher-cnic" 
+              placeholder="" 
+              class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#141F1E] font-mono outline-none focus:border-[#0E4D45] focus:bg-white transition-all"
+            >
+          </div>
+
+          <!-- Gmail / Email Address -->
+          <div>
+            <label class="block text-[10px] font-semibold text-[#7A8684] uppercase tracking-wider mb-1">Gmail / Email Address *</label>
+            <input 
+              type="email" 
+              id="add-teacher-email" 
+              placeholder="" 
+              class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#141F1E] outline-none focus:border-[#0E4D45] focus:bg-white transition-all"
+            >
+          </div>
+
+          <!-- WhatsApp Number -->
+          <div>
+            <label class="block text-[10px] font-semibold text-[#7A8684] uppercase tracking-wider mb-1">WhatsApp Number *</label>
+            <input 
+              type="text" 
+              id="add-teacher-phone" 
+              placeholder="" 
+              class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#141F1E] outline-none focus:border-[#0E4D45] focus:bg-white transition-all"
+            >
+          </div>
+
+          <!-- Specialization -->
+          <div>
+            <label class="block text-[10px] font-semibold text-[#7A8684] uppercase tracking-wider mb-1">Specialization *</label>
+            <select 
+              id="add-teacher-spec" 
+              class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#141F1E] font-medium outline-none focus:border-[#0E4D45] focus:bg-white transition-all cursor-pointer"
+            >
+              <option value="" disabled selected>Select Specialization</option>
+              <option value="Hifz & Tajweed Specialist">Hifz & Tajweed Specialist</option>
+              <option value="Noorani Qaida & Nazra">Noorani Qaida & Nazra</option>
+              <option value="Female & Kids Tajweed">Female & Kids Tajweed</option>
+              <option value="Advanced Qiraat & Ijazah">Advanced Qiraat & Ijazah</option>
+              <option value="Quran Translation & Arabic">Quran Translation & Arabic</option>
+              <option value="Ten Qiraat Certification">Ten Qiraat Certification</option>
+            </select>
+          </div>
+
+          <!-- Hourly Rate / Salary -->
+          <div>
+            <label class="block text-[10px] font-semibold text-[#7A8684] uppercase tracking-wider mb-1">Hourly Honorarium Rate ($/hr) *</label>
+            <input 
+              type="number" 
+              id="add-teacher-rate" 
+              value="" 
+              min="5" 
+              step="1" 
+              placeholder="" 
+              class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#0E4D45] font-bold outline-none focus:border-[#0E4D45] focus:bg-white transition-all"
+            >
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-6 py-4 bg-white border-t border-[#ECEAE4] flex items-center justify-end gap-4">
+        <button 
+          type="button" 
+          onclick="closeAddTeacherModal()" 
+          class="text-xs font-semibold text-[#7A8684] hover:text-[#141F1E] transition-colors cursor-pointer"
+        >
+          Cancel
+        </button>
+        <button 
+          type="button" 
+          onclick="handleSaveNewTeacher()" 
+          class="px-6 py-2.5 text-xs font-bold rounded-lg bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
+        >
+          <span>Save & Register Teacher</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL 8: ACADEMY CONFIGURATION & SYSTEM SETTINGS MODAL
+       ========================================================================== -->
+  <div id="settings-modal" class="modal-backdrop">
+    <div class="modal-content max-w-2xl max-h-[90vh] flex flex-col">
+      <!-- Modal Header -->
+      <div class="p-6 border-b border-[#ECEAE4] flex items-center justify-between bg-[#F8F6F1] flex-shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-[#0E4D45] text-white flex items-center justify-center shadow-sm">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-[#141F1E]">Academy Configuration & System Settings</h3>
+            <p class="text-xs text-[#7A8684] mt-0.5">Global policies, fee rules, PII privacy controls & WhatsApp gateways.</p>
+          </div>
+        </div>
+        <button onclick="closeSettingsModal()" class="w-8 h-8 rounded-full border border-[#ECEAE4] bg-white text-[#7A8684] hover:text-[#141F1E] flex items-center justify-center text-sm font-bold cursor-pointer">✕</button>
+      </div>
+
+      <!-- Modal Body (Scrollable) -->
+      <div class="p-6 overflow-y-auto space-y-6 text-xs flex-1">
+        
+        <!-- SECTION 1: ACADEMY PROFILE & GATEWAY -->
+        <div class="bg-[#F8F6F1] p-4 rounded-2xl border border-[#ECEAE4] space-y-3">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-[#0E4D45]"></span>
+            <h4 class="font-bold text-[#141F1E] text-xs uppercase tracking-wide">1. Academy Identity & WhatsApp Gateway</h4>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <div>
+              <label class="block font-semibold text-[#141F1E] mb-1">Academy Title</label>
+              <input type="text" id="setting-academy-name" value="Quranic Skills Academy" class="w-full bg-white border border-[#ECEAE4] rounded-xl px-3 py-2 text-[#141F1E] font-medium outline-none focus:border-[#0E4D45]">
+            </div>
+            <div>
+              <label class="block font-semibold text-[#141F1E] mb-1">Official WhatsApp Notification Sender</label>
+              <input type="text" id="setting-academy-whatsapp" value="+44 7700 900123" class="w-full bg-white border border-[#ECEAE4] rounded-xl px-3 py-2 text-[#0E4D45] font-bold outline-none focus:border-[#0E4D45]">
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block font-semibold text-[#141F1E] mb-1">Academy Headquarters Timezone</label>
+              <select id="setting-academy-timezone" class="w-full bg-white border border-[#ECEAE4] rounded-xl px-3 py-2 text-[#141F1E] font-medium outline-none">
+                <option value="GMT+5 (PKT)" selected>GMT+5 (PKT - Pakistan Standard Time)</option>
+                <option value="GMT+1 (BST)">GMT+1 (BST - UK British Summer Time)</option>
+                <option value="GMT-5 (EST)">GMT-5 (EST - US Eastern Time)</option>
+                <option value="GMT+4 (GST)">GMT+4 (GST - UAE Gulf Standard)</option>
+                <option value="GMT+3 (AST)">GMT+3 (AST - Saudi Arabia)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-semibold text-[#141F1E] mb-1">Official Support Email</label>
+              <input type="email" id="setting-academy-email" value="admin@quranicskills.com" class="w-full bg-white border border-[#ECEAE4] rounded-xl px-3 py-2 text-[#141F1E] font-medium outline-none focus:border-[#0E4D45]">
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION 2: FEE POLICY & FIFO WATERFALL RULES -->
+        <div class="bg-[#F8F6F1] p-4 rounded-2xl border border-[#ECEAE4] space-y-3">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-[#0E4D45]"></span>
+            <h4 class="font-bold text-[#141F1E] text-xs uppercase tracking-wide">2. Fee Management & Ledger Automation</h4>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+            <div>
+              <label class="block font-semibold text-[#141F1E] mb-1">Monthly Due Day</label>
+              <select id="setting-fee-due-day" class="w-full bg-white border border-[#ECEAE4] rounded-xl px-3 py-2 text-[#141F1E] font-medium outline-none">
+                <option value="1">1st of Month</option>
+                <option value="5" selected>5th of Month (Recommended)</option>
+                <option value="10">10th of Month</option>
+                <option value="15">15th of Month</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-semibold text-[#141F1E] mb-1">Defaulter Grace Period</label>
+              <select id="setting-fee-grace" class="w-full bg-white border border-[#ECEAE4] rounded-xl px-3 py-2 text-[#141F1E] font-medium outline-none">
+                <option value="3">3 Days</option>
+                <option value="5" selected>5 Days Grace</option>
+                <option value="7">7 Days Grace</option>
+                <option value="10">10 Days Grace</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-semibold text-[#141F1E] mb-1">Auto FIFO Allocation</label>
+              <select id="setting-fee-fifo" class="w-full bg-white border border-[#ECEAE4] rounded-xl px-3 py-2 text-[#0E4D45] font-bold outline-none">
+                <option value="enabled" selected>Strict FIFO (Oldest First)</option>
+                <option value="manual">Manual Allocation</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex items-center justify-between p-2.5 bg-white rounded-xl border border-[#ECEAE4]">
+            <div>
+              <div class="font-bold text-[#141F1E]">Automated WhatsApp Fee Alert System</div>
+              <div class="text-[10.5px] text-[#7A8684]">Enable 1-click pre-filled WhatsApp fee reminders for Defaulter/Partial students</div>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="setting-toggle-whatsapp" checked class="sr-only peer">
+              <div class="w-10 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#0E4D45]"></div>
+            </label>
+          </div>
+        </div>
+
+        <!-- SECTION 3: PRIVACY & TEACHER/MANAGER PII LOCK -->
+        <div class="bg-[#F8F6F1] p-4 rounded-2xl border border-[#ECEAE4] space-y-3">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-[#0E4D45]"></span>
+            <h4 class="font-bold text-[#141F1E] text-xs uppercase tracking-wide">3. Strict Student PII Privacy Lock</h4>
+          </div>
+          <div class="p-3 bg-white rounded-xl border border-[#ECEAE4] space-y-2">
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="font-bold text-[#141F1E] flex items-center gap-1.5">
+                  <span>🔒 Enforce Admin-Only Student Contact Lock</span>
+                  <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#14534B] text-white">Active Policy</span>
+                </div>
+                <div class="text-[10.5px] text-[#7A8684] mt-0.5">
+                  Protects student and family privacy. Teacher and Manager portals strictly see masked IDs: <code>QA-ID • First Name (Country)</code>. Contact numbers, WhatsApp, emails, and financial ledgers remain completely concealed.
+                </div>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer flex-shrink-0 ml-3">
+                <input type="checkbox" id="setting-toggle-pii" checked class="sr-only peer">
+                <div class="w-10 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#0E4D45]"></div>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION 4: CLASS & SABAQ SCHEDULE POLICY -->
+        <div class="bg-[#F8F6F1] p-4 rounded-2xl border border-[#ECEAE4] space-y-3">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-[#0E4D45]"></span>
+            <h4 class="font-bold text-[#141F1E] text-xs uppercase tracking-wide">4. Academic & Faculty Regulations</h4>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <div>
+              <label class="block font-semibold text-[#141F1E] mb-1">Standard Class Slot Duration</label>
+              <select id="setting-class-duration" class="w-full bg-white border border-[#ECEAE4] rounded-xl px-3 py-2 text-[#141F1E] font-medium outline-none">
+                <option value="30" selected>30 Minutes (Recommended)</option>
+                <option value="45">45 Minutes</option>
+                <option value="60">60 Minutes (Full Hour)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-semibold text-[#141F1E] mb-1">Mandatory Sabaq Log Window</label>
+              <select id="setting-sabaq-window" class="w-full bg-white border border-[#ECEAE4] rounded-xl px-3 py-2 text-[#141F1E] font-medium outline-none">
+                <option value="1">Within 1 Hour of Class</option>
+                <option value="2" selected>Within 2 Hours of Class</option>
+                <option value="24">Same Day Midnight</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="p-4 bg-[#F8F6F1] border-t border-[#ECEAE4] flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center gap-1.5 text-[11px] text-[#7A8684]">
+          <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span>Academic Year <strong>2026</strong> Active System</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="closeSettingsModal()" class="px-4 py-2 text-xs font-bold rounded-full bg-white border border-[#ECEAE4] text-[#7A8684] hover:bg-[#F8F6F1] transition-colors cursor-pointer">Cancel</button>
+          <button onclick="saveAcademySettings()" class="px-6 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors shadow-sm cursor-pointer">Save Academy Settings</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL 9: SYSTEM NOTIFICATIONS & ACTIVITY AUDIT
+       ========================================================================== -->
+  <div id="notifications-modal" class="modal-backdrop">
+    <div class="modal-content max-w-lg">
+      <div class="p-6 border-b border-[#ECEAE4] flex items-center justify-between bg-[#F8F6F1]">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-[#0E4D45] text-white flex items-center justify-center shadow-sm">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-[#141F1E]">Academy Notifications & Alerts</h3>
+            <p class="text-xs text-[#7A8684] mt-0.5">Live operational logs, automated fee alerts & trial requests.</p>
+          </div>
+        </div>
+        <button onclick="closeNotificationsModal()" class="w-8 h-8 rounded-full border border-[#ECEAE4] bg-white text-[#7A8684] hover:text-[#141F1E] flex items-center justify-center text-sm font-bold cursor-pointer">✕</button>
+      </div>
+
+      <div class="p-6 space-y-3 max-h-[60vh] overflow-y-auto text-xs">
+        <!-- Notification Item 1 -->
+        <div class="p-3 rounded-xl bg-[#F8F6F1] border border-[#ECEAE4] flex items-start gap-3">
+          <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center flex-shrink-0 font-bold">
+            ✓
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-[#141F1E]">Fee Received via FIFO Engine</span>
+              <span class="text-[10px] text-[#7A8684]">10m ago</span>
+            </div>
+            <p class="text-[11px] text-[#7A8684] mt-0.5">Payment of <strong>$150 USD</strong> cleared for Zaid & Sara Khan (FAM-104). October dues fully settled.</p>
+          </div>
+        </div>
+
+        <!-- Notification Item 2 -->
+        <div class="p-3 rounded-xl bg-[#F8F6F1] border border-[#ECEAE4] flex items-start gap-3">
+          <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center flex-shrink-0 font-bold">
+            ⚡
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-[#141F1E]">New Trial Request Registered</span>
+              <span class="text-[10px] text-[#7A8684]">1h ago</span>
+            </div>
+            <p class="text-[11px] text-[#7A8684] mt-0.5">Trial candidate <strong>Hamza Naveed (UK)</strong> requested Noorani Qaida evaluation with Ustadh Bilal Tariq.</p>
+          </div>
+        </div>
+
+        <!-- Notification Item 3 -->
+        <div class="p-3 rounded-xl bg-[#F8F6F1] border border-[#ECEAE4] flex items-start gap-3">
+          <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-800 flex items-center justify-center flex-shrink-0 font-bold">
+            📢
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-[#141F1E]">Automated WhatsApp Reminder Sent</span>
+              <span class="text-[10px] text-[#7A8684]">3h ago</span>
+            </div>
+            <p class="text-[11px] text-[#7A8684] mt-0.5">System WhatsApp gateway dispatched automated October fee invoice reminder to 3 pending accounts.</p>
+          </div>
+        </div>
+
+        <!-- Notification Item 4 -->
+        <div class="p-3 rounded-xl bg-[#F8F6F1] border border-[#ECEAE4] flex items-start gap-3">
+          <div class="w-8 h-8 rounded-lg bg-[#E8EFEE] text-[#0E4D45] flex items-center justify-center flex-shrink-0 font-bold">
+            🎓
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-[#141F1E]">Academic Session Initialized</span>
+              <span class="text-[10px] text-[#7A8684]">Today</span>
+            </div>
+            <p class="text-[11px] text-[#7A8684] mt-0.5">Academic session <strong>2026</strong> synchronized with full 12-Month attendance matrix and fee ledgers.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="p-4 bg-[#F8F6F1] border-t border-[#ECEAE4] flex items-center justify-between">
+        <span class="text-[11px] text-[#7A8684]">All gateways operational</span>
+        <button onclick="closeNotificationsModal()" class="px-5 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-sm cursor-pointer">Mark All Read</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL 10: POST / EDIT ACADEMY NOTICE MODAL (ADMIN ONLY)
+       ========================================================================== -->
+  <div id="publish-notice-modal" class="modal-backdrop">
+    <div class="modal-content max-w-lg w-full bg-white rounded-3xl border border-[#ECEAE4] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      
+      <!-- Modal Header -->
+      <div class="px-6 py-4 border-b border-[#ECEAE4] flex items-center justify-between bg-[#F8F6F1]">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-[#0E4D45] text-white flex items-center justify-center shadow-xs">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+          </div>
+          <div>
+            <h3 id="publish-notice-modal-title" class="text-base font-bold text-[#141F1E]">Post Academy Notice</h3>
+            <p class="text-xs text-[#7A8684] mt-0.5">Broadcast official announcements to students, parents, and faculty.</p>
+          </div>
+        </div>
+        <button onclick="closePublishNoticeModal()" class="w-8 h-8 rounded-full border border-[#ECEAE4] bg-white text-[#7A8684] hover:text-[#141F1E] flex items-center justify-center text-sm font-bold cursor-pointer transition-colors">✕</button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-6 space-y-4 text-xs">
+        <input type="hidden" id="notice-edit-id" value="" />
+        
+        <div>
+          <label class="block font-bold text-[#141F1E] mb-1.5">Notice Headline / Title *</label>
+          <input 
+            type="text" 
+            id="notice-title-input" 
+            placeholder="e.g. Adjusted Timings for Ramadan Session" 
+            class="w-full bg-white border border-[#ECEAE4] rounded-xl px-3.5 py-2.5 text-xs font-semibold text-[#141F1E] outline-none focus:border-[#0E4D45] focus:ring-1 focus:ring-[#0E4D45]"
+          >
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div>
+            <label class="block font-bold text-[#141F1E] mb-1.5">Target Audience *</label>
+            <select 
+              id="notice-audience-select" 
+              class="w-full bg-white border border-[#ECEAE4] rounded-xl px-3.5 py-2.5 text-xs font-medium text-[#141F1E] outline-none focus:border-[#0E4D45] cursor-pointer"
+            >
+              <option value="All Students & Parents">All Students & Parents</option>
+              <option value="Parents Only">Parents Only</option>
+              <option value="Teachers & Faculty Only">Teachers & Faculty Only</option>
+              <option value="Advanced Qiraat Students">Advanced Qiraat Students</option>
+              <option value="Hifz Track Students">Hifz Track Students</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-bold text-[#141F1E] mb-1.5">Author / Sign-off *</label>
+            <input 
+              type="text" 
+              id="notice-author-input" 
+              value="Admin Farhan" 
+              class="w-full bg-white border border-[#ECEAE4] rounded-xl px-3.5 py-2.5 text-xs font-medium text-[#141F1E] outline-none focus:border-[#0E4D45]"
+            >
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-[#141F1E] mb-1.5">Announcement Message Body *</label>
+          <textarea 
+            id="notice-content-input" 
+            rows="4" 
+            placeholder="Write announcement details, instructions, or policy updates clearly for the academy community..." 
+            class="w-full bg-white border border-[#ECEAE4] rounded-xl p-3 text-xs text-[#141F1E] outline-none focus:border-[#0E4D45] focus:ring-1 focus:ring-[#0E4D45] leading-relaxed resize-none"
+          ></textarea>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-6 py-4 bg-[#F8F6F1] border-t border-[#ECEAE4] flex items-center justify-between">
+        <span class="text-[11px] text-[#7A8684]">Notice updates display live across portals</span>
+        <div class="flex items-center gap-2">
+          <button 
+            type="button" 
+            onclick="closePublishNoticeModal()" 
+            class="px-4 py-2 text-xs font-semibold rounded-full bg-white border border-[#CBD5E1] text-[#475569] hover:bg-[#F8F6F1] transition-colors cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button 
+            type="button" 
+            onclick="handleSaveNotice()" 
+            id="publish-notice-submit-btn" 
+            class="px-5 py-2 text-xs font-bold rounded-full bg-[#0E4D45] hover:bg-[#14534B] text-white transition-all shadow-xs cursor-pointer flex items-center gap-1.5"
+          >
+            <span>📢</span>
+            <span>Publish Notice</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Helper Scripts for Pills -->
+  <script>
+    function selectAttendancePill(btn) {
+      document.querySelectorAll('.attendance-pill').forEach(el => el.classList.remove('selected'));
+      btn.classList.add('selected');
+    }
+
+    function toggleRemarkTag(btn) {
+      btn.classList.toggle('selected');
+    }
+  </script>
+
+  <!-- Application Logic -->
+  <script src="app.js"></script>
+</body>
+</html>

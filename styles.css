@@ -1,0 +1,351 @@
+/* ==========================================================================
+   ONLINE QURAN ACADEMY LMS - TALENTSYNC DESIGN SYSTEM
+   Strict Reference Palette & Geometry
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --color-primary-teal: #0E4D45;
+  --color-teal-dark: #09342E;
+  --color-teal-active: #236058;
+  --color-teal-light: #14534B;
+  --color-teal-subtle: #3B7A72;
+  --color-teal-text-muted: #A3C2BE;
+  
+  --color-bg-cream: #F8F6F1;
+  --color-card-white: #FFFFFF;
+  --color-card-border: #ECEAE4;
+  --color-card-shadow: 0 4px 20px -2px rgba(14, 77, 69, 0.05);
+
+  --color-text-charcoal: #141F1E;
+  --color-text-muted: #7A8684;
+
+  --color-badge-paid-bg: #14534B;
+  --color-badge-paid-text: #FFFFFF;
+  
+  --color-badge-partial-bg: #FDE68A;
+  --color-badge-partial-text: #78350F;
+  
+  --color-badge-defaulter-bg: #FEE2E2;
+  --color-badge-defaulter-text: #991B1B;
+  
+  --color-badge-advance-bg: #D1FAE5;
+  --color-badge-advance-text: #065F46;
+
+  --color-badge-sage-bg: #E8EFEE;
+  --color-badge-sage-text: #334E4B;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--color-bg-cream);
+  color: var(--color-text-charcoal);
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F1EFEA;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+/* Base Card Styling matching TalentSync */
+.ts-card {
+  background: var(--color-card-white);
+  border: 1px solid var(--color-card-border);
+  box-shadow: var(--color-card-shadow);
+  border-radius: 20px;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.ts-card:hover {
+  border-color: #DFDBD0;
+  box-shadow: 0 6px 24px -2px rgba(14, 77, 69, 0.08);
+}
+
+/* Pill Badges */
+.ts-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+  transition: opacity 150ms ease;
+}
+
+.ts-badge-paid {
+  background-color: var(--color-badge-paid-bg);
+  color: var(--color-badge-paid-text);
+}
+
+.ts-badge-partial {
+  background-color: var(--color-badge-partial-bg);
+  color: var(--color-badge-partial-text);
+  border: 1px solid #FCD34D;
+}
+
+.ts-badge-defaulter {
+  background-color: var(--color-badge-defaulter-bg);
+  color: var(--color-badge-defaulter-text);
+  border: 1px solid #FECACA;
+}
+
+.ts-badge-advance {
+  background-color: var(--color-badge-advance-bg);
+  color: var(--color-badge-advance-text);
+  border: 1px solid #A7F3D0;
+}
+
+.ts-badge-sage {
+  background-color: var(--color-badge-sage-bg);
+  color: var(--color-badge-sage-text);
+}
+
+/* Month Matrix Visual Cells - High-End Stripe SaaS Aesthetic */
+.month-cell {
+  height: 34px;
+  min-width: 38px;
+  max-width: 46px;
+  margin: 0 auto;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  user-select: none;
+  box-shadow: 0 1px 2px rgba(20, 31, 30, 0.04);
+}
+.month-cell:hover {
+  transform: translateY(-1.5px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+  filter: brightness(0.97);
+}
+.month-cell.paid {
+  background-color: #0E4D45;
+  color: #FFFFFF;
+  border: 1px solid #093731;
+}
+.month-cell.partial {
+  background-color: #FEF3C7;
+  color: #92400E;
+  border: 1px solid #FCD34D;
+}
+.month-cell.advance {
+  background-color: #ECFDF5;
+  color: #065F46;
+  border: 1px solid #A7F3D0;
+}
+.month-cell.defaulter {
+  background-color: #FEF2F2;
+  color: #991B1B;
+  border: 1px solid #FECACA;
+}
+.month-cell.upcoming {
+  background-color: #F8FAFC;
+  color: #94A3B8;
+  border: 1px dashed #CBD5E1;
+}
+
+/* Family Grouping Table Visual Dividers (Stripe Billing Standard) */
+.family-group-header {
+  background-color: #FDFBF7;
+}
+.family-group-header > td {
+  border-top: 2px solid #D1D5DB !important;
+  border-bottom: 1px solid #E5E7EB !important;
+}
+.family-child-row {
+  background-color: #FFFFFF;
+}
+.family-child-row:hover {
+  background-color: #FBF9F5;
+}
+.family-child-row.last-child > td {
+  border-bottom: 1px solid #E5E7EB !important;
+}
+
+/* Dot-Matrix Heatmap (TalentSync Exact Aesthetic) */
+.dot-matrix-grid {
+  display: grid;
+  grid-template-columns: repeat(28, 1fr);
+  gap: 4px;
+}
+.dot-cell {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  transition: opacity 150ms ease;
+}
+.dot-empty { background-color: #F1F5F4; }
+.dot-lvl-1 { background-color: #A3C2BE; }
+.dot-lvl-2 { background-color: #4D8B83; }
+.dot-lvl-3 { background-color: #14534B; }
+.dot-lvl-4 { background-color: #0E4D45; }
+
+/* Inline Sparkline Attendance Trend (TalentSync Exact Aesthetic) */
+.attendance-sparkline-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.attendance-sparkline-svg {
+  overflow: visible;
+  display: block;
+}
+.sparkline-trend-line {
+  stroke: #0E4D45;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+
+/* Segmented Progress Bar */
+.segmented-bar {
+  display: flex;
+  height: 12px;
+  border-radius: 9999px;
+  overflow: hidden;
+  gap: 3px;
+  background-color: #ECEAE4;
+}
+.segmented-segment {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 300ms ease;
+}
+
+/* Modals & Overlays */
+.modal-backdrop {
+  background: rgba(14, 31, 28, 0.6);
+  backdrop-filter: blur(4px);
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease;
+}
+.modal-backdrop.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+.modal-content {
+  background: #FFFFFF;
+  border-radius: 24px;
+  border: 1px solid #ECEAE4;
+  box-shadow: 0 20px 40px -10px rgba(14, 77, 69, 0.15);
+  max-width: 680px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  transform: translateY(12px);
+  transition: transform 150ms ease;
+}
+.modal-backdrop.active .modal-content {
+  transform: translateY(0);
+}
+
+#edit-schedule-modal .modal-content {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Zero Typing Quick Logger Pills */
+.pill-choice {
+  padding: 7px 14px;
+  border-radius: 9999px;
+  border: 1px solid #ECEAE4;
+  background: #FFFFFF;
+  color: #334E4B;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+.pill-choice:hover {
+  border-color: #0E4D45;
+  background: #F8F6F1;
+}
+.pill-choice.selected {
+  background: #0E4D45;
+  color: #FFFFFF;
+  border-color: #0E4D45;
+}
+
+/* Sub-nav Pill Filter */
+.tab-filter-pill {
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #7A8684;
+  cursor: pointer;
+  background: transparent;
+  transition: all 150ms ease;
+}
+.tab-filter-pill:hover {
+  color: #141F1E;
+}
+.tab-filter-pill.active {
+  background: #0E4D45;
+  color: #FFFFFF;
+}
+
+/* Receipt Print Styles */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #receipt-modal, #receipt-modal * {
+    visibility: visible;
+  }
+  #receipt-modal {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: transparent !important;
+    display: block !important;
+    opacity: 1 !important;
+  }
+  #receipt-modal .modal-content {
+    border: none !important;
+    box-shadow: none !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+}

@@ -10,6 +10,33 @@
  */
 
 // ==========================================
+// 0. BROWSER LOCALSTORAGE PERSISTENCE HELPERS
+// ==========================================
+
+function saveToStorage(key, data) {
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (error) {
+    console.warn(`[Storage] Failed to save key "${key}":`, error);
+  }
+}
+
+function loadFromStorage(key, defaultData) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw === null || raw === undefined) return defaultData;
+    return JSON.parse(raw);
+  } catch (error) {
+    console.warn(`[Storage] Failed to load key "${key}", falling back to default:`, error);
+    return defaultData;
+  }
+}
+
+// Expose storage helpers to window for console/test access
+window.saveToStorage = saveToStorage;
+window.loadFromStorage = loadFromStorage;
+
+// ==========================================
 // 1. MOCK DATABASE & INITIAL STATE
 // ==========================================
 
@@ -17,23 +44,23 @@ const MONTHS_LIST = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Se
 let CURRENT_MONTH_INDEX = 9; // October (0-indexed: Oct is 9)
 let CURRENT_YEAR = 2026;
 
-const INITIAL_TEACHERS = [];
+const INITIAL_TEACHERS = loadFromStorage('lms_teachers', []);
 
-const INITIAL_STUDENTS = [];
+const INITIAL_STUDENTS = loadFromStorage('lms_students', []);
 
 // Active Live Classes for Radar & Sessions
 const LIVE_CLASSES_RADAR = [];
 const UPCOMING_SESSIONS = [];
 const ACTIVE_CLASSES = [];
 
-// Trial Pipeline (Starts with 0 records)
-const TRIAL_PIPELINE = [];
+// Trial Pipeline (Starts with 0 records or persistent storage)
+const TRIAL_PIPELINE = loadFromStorage('lms_trial_pipeline', []);
 
-// Academy Public & Portal Announcements (Starts with 0 records)
-const ACADEMY_NOTICES = [];
+// Academy Public & Portal Announcements (Starts with 0 records or persistent storage)
+const ACADEMY_NOTICES = loadFromStorage('lms_notices', []);
 
-// Ledger Transactions History (Starts with 0 records)
-const PAYMENT_LEDGER = [];
+// Ledger Transactions History (Starts with 0 records or persistent storage)
+const PAYMENT_LEDGER = loadFromStorage('lms_payment_ledger', []);
 
 // App State
 const AppState = {
@@ -54,8 +81,8 @@ const AppState = {
   activeStudentContactPopoverId: null,
   currentMonthIndex: 9, // October
   currentYear: 2026,
-  students: [...INITIAL_STUDENTS],
-  teachers: [...INITIAL_TEACHERS],
+  students: loadFromStorage('lms_students', []),
+  teachers: loadFromStorage('lms_teachers', []),
   selectedSiblingId: 'QA-1021', // For parent portal
   modalState: {
     receiveFeeOpen: false,
@@ -2486,6 +2513,9 @@ function handleSaveEditSchedule() {
   student.weeklySchedule = newWeeklySchedule;
   student.classSchedule = getSchedulePillSummary(student);
 
+  saveToStorage('lms_students', AppState.students);
+  saveToStorage('lms_teachers', AppState.teachers);
+
   closeEditScheduleModal();
   renderApp();
 
@@ -3052,6 +3082,9 @@ function handleSaveNewStudent() {
     teacherObj.activeStudents = (teacherObj.activeStudents || 0) + 1;
   }
 
+  saveToStorage('lms_students', AppState.students);
+  saveToStorage('lms_teachers', AppState.teachers);
+
   closeAddStudentModal();
   renderApp();
   showToastNotification(`✓ Student ${fullName} (${studentId}) successfully enrolled and registered!`);
@@ -3189,6 +3222,7 @@ function handleSaveNewTeacher() {
   };
 
   AppState.teachers.push(newTeacher);
+  saveToStorage('lms_teachers', AppState.teachers);
 
   closeAddTeacherModal();
   renderApp();
@@ -3203,6 +3237,7 @@ function toggleTeacherSalaryStatus(teacherId) {
   const teacher = AppState.teachers.find(t => t.id === teacherId);
   if (!teacher) return;
   teacher.salaryStatus = (teacher.salaryStatus === 'Paid') ? 'Pending' : 'Paid';
+  saveToStorage('lms_teachers', AppState.teachers);
   const assignedStudents = (AppState.students || []).filter(s => s.teacherId === teacher.id);
   const dynamicActiveCount = (teacher.activeStudents !== undefined && teacher.activeStudents > 0) ? teacher.activeStudents : assignedStudents.length;
   const hours = dynamicActiveCount * 18;
@@ -3284,6 +3319,8 @@ function approveTrialToStudent(trialId) {
 
   AppState.students.push(newStudent);
   trial.status = 'Enrolled ✓';
+  saveToStorage('lms_students', AppState.students);
+  saveToStorage('lms_trial_pipeline', TRIAL_PIPELINE);
   showToastNotification(`✓ Trial ${trial.studentName} enrolled as regular student ${newId}!`);
   renderApp();
 }
@@ -3376,6 +3413,8 @@ function handleSaveNotice() {
     showToastNotification(`✓ New Notice "${title}" published across Academy!`);
   }
 
+  saveToStorage('lms_notices', ACADEMY_NOTICES);
+
   closePublishNoticeModal();
   renderApp();
 }
@@ -3387,6 +3426,7 @@ function deleteNotice(noticeId) {
     const index = ACADEMY_NOTICES.findIndex(n => n.id === noticeId);
     if (index !== -1) {
       ACADEMY_NOTICES.splice(index, 1);
+      saveToStorage('lms_notices', ACADEMY_NOTICES);
       showToastNotification(`✓ Notice "${notice.title}" deleted.`);
       AppState.activeNoticeActionMenuId = null;
       renderApp();
@@ -3600,6 +3640,9 @@ function commitFIFOPayment(targetId, amount, paymentMethod = 'Online Portal') {
     method: paymentMethod,
     status: 'Completed'
   });
+
+  saveToStorage('lms_students', AppState.students);
+  saveToStorage('lms_payment_ledger', PAYMENT_LEDGER);
 
   return {
     txnId,
@@ -6040,6 +6083,7 @@ function setStudentStatus(studentId, newStatus, event) {
   if (!student) return;
 
   student.academicStatus = newStatus;
+  saveToStorage('lms_students', AppState.students);
   AppState.activeStudentActionMenuId = null;
   renderApp();
 
@@ -6072,6 +6116,8 @@ function deleteStudent(studentId, event) {
         teacher.activeStudents--;
       }
     }
+    saveToStorage('lms_students', AppState.students);
+    saveToStorage('lms_teachers', AppState.teachers);
     AppState.activeStudentActionMenuId = null;
     renderApp();
     showToastNotification(`✓ Student "${student.firstName} ${student.lastName}" deleted.`);
@@ -8003,6 +8049,7 @@ function handleSaveSabaq() {
       tags: tags.length ? tags : ['MashaAllah Good'],
       teacherNote: 'Logged in 30 seconds via zero-typing workflow.'
     };
+    saveToStorage('lms_students', AppState.students);
   }
 
   closeSabaqLoggerModal();

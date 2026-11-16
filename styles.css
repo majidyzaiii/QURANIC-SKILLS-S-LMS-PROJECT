@@ -124,54 +124,74 @@ body {
   color: var(--color-badge-sage-text);
 }
 
-/* Month Matrix Visual Cells - High-End Stripe SaaS Aesthetic */
+/* Month Matrix Visual Cells - Minimalist Stripe / Linear SaaS Aesthetic */
 .month-cell {
-  height: 34px;
+  height: 26px;
   min-width: 38px;
-  max-width: 46px;
+  max-width: 52px;
   margin: 0 auto;
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
+  border-radius: 6px;
+  display: inline-flex;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  gap: 3.5px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 120ms ease;
   position: relative;
   user-select: none;
-  box-shadow: 0 1px 2px rgba(20, 31, 30, 0.04);
+  background-color: transparent;
 }
 .month-cell:hover {
-  transform: translateY(-1.5px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
-  filter: brightness(0.97);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 .month-cell.paid {
-  background-color: #0E4D45;
-  color: #FFFFFF;
-  border: 1px solid #093731;
+  background-color: #F0FDF4; /* soft subtle green bg */
+  color: #15803D; /* dark green text */
+  border: 1px solid #DCFCE7;
+}
+.month-cell.paid:hover {
+  background-color: #DCFCE7;
+  border-color: #BBF7D0;
 }
 .month-cell.partial {
+  background-color: #FFFBEB; /* soft amber bg */
+  color: #B45309; /* amber text */
+  border: 1px solid #FEF3C7;
+}
+.month-cell.partial:hover {
   background-color: #FEF3C7;
-  color: #92400E;
-  border: 1px solid #FCD34D;
+  border-color: #FDE68A;
 }
 .month-cell.advance {
-  background-color: #ECFDF5;
-  color: #065F46;
-  border: 1px solid #A7F3D0;
+  background-color: #F0FDFA; /* soft teal bg */
+  color: #0F766E; /* teal text */
+  border: 1px solid #CCFBF1;
+}
+.month-cell.advance:hover {
+  background-color: #CCFBF1;
+  border-color: #99F6E4;
 }
 .month-cell.defaulter {
-  background-color: #FEF2F2;
-  color: #991B1B;
-  border: 1px solid #FECACA;
+  background-color: #FEF2F2; /* soft red bg */
+  color: #B91C1C; /* red text */
+  border: 1px solid #FEE2E2;
+}
+.month-cell.defaulter:hover {
+  background-color: #FEE2E2;
+  border-color: #FECACA;
 }
 .month-cell.upcoming {
+  background-color: transparent;
+  color: #9CA3AF;
+  border: 1px dashed #E5E7EB;
+}
+.month-cell.upcoming:hover {
   background-color: #F8FAFC;
-  color: #94A3B8;
-  border: 1px dashed #CBD5E1;
+  border-color: #CBD5E1;
 }
 
 /* Family Grouping Table Visual Dividers (Stripe Billing Standard) */

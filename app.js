@@ -4780,8 +4780,9 @@ function renderAtRiskStudentsWidgetMarkup() {
     <!-- Widget Header: Title with Subtle Red Warning & Subtitle -->
     <div class="flex items-center justify-between gap-4 mb-3">
       <div class="flex items-center gap-2.5">
-        <div class="w-8 h-8 rounded-xl ${alertCount > 0 ? 'bg-[#FEE2E2] text-[#EF4444]' : 'bg-[#E8EFEE] text-[#0E4D45]'} flex items-center justify-center shrink-0">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <!-- Red Warning Icon in Soft Red Container -->
+        <div class="w-8 h-8 rounded-xl bg-[#FEE2E2] text-[#DC2626] border border-[#FECACA] flex items-center justify-center shrink-0">
+          <svg class="w-4 h-4 text-[#DC2626]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/>
           </svg>
         </div>

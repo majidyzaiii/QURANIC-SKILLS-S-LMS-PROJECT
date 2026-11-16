@@ -95,6 +95,7 @@ const AppState = {
   },
   activeModalData: null
 };
+window.AppState = AppState;
 
 // ==========================================
 // MONTH & YEAR ACADEMIC SESSION CONTROLLER
@@ -3734,19 +3735,25 @@ function getStudentDisplay(student, role = AppState.currentRole) {
  * Computes overall student fee status
  */
 function getStudentFeeStatus(student) {
+  if (!student || !Array.isArray(student.months) || student.months.length === 0) {
+    return { code: 'paid', label: 'Paid (Clear)', badgeClass: 'ts-badge-paid' };
+  }
   // Check past/current months for defaulter or partial
   let hasDefaulter = false;
   let hasPartial = false;
   let hasAdvance = false;
 
-  for (let i = 0; i <= CURRENT_MONTH_INDEX; i++) {
+  const maxMonth = Math.min(CURRENT_MONTH_INDEX, student.months.length - 1);
+  for (let i = 0; i <= maxMonth; i++) {
     const m = student.months[i];
-    if (m.status === 'defaulter') hasDefaulter = true;
-    if (m.status === 'partial') hasPartial = true;
+    if (m) {
+      if (m.status === 'defaulter') hasDefaulter = true;
+      if (m.status === 'partial') hasPartial = true;
+    }
   }
 
   for (let i = CURRENT_MONTH_INDEX + 1; i < student.months.length; i++) {
-    if (student.months[i].status === 'advance') hasAdvance = true;
+    if (student.months[i] && student.months[i].status === 'advance') hasAdvance = true;
   }
 
   if (hasDefaulter) return { code: 'defaulter', label: 'Overdue / Defaulter', badgeClass: 'ts-badge-defaulter' };
@@ -3776,8 +3783,12 @@ function renderStudentLedgerStatusPill(student) {
  */
 function getStudentBalanceDue(student) {
   let totalDue = 0;
-  for (let i = 0; i <= CURRENT_MONTH_INDEX; i++) {
-    totalDue += student.months[i].remainingDue;
+  if (!student || !Array.isArray(student.months)) return 0;
+  const maxMonth = Math.min(CURRENT_MONTH_INDEX, student.months.length - 1);
+  for (let i = 0; i <= maxMonth; i++) {
+    if (student.months[i]) {
+      totalDue += (student.months[i].remainingDue || 0);
+    }
   }
   return totalDue;
 }
@@ -4204,25 +4215,80 @@ function renderAdminDashboardView() {
   const endDayName = dayNames[endDate.getDay()];
   const attendanceDateRangeText = `${startDayName} 01, ${activeMonthName} – ${endDayName} 28, ${activeMonthName} (28 Days)`;
 
-  // Dynamic Academic Sabaq KPI calculations bound to students array
-  let hifzKpi = 0;
-  let qaidaKpi = 0;
-  let tajweedKpi = 0;
-  let overallSabaqKpi = '0,00';
-  let sabaqTrendText = '+0.0% vs last month';
-
-  if (totalStudents > 0) {
-    const studentsWithSabaq = AppState.students.filter(s => s.lastSabaq);
-    const avgRating = studentsWithSabaq.length > 0 
-      ? studentsWithSabaq.reduce((acc, s) => acc + (s.lastSabaq.rating || 5), 0) / studentsWithSabaq.length 
-      : 5;
-    const basePct = Math.min(98, Math.max(70, Math.round((avgRating / 5) * 88 + (totalStudents * 1.2))));
-    hifzKpi = (basePct + 2.4).toFixed(1);
-    qaidaKpi = (basePct - 3.8).toFixed(1);
-    tajweedKpi = (basePct - 1.5).toFixed(1);
-    overallSabaqKpi = ((Number(hifzKpi) + Number(qaidaKpi) + Number(tajweedKpi)) / 3).toFixed(2).replace('.', ',');
-    sabaqTrendText = '+4.1% vs last month';
+  // Helper to extract student's real progress score or sabaq grade (defaults to 0 if not yet graded)
+  function getStudentProgress(s) {
+    if (typeof s.progressScore === 'number' && !isNaN(s.progressScore)) {
+      return Math.max(0, Math.min(100, s.progressScore));
+    }
+    if (typeof s.sabaqGrade === 'number' && !isNaN(s.sabaqGrade)) {
+      return Math.max(0, Math.min(100, s.sabaqGrade));
+    }
+    if (s.lastSabaq) {
+      if (typeof s.lastSabaq.progressScore === 'number' && !isNaN(s.lastSabaq.progressScore)) {
+        return Math.max(0, Math.min(100, s.lastSabaq.progressScore));
+      }
+      if (typeof s.lastSabaq.sabaqGrade === 'number' && !isNaN(s.lastSabaq.sabaqGrade)) {
+        return Math.max(0, Math.min(100, s.lastSabaq.sabaqGrade));
+      }
+      if (s.lastSabaq.type === 'Daily Sabaq' && typeof s.lastSabaq.rating === 'number') {
+        return Math.max(0, Math.min(100, Math.round((s.lastSabaq.rating / 5) * 100)));
+      }
+    }
+    return 0; // Default to 0 if not yet graded
   }
+
+  // Filter students strictly by Course / Track
+  const hifzStudents = AppState.students.filter(s => {
+    const c = (s.course || '').toLowerCase();
+    return c.includes('hifz') || c.includes('memorization') || c.includes('daur');
+  });
+
+  const qaidaStudents = AppState.students.filter(s => {
+    const c = (s.course || '').toLowerCase();
+    return c.includes('qaida') || c.includes('beginner');
+  });
+
+  const tajweedStudents = AppState.students.filter(s => {
+    const c = (s.course || '').toLowerCase();
+    return c.includes('tajweed') || c.includes('nazra') || c.includes('makharij') || c.includes('qiraat');
+  });
+
+  // Calculate track averages: exactly 0 if 0 students, otherwise real average
+  let hifzKpi = 0;
+  if (hifzStudents.length > 0) {
+    const hifzTotal = hifzStudents.reduce((sum, s) => sum + getStudentProgress(s), 0);
+    hifzKpi = Number((hifzTotal / hifzStudents.length).toFixed(1));
+  }
+
+  let qaidaKpi = 0;
+  if (qaidaStudents.length > 0) {
+    const qaidaTotal = qaidaStudents.reduce((sum, s) => sum + getStudentProgress(s), 0);
+    qaidaKpi = Number((qaidaTotal / qaidaStudents.length).toFixed(1));
+  }
+
+  let tajweedKpi = 0;
+  if (tajweedStudents.length > 0) {
+    const tajweedTotal = tajweedStudents.reduce((sum, s) => sum + getStudentProgress(s), 0);
+    tajweedKpi = Number((tajweedTotal / tajweedStudents.length).toFixed(1));
+  }
+
+  // True mathematical average of active tracks ONLY (exclude tracks with 0 students)
+  const activeTrackAverages = [];
+  if (hifzStudents.length > 0) activeTrackAverages.push(hifzKpi);
+  if (qaidaStudents.length > 0) activeTrackAverages.push(qaidaKpi);
+  if (tajweedStudents.length > 0) activeTrackAverages.push(tajweedKpi);
+
+  let overallKpiNum = 0;
+  if (activeTrackAverages.length > 0) {
+    overallKpiNum = activeTrackAverages.reduce((sum, v) => sum + v, 0) / activeTrackAverages.length;
+  } else if (totalStudents > 0) {
+    const allScores = AppState.students.map(s => getStudentProgress(s));
+    overallKpiNum = allScores.reduce((sum, v) => sum + v, 0) / allScores.length;
+  }
+
+  const overallSabaqKpi = overallKpiNum % 1 === 0 ? overallKpiNum.toFixed(0) : overallKpiNum.toFixed(1);
+  const sabaqTrendText = overallKpiNum > 0 ? `${overallSabaqKpi}% Real-time` : 'Pending Assessment';
+  const sabaqTrendBadgeClass = overallKpiNum > 0 ? 'ts-badge-paid' : 'ts-badge-sage';
 
   let paidCount = 0;
   let partialCount = 0;
@@ -4552,7 +4618,7 @@ function renderAdminDashboardView() {
         ` : `
           <div class="flex items-baseline gap-3 mb-4">
             <span class="text-3xl font-extrabold text-[#141F1E]">${overallSabaqKpi}%</span>
-            <span class="ts-badge ts-badge-paid">${sabaqTrendText}</span>
+            <span class="ts-badge ${sabaqTrendBadgeClass}">${sabaqTrendText}</span>
           </div>
           <p class="text-xs text-[#7A8684] mb-6">Target: 90% syllabus clearance across Hifz, Nazra, and Tajweed tracks.</p>
 
@@ -4561,7 +4627,7 @@ function renderAdminDashboardView() {
             <div>
               <div class="flex justify-between text-xs font-semibold mb-1">
                 <span class="text-[#141F1E]">Hifz Retention & Daur</span>
-                <span class="text-[#0E4D45]">${hifzKpi}%</span>
+                <span class="${hifzKpi > 0 ? 'text-[#0E4D45]' : 'text-[#7A8684]'} font-bold">${hifzKpi}%</span>
               </div>
               <div class="w-full h-2 bg-[#ECEAE4] rounded-full overflow-hidden">
                 <div class="h-full bg-[#0E4D45] rounded-full transition-all" style="width: ${hifzKpi}%"></div>
@@ -4571,7 +4637,7 @@ function renderAdminDashboardView() {
             <div>
               <div class="flex justify-between text-xs font-semibold mb-1">
                 <span class="text-[#141F1E]">Noorani Qaida Progression</span>
-                <span class="text-[#0E4D45]">${qaidaKpi}%</span>
+                <span class="${qaidaKpi > 0 ? 'text-[#0E4D45]' : 'text-[#7A8684]'} font-bold">${qaidaKpi}%</span>
               </div>
               <div class="w-full h-2 bg-[#ECEAE4] rounded-full overflow-hidden">
                 <div class="h-full bg-[#3B7A72] rounded-full transition-all" style="width: ${qaidaKpi}%"></div>
@@ -4581,7 +4647,7 @@ function renderAdminDashboardView() {
             <div>
               <div class="flex justify-between text-xs font-semibold mb-1">
                 <span class="text-[#141F1E]">Tajweed Rules Mastery (Makharij)</span>
-                <span class="text-[#0E4D45]">${tajweedKpi}%</span>
+                <span class="${tajweedKpi > 0 ? 'text-[#0E4D45]' : 'text-[#7A8684]'} font-bold">${tajweedKpi}%</span>
               </div>
               <div class="w-full h-2 bg-[#ECEAE4] rounded-full overflow-hidden">
                 <div class="h-full bg-[#14534B] rounded-full transition-all" style="width: ${tajweedKpi}%"></div>

@@ -58,24 +58,33 @@ function updateCloudSyncUI(status, label) {
   const badge = document.getElementById('cloud-sync-status-badge');
   const dot = document.getElementById('cloud-sync-dot');
   const text = document.getElementById('cloud-sync-text');
-  if (!badge || !dot || !text) return;
+  const drawerDot = document.getElementById('drawer-cloud-dot');
+  const drawerText = document.getElementById('drawer-cloud-text');
 
   if (status === 'connected') {
-    dot.className = 'w-2 h-2 rounded-full bg-emerald-400';
-    text.textContent = label || 'Firestore Live';
-    badge.title = 'Cloud Firestore is actively syncing in real-time across devices';
+    if (dot) dot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+    if (text) text.textContent = label || 'Firestore Live';
+    if (badge) badge.title = 'Cloud Firestore is actively syncing in real-time across devices';
+    if (drawerDot) drawerDot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400';
+    if (drawerText) drawerText.textContent = label || 'Firestore Live';
   } else if (status === 'connecting') {
-    dot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-pulse';
-    text.textContent = label || 'Connecting Cloud...';
-    badge.title = 'Connecting to Firebase Cloud Firestore...';
+    if (dot) dot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-pulse';
+    if (text) text.textContent = label || 'Connecting Cloud...';
+    if (badge) badge.title = 'Connecting to Firebase Cloud Firestore...';
+    if (drawerDot) drawerDot.className = 'w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse';
+    if (drawerText) drawerText.textContent = label || 'Connecting...';
   } else if (status === 'api_inactive') {
-    dot.className = 'w-2 h-2 rounded-full bg-amber-400';
-    text.textContent = label || 'Firestore: Pending Activation';
-    badge.title = 'Cloud Firestore API needs 1-click activation in Google/Firebase Console. Local cache is active.';
+    if (dot) dot.className = 'w-2 h-2 rounded-full bg-amber-400';
+    if (text) text.textContent = label || 'Firestore: Pending Activation';
+    if (badge) badge.title = 'Cloud Firestore API needs 1-click activation in Google/Firebase Console. Local cache is active.';
+    if (drawerDot) drawerDot.className = 'w-2.5 h-2.5 rounded-full bg-amber-400';
+    if (drawerText) drawerText.textContent = label || 'Pending Activation';
   } else {
-    dot.className = 'w-2 h-2 rounded-full bg-amber-500';
-    text.textContent = label || 'Local Cache Active';
-    badge.title = 'Offline / Local cache active.';
+    if (dot) dot.className = 'w-2 h-2 rounded-full bg-amber-500';
+    if (text) text.textContent = label || 'Local Cache Active';
+    if (badge) badge.title = 'Offline / Local cache active.';
+    if (drawerDot) drawerDot.className = 'w-2.5 h-2.5 rounded-full bg-amber-500';
+    if (drawerText) drawerText.textContent = label || 'Local Cache Active';
   }
 }
 
@@ -1135,7 +1144,7 @@ function openViewWeeklyScheduleModal(studentId) {
 
     <!-- 7-Day Day-by-Day Schedule Table Card -->
     <div class="rounded-2xl border border-[#ECEAE4] overflow-hidden bg-white shadow-2xs">
-      <table class="w-full text-left border-collapse">
+      <table class="w-full text-left border-collapse responsive-table-cards">
         <thead>
           <tr class="bg-[#F8F6F1] border-b border-[#ECEAE4] text-[11px] font-bold text-[#7A8684] uppercase tracking-wider">
             <th class="py-3 px-4">Day of Week</th>
@@ -1154,13 +1163,13 @@ function openViewWeeklyScheduleModal(studentId) {
 
             return `
               <tr class="${isToday ? 'bg-[#E8EFEE]/60 font-semibold' : 'hover:bg-[#F8F6F1]/50'} transition-colors">
-                <td class="py-3 px-4">
+                <td class="py-3 px-4" data-label="Day of Week">
                   <div class="flex items-center gap-2">
                     <span class="font-bold ${isToday ? 'text-[#0E4D45]' : 'text-[#141F1E]'}">${label.full}</span>
                     ${isToday ? `<span class="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-[#0E4D45] text-white uppercase tracking-wider">Today</span>` : ''}
                   </div>
                 </td>
-                <td class="py-3 px-3">
+                <td class="py-3 px-3" data-label="Class Status">
                   ${day.active ? `
                     <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#D1FAE5] text-[#065F46] font-bold text-[10px] border border-[#A7F3D0]">
                       <svg class="w-3 h-3 text-[#065F46]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
@@ -1170,7 +1179,7 @@ function openViewWeeklyScheduleModal(studentId) {
                     <span class="text-[10px] font-medium text-[#94A3B8] px-2 py-0.5 rounded-full bg-[#F1F4F3]">Off Day (No Class)</span>
                   `}
                 </td>
-                <td class="py-3 px-3 font-medium text-[#141F1E]">
+                <td class="py-3 px-3 font-medium text-[#141F1E]" data-label="Student Time">
                   ${day.active ? `
                     <div class="inline-flex items-center gap-1.5 font-bold text-[#141F1E]">
                       <svg class="w-3.5 h-3.5 text-[#0E4D45]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -1178,7 +1187,7 @@ function openViewWeeklyScheduleModal(studentId) {
                     </div>
                   ` : `<span class="text-[#94A3B8]">—</span>`}
                 </td>
-                <td class="py-3 px-3">
+                <td class="py-3 px-3" data-label="Pakistan Time">
                   ${day.active ? `
                     <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#E8EFEE] text-[#0E4D45] font-bold text-[11px] border border-[#CBD5E1]">
                       <span>🇵🇰</span>
@@ -1186,7 +1195,7 @@ function openViewWeeklyScheduleModal(studentId) {
                     </span>
                   ` : `<span class="text-[#94A3B8]">—</span>`}
                 </td>
-                <td class="py-3 px-4 text-right font-medium text-[#7A8684]">
+                <td class="py-3 px-4 text-right font-medium text-[#7A8684]" data-label="Duration">
                   ${day.active ? '45 mins' : '—'}
                 </td>
               </tr>
@@ -4447,12 +4456,49 @@ function updateRolePillUI() {
   if (userRoleEl) userRoleEl.textContent = current.title;
   if (heroGreetingEl) heroGreetingEl.textContent = current.shortName;
 
+  // Sync mobile drawer profile
+  const drawerAvatar = document.getElementById('drawer-user-avatar');
+  const drawerName = document.getElementById('drawer-user-name');
+  const drawerRole = document.getElementById('drawer-user-role');
+  if (drawerAvatar) drawerAvatar.textContent = current.initials;
+  if (drawerName) drawerName.textContent = current.name;
+  if (drawerRole) drawerRole.textContent = current.title;
+
   // Re-render dropdown content if it is currently open
   const menu = document.getElementById('profile-dropdown-menu');
   if (menu && !menu.classList.contains('hidden')) {
     renderProfileDropdownContent();
   }
 }
+
+// Mobile Slide-out Drawer Controller
+function toggleMobileDrawer() {
+  const drawer = document.getElementById('mobile-drawer');
+  const backdrop = document.getElementById('mobile-drawer-backdrop');
+  if (!drawer || !backdrop) return;
+  const isOpen = !drawer.classList.contains('-translate-x-full');
+  if (isOpen) {
+    closeMobileDrawer();
+  } else {
+    drawer.classList.remove('-translate-x-full');
+    backdrop.classList.remove('opacity-0', 'pointer-events-none');
+    backdrop.classList.add('opacity-100');
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+function closeMobileDrawer() {
+  const drawer = document.getElementById('mobile-drawer');
+  const backdrop = document.getElementById('mobile-drawer-backdrop');
+  if (!drawer || !backdrop) return;
+  drawer.classList.add('-translate-x-full');
+  backdrop.classList.add('opacity-0', 'pointer-events-none');
+  backdrop.classList.remove('opacity-100');
+  document.body.style.overflow = '';
+}
+
+window.toggleMobileDrawer = toggleMobileDrawer;
+window.closeMobileDrawer = closeMobileDrawer;
 
 function renderApp() {
   const container = document.getElementById('main-dynamic-content');
@@ -4489,50 +4535,89 @@ function renderApp() {
 
 function renderNavLinks() {
   const navContainer = document.getElementById('header-nav-links');
-  if (!navContainer) return;
+  const drawerContainer = document.getElementById('mobile-drawer-nav-links');
+  const bottomNavContainer = document.getElementById('mobile-bottom-nav');
 
   let links = [];
   if (AppState.currentRole === 'admin') {
     links = [
-      { id: 'dashboard', label: 'Dashboard', icon: 'M3 3h7v7H3V3zm11 0h7v7h-7V3zm0 11h7v7h-7v-7zM3 14h7v7H3v-7z' },
-      { id: 'fee-matrix', label: '12-Month Fee Ledger', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
-      { id: 'students', label: 'Full PII Directory', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },
-      { id: 'teachers', label: 'Teacher Payroll', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' },
-      { id: 'trials-notices', label: 'Trials & Notices', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' }
+      { id: 'dashboard', label: 'Dashboard', shortLabel: 'Dashboard', icon: 'M3 3h7v7H3V3zm11 0h7v7h-7V3zm0 11h7v7h-7v-7zM3 14h7v7H3v-7z' },
+      { id: 'fee-matrix', label: '12-Month Fee Ledger', shortLabel: 'Fee Ledger', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
+      { id: 'students', label: 'Full PII Directory', shortLabel: 'Students', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },
+      { id: 'teachers', label: 'Teacher Payroll', shortLabel: 'Payroll', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' },
+      { id: 'trials-notices', label: 'Trials & Notices', shortLabel: 'Trials', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' }
     ];
   } else if (AppState.currentRole === 'manager') {
     links = [
-      { id: 'manager-radar', label: 'Live Classes Radar', icon: 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
-      { id: 'manager-trials', label: 'Trial Pipeline', icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
-      { id: 'manager-substitute', label: 'Substitute Dispatch', icon: 'M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4' },
-      { id: 'manager-students', label: 'Masked Student Roster', icon: 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z' }
+      { id: 'manager-radar', label: 'Live Classes Radar', shortLabel: 'Radar', icon: 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
+      { id: 'manager-trials', label: 'Trial Pipeline', shortLabel: 'Trials', icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
+      { id: 'manager-substitute', label: 'Substitute Dispatch', shortLabel: 'Substitute', icon: 'M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4' },
+      { id: 'manager-students', label: 'Masked Student Roster', shortLabel: 'Students', icon: 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z' }
     ];
   } else if (AppState.currentRole === 'teacher') {
     links = [
-      { id: 'teacher-schedule', label: "Today's Schedule", icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
-      { id: 'teacher-logger', label: '30-Sec Sabaq Logger', icon: 'M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z' },
-      { id: 'teacher-my-students', label: 'My Students', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' }
+      { id: 'teacher-schedule', label: "Today's Schedule", shortLabel: 'Schedule', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
+      { id: 'teacher-logger', label: '30-Sec Sabaq Logger', shortLabel: 'Logger', icon: 'M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z' },
+      { id: 'teacher-my-students', label: 'My Students', shortLabel: 'Students', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' }
     ];
   } else if (AppState.currentRole === 'student') {
     links = [
-      { id: 'student-portal', label: 'Class & Sabaq Portal', icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253' },
-      { id: 'student-ledger', label: 'My Tuition Ledger', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
-      { id: 'student-receipts', label: 'Official Receipts', icon: 'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z' }
+      { id: 'student-portal', label: 'Class & Sabaq Portal', shortLabel: 'Classes', icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253' },
+      { id: 'student-ledger', label: 'My Tuition Ledger', shortLabel: 'Ledger', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+      { id: 'student-receipts', label: 'Official Receipts', shortLabel: 'Receipts', icon: 'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z' }
     ];
   }
 
-  navContainer.innerHTML = links.map(link => {
-    const isActive = AppState.activeNav === link.id;
-    const activeClasses = isActive 
-      ? 'bg-[#236058] text-white shadow-sm font-semibold' 
-      : 'text-[#A3C2BE] hover:text-white hover:bg-[#14534B]/60 font-medium';
-    return `
-      <button onclick="setNavTab('${link.id}')" class="flex items-center gap-2 px-4 py-2 rounded-full text-xs whitespace-nowrap flex-shrink-0 cursor-pointer transition-all ${activeClasses}">
-        <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="${link.icon}"></path></svg>
-        <span>${link.label}</span>
+  // 1. Desktop Header Horizontal Navigation Pills
+  if (navContainer) {
+    navContainer.innerHTML = links.map(link => {
+      const isActive = AppState.activeNav === link.id;
+      const activeClasses = isActive 
+        ? 'bg-[#236058] text-white shadow-sm font-semibold' 
+        : 'text-[#A3C2BE] hover:text-white hover:bg-[#14534B]/60 font-medium';
+      return `
+        <button onclick="setNavTab('${link.id}')" class="flex items-center gap-2 px-4 py-2 rounded-full text-xs whitespace-nowrap flex-shrink-0 cursor-pointer transition-all ${activeClasses}">
+          <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="${link.icon}"></path></svg>
+          <span>${link.label}</span>
+        </button>
+      `;
+    }).join('');
+  }
+
+  // 2. Mobile Drawer Navigation Links
+  if (drawerContainer) {
+    drawerContainer.innerHTML = links.map(link => {
+      const isActive = AppState.activeNav === link.id;
+      const activeClasses = isActive
+        ? 'bg-[#0E4D45] text-white font-bold shadow-xs'
+        : 'text-[#141F1E] hover:bg-[#F8F6F1] font-semibold';
+      return `
+        <button onclick="setNavTab('${link.id}'); closeMobileDrawer()" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer ${activeClasses}">
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="${link.icon}"></path></svg>
+          <span class="truncate">${link.label}</span>
+        </button>
+      `;
+    }).join('');
+  }
+
+  // 3. Mobile Sticky Bottom Navigation App Bar (Up to 4 quick tabs + Hamburger "More")
+  if (bottomNavContainer) {
+    const bottomSlice = links.slice(0, 4);
+    bottomNavContainer.innerHTML = bottomSlice.map(link => {
+      const isActive = AppState.activeNav === link.id;
+      return `
+        <button onclick="setNavTab('${link.id}')" class="flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all cursor-pointer ${isActive ? 'text-[#0E4D45] font-bold' : 'text-[#7A8684] hover:text-[#141F1E] font-medium'}">
+          <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="${isActive ? '2' : '1.5'}" d="${link.icon}"></path></svg>
+          <span class="text-[10px] leading-tight truncate max-w-[65px]">${link.shortLabel || link.label.split(' ')[0]}</span>
+        </button>
+      `;
+    }).join('') + `
+      <button onclick="toggleMobileDrawer()" class="flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl text-[#7A8684] hover:text-[#0E4D45] font-medium transition-all cursor-pointer" title="More Menu">
+        <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+        <span class="text-[10px] leading-tight">More</span>
       </button>
     `;
-  }).join('');
+  }
 }
 
 function setNavTab(tabId) {
@@ -4923,7 +5008,7 @@ function renderAdminDashboardView() {
       </div>
 
       <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse">
+        <table class="w-full text-left border-collapse responsive-table-cards">
           <thead>
             <tr class="border-b border-[#ECEAE4] text-[11px] font-bold text-[#7A8684] uppercase tracking-wider">
               <th class="pb-3">Txn ID</th>
@@ -4962,23 +5047,23 @@ function renderAdminDashboardView() {
 
               return `
                 <tr class="hover:bg-[#F8F6F1]/60 transition-colors">
-                  <td class="py-3">
+                  <td class="py-3" data-label="Txn ID">
                     <span class="font-mono text-[11px] text-[#7A8684] bg-[#F8F6F1] px-1.5 py-0.5 rounded border border-[#ECEAE4] select-all">${txn.id}</span>
                   </td>
-                  <td class="py-3 text-[#7A8684] whitespace-nowrap">${txn.date}</td>
-                  <td class="py-3 font-medium text-[#141F1E]">
+                  <td class="py-3 text-[#7A8684] whitespace-nowrap" data-label="Date">${txn.date}</td>
+                  <td class="py-3 font-medium text-[#141F1E]" data-label="Student / Family">
                     <div class="flex items-center">
                       <img src="${avatar}" alt="${txn.studentName}" class="w-6 h-6 rounded-full object-cover mr-2 shrink-0 border border-[#ECEAE4] shadow-2xs" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(txn.studentName)}&background=0E4D45&color=fff'">
                       <span class="truncate">${txn.studentName}</span>
                     </div>
                   </td>
-                  <td class="py-3">
+                  <td class="py-3" data-label="Payment Type">
                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${typeBadgeClass}">${txn.type}</span>
                   </td>
-                  <td class="py-3 font-bold text-[#141F1E] whitespace-nowrap">${txn.currency}${txn.amount}</td>
-                  <td class="py-3 text-[#334E4B]">${txn.allocatedTo}</td>
-                  <td class="py-3 text-[#7A8684] whitespace-nowrap">${txn.method}</td>
-                  <td class="py-3 text-right whitespace-nowrap">
+                  <td class="py-3 font-bold text-[#141F1E] whitespace-nowrap" data-label="Amount">${txn.currency}${txn.amount}</td>
+                  <td class="py-3 text-[#334E4B]" data-label="Allocation">${txn.allocatedTo}</td>
+                  <td class="py-3 text-[#7A8684] whitespace-nowrap" data-label="Method">${txn.method}</td>
+                  <td class="py-3 text-right whitespace-nowrap" data-label="Receipt">
                     <button onclick="openReceiptModal('${txn.id}')" class="text-xs font-semibold text-[#0E4D45] hover:text-[#14534B] hover:underline inline-flex items-center gap-1 cursor-pointer transition-colors">
                       <span>View Receipt</span>
                       <span class="text-[11px] font-normal leading-none">↗</span>
@@ -6092,7 +6177,7 @@ function renderAdminFeeMatrixView() {
       </div>
 
       <!-- 12-Month Matrix Visual Table -->
-      <div class="overflow-x-auto">
+      <div class="overflow-x-auto w-full max-w-full rounded-2xl touch-pan-x">
         <table class="w-full text-left border-collapse min-w-[980px]">
           <thead>
             <tr class="border-b border-[#ECEAE4] text-[11px] font-semibold text-[#7A8684] uppercase tracking-wider">
@@ -6438,7 +6523,7 @@ function renderStudentDirectoryRows(students) {
     return `
       <tr class="hover:bg-[#F8F6F1]/50 transition-colors border-b border-[#F1EFEA]">
         <!-- 1. Student Name (Avatar + Full Name + Subtle QA-1008 Badge + Family Tag Pill) -->
-        <td class="py-3.5 px-2.5">
+        <td class="py-3.5 px-2.5" data-label="Student">
           <div class="flex items-center gap-1.5 whitespace-nowrap">
             <img 
               src="${s.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop&crop=faces'}" 
@@ -6457,14 +6542,14 @@ function renderStudentDirectoryRows(students) {
         </td>
 
         <!-- 2. Course Track (Single-Line Text with clean max width) -->
-        <td class="py-3.5 px-2.5">
+        <td class="py-3.5 px-2.5" data-label="Course Track">
           <span class="text-xs text-[#141F1E] font-medium truncate block max-w-[140px]" title="${s.course || 'Quran Studies'}">
             ${s.course || 'Quran Studies'}
           </span>
         </td>
 
         <!-- 3. Assigned Teacher (Avatar + Full Name on a single line) -->
-        <td class="py-3.5 px-2.5">
+        <td class="py-3.5 px-2.5" data-label="Teacher">
           <div class="flex items-center gap-2 whitespace-nowrap">
             <img 
               src="${teacher?.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=faces'}" 
@@ -6477,7 +6562,7 @@ function renderStudentDirectoryRows(students) {
         </td>
 
         <!-- 4. Guardian Contact (Interactive Dropdown Pill & Streamlined 2-Item Popover) -->
-        <td class="py-3.5 px-2.5 whitespace-nowrap">
+        <td class="py-3.5 px-2.5 whitespace-nowrap" data-label="Guardian Contact">
           <div class="relative inline-block student-contact-popover-container">
             <button 
               onclick="toggleStudentContactPopover('${s.id}', event)" 
@@ -6568,14 +6653,14 @@ function renderStudentDirectoryRows(students) {
         </td>
 
         <!-- 5. Agreed Fee (Single-line clean agreed monthly fee) -->
-        <td class="py-3.5 px-2.5 whitespace-nowrap">
+        <td class="py-3.5 px-2.5 whitespace-nowrap" data-label="Agreed Fee">
           <span class="text-xs text-[#141F1E] font-medium">
             <span class="font-bold text-[#0E4D45]">${s.currency}${s.monthlyFee}</span><span class="text-[#7A8684] text-[11px]">/mo</span>
           </span>
         </td>
 
         <!-- 6. Timetable (Interactive Day-by-Day Variable Timetable Pill & View-Only Popover) -->
-        <td class="py-3.5 px-2.5 whitespace-nowrap">
+        <td class="py-3.5 px-2.5 whitespace-nowrap" data-label="Timetable">
           <div class="relative inline-block student-schedule-popover-container">
             <button 
               onclick="toggleStudentSchedulePopover('${s.id}', event)" 
@@ -6628,12 +6713,12 @@ function renderStudentDirectoryRows(students) {
         </td>
 
         <!-- 7. Student Status (Soft Pastel Pill Badge) -->
-        <td class="py-3.5 px-2.5 whitespace-nowrap">
+        <td class="py-3.5 px-2.5 whitespace-nowrap" data-label="Status">
           ${renderStudentStatusPill(s.academicStatus)}
         </td>
 
         <!-- 8. 3-Dots Action Menu Column (Rightmost End, Never Cut Off) -->
-        <td class="py-3.5 px-2.5 w-10 text-right relative student-action-menu-container">
+        <td class="py-3.5 px-2.5 w-10 text-right relative student-action-menu-container" data-label="Actions">
           <button onclick="toggleStudentActionMenu('${s.id}', event)" class="w-8 h-8 rounded-full flex items-center justify-center text-[#7A8684] hover:text-[#141F1E] hover:bg-[#F8F6F1] transition-all cursor-pointer font-bold leading-none inline-flex" title="Actions for ${s.firstName}">
             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
           </button>
@@ -7080,9 +7165,9 @@ function renderAdminStudentsDirectory() {
         </div>
       </div>
 
-      <!-- 2. Ultra-Clean Single-Line Table (No Cut-Off, Zero Horizontal Overflow) -->
+      <!-- 2. Ultra-Clean Single-Line Table (Converts to Cards on Mobile) -->
       <div class="overflow-x-auto min-h-[380px]">
-        <table class="w-full text-left border-collapse">
+        <table class="w-full text-left border-collapse responsive-table-cards">
           <thead>
             <tr class="border-b border-[#ECEAE4] text-[11px] font-bold text-[#7A8684] uppercase tracking-wider">
               <th class="py-3 px-2.5">Student Name</th>
@@ -7164,7 +7249,7 @@ function renderAdminTeacherPayrollView() {
       </div>
 
       <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse min-w-[850px]">
+        <table class="w-full text-left border-collapse min-w-0 md:min-w-[850px] responsive-table-cards">
           <thead>
             <tr class="border-b border-[#ECEAE4] text-[11px] font-bold text-[#7A8684] uppercase tracking-wider">
               <th class="pb-3">Teacher Name</th>
@@ -7204,7 +7289,7 @@ function renderAdminTeacherPayrollView() {
               const isPaid = t.salaryStatus === 'Paid';
               return `
                 <tr class="hover:bg-[#F8F6F1]/50 transition-colors">
-                  <td class="py-3.5 font-bold text-[#141F1E]">
+                  <td class="py-3.5 font-bold text-[#141F1E]" data-label="Teacher">
                     <div class="flex items-center gap-2">
                       <img 
                         src="${t.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=faces'}" 
@@ -7215,18 +7300,18 @@ function renderAdminTeacherPayrollView() {
                       <span>${t.name}</span>
                     </div>
                   </td>
-                  <td class="py-3.5 text-[#334E4B]">${t.specialization}</td>
-                  <td class="py-3.5 text-[#7A8684]">${t.country}</td>
-                  <td class="py-3.5 font-semibold text-[#0E4D45]">${dynamicActiveCount} Students</td>
-                  <td class="py-3.5 text-[#141F1E] font-medium">$${rate}/hr</td>
-                  <td class="py-3.5 text-[#7A8684]">${hours} hrs</td>
-                  <td class="py-3.5 font-bold text-[#0E4D45]">$${totalPay.toLocaleString()}</td>
-                  <td class="py-3.5 text-center">
+                  <td class="py-3.5 text-[#334E4B]" data-label="Specialization">${t.specialization}</td>
+                  <td class="py-3.5 text-[#7A8684]" data-label="Country">${t.country}</td>
+                  <td class="py-3.5 font-semibold text-[#0E4D45]" data-label="Active Students">${dynamicActiveCount} Students</td>
+                  <td class="py-3.5 text-[#141F1E] font-medium" data-label="Hourly Rate">$${rate}/hr</td>
+                  <td class="py-3.5 text-[#7A8684]" data-label="Hours Logged">${hours} hrs</td>
+                  <td class="py-3.5 font-bold text-[#0E4D45]" data-label="Honorarium">$${totalPay.toLocaleString()}</td>
+                  <td class="py-3.5 text-center" data-label="Status">
                     <span class="ts-badge ${isPaid ? 'ts-badge-paid' : 'ts-badge-partial'}">
                       ${isPaid ? 'Paid ✓' : 'Pending ⏱'}
                     </span>
                   </td>
-                  <td class="py-3.5 text-right pl-2">
+                  <td class="py-3.5 text-right pl-2" data-label="Action">
                     <button onclick="toggleTeacherSalaryStatus('${t.id}')"
                       class="px-3 py-1 text-[11px] font-bold rounded-full ${isPaid ? 'bg-[#E8EFEE] text-[#0E4D45] hover:bg-[#FEE2E2] hover:text-[#991B1B]' : 'bg-[#0E4D45] text-white hover:bg-[#14534B]'} transition-colors whitespace-nowrap shadow-sm cursor-pointer">
                       ${isPaid ? 'Mark Pending' : 'Pay Salary'}
@@ -7306,7 +7391,7 @@ function renderAdminTrialsAndNoticesView() {
         </div>
 
         <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse min-w-[760px]">
+          <table class="w-full text-left border-collapse min-w-0 md:min-w-[760px] responsive-table-cards">
             <thead>
               <tr class="border-b border-[#ECEAE4] text-[11px] font-semibold text-[#7A8684] uppercase tracking-wider">
                 <th class="pb-3 pl-2">Candidate Student</th>
@@ -7350,7 +7435,7 @@ function renderAdminTrialsAndNoticesView() {
                 return `
                   <tr class="hover:bg-[#F8F6F1]/50 transition-colors">
                     <!-- Candidate Student with Circular Profile Photo / Avatar -->
-                    <td class="py-3.5 pl-2">
+                    <td class="py-3.5 pl-2" data-label="Candidate">
                       <div class="flex items-center gap-3">
                         <div class="relative w-10 h-10 shrink-0">
                           <img 
@@ -7368,7 +7453,7 @@ function renderAdminTrialsAndNoticesView() {
                     </td>
 
                     <!-- Country & Timezone with Sleek SVG Icon -->
-                    <td class="py-3.5">
+                    <td class="py-3.5" data-label="Location">
                       <div class="text-[#334E4B] font-medium flex items-center gap-1.5 text-xs">
                         <svg class="w-3.5 h-3.5 text-[#7A8684] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                         <span>${trial.country}</span>
@@ -7376,7 +7461,7 @@ function renderAdminTrialsAndNoticesView() {
                     </td>
 
                     <!-- Preferred Time Slot with Clock Icon -->
-                    <td class="py-3.5">
+                    <td class="py-3.5" data-label="Time Slot">
                       <div class="text-[#141F1E] font-medium flex items-center gap-1.5 text-xs">
                         <svg class="w-3.5 h-3.5 text-[#7A8684] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                         <span>${trial.preferredTime}</span>
@@ -7384,7 +7469,7 @@ function renderAdminTrialsAndNoticesView() {
                     </td>
 
                     <!-- Assigned Faculty -->
-                    <td class="py-3.5">
+                    <td class="py-3.5" data-label="Faculty">
                       ${teacher ? `
                         <div class="flex items-center gap-2">
                           <img src="${teacherAvatar}" alt="${trial.assignedTeacher}" class="w-6 h-6 rounded-full object-cover border border-[#ECEAE4]" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(trial.assignedTeacher)}&background=0E4D45&color=fff';" />
@@ -7404,12 +7489,12 @@ function renderAdminTrialsAndNoticesView() {
                     </td>
 
                     <!-- Trial Status -->
-                    <td class="py-3.5">
+                    <td class="py-3.5" data-label="Status">
                       ${statusPill}
                     </td>
 
                     <!-- Approval Action -->
-                    <td class="py-3.5 pr-2 text-right">
+                    <td class="py-3.5 pr-2 text-right" data-label="Action">
                       ${isEnrolled ? `
                         <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#E8EFEE] text-[#0E4D45] text-xs font-semibold border border-[#CBD5E1]/60">
                           <svg class="w-3.5 h-3.5 text-[#0E4D45]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
@@ -7588,7 +7673,7 @@ function renderManagerPortalView() {
         </div>
 
         <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse min-w-[700px]">
+          <table class="w-full text-left border-collapse min-w-0 md:min-w-[700px] responsive-table-cards">
             <thead>
               <tr class="border-b border-[#ECEAE4] text-[11px] font-semibold text-[#7A8684] uppercase tracking-wider">
                 <th class="pb-3 pl-2">Candidate Student</th>
@@ -7628,7 +7713,7 @@ function renderManagerPortalView() {
 
                 return `
                   <tr class="hover:bg-[#F8F6F1]/50 transition-colors">
-                    <td class="py-3.5 pl-2">
+                    <td class="py-3.5 pl-2" data-label="Candidate">
                       <div class="flex items-center gap-3">
                         <div class="relative w-10 h-10 shrink-0">
                           <img 
@@ -7644,13 +7729,13 @@ function renderManagerPortalView() {
                         </div>
                       </div>
                     </td>
-                    <td class="py-3.5 text-[#334E4B]">${trial.country}</td>
-                    <td class="py-3.5 text-[#7A8684] font-medium">${trial.preferredTime}</td>
-                    <td class="py-3.5 font-semibold text-[#0E4D45]">${trial.assignedTeacher}</td>
-                    <td class="py-3.5">
+                    <td class="py-3.5 text-[#334E4B]" data-label="Location">${trial.country}</td>
+                    <td class="py-3.5 text-[#7A8684] font-medium" data-label="Time">${trial.preferredTime}</td>
+                    <td class="py-3.5 font-semibold text-[#0E4D45]" data-label="Teacher">${trial.assignedTeacher}</td>
+                    <td class="py-3.5" data-label="Status">
                       ${statusPill}
                     </td>
-                    <td class="py-3.5 pr-2 text-right">
+                    <td class="py-3.5 pr-2 text-right" data-label="Action">
                       ${isEnrolled ? `
                         <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#E8EFEE] text-[#0E4D45] text-xs font-semibold border border-[#CBD5E1]/60">
                           <svg class="w-3.5 h-3.5 text-[#0E4D45]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
@@ -7721,7 +7806,7 @@ function renderManagerPortalView() {
         </div>
 
         <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse min-w-[750px]">
+          <table class="w-full text-left border-collapse min-w-0 md:min-w-[750px] responsive-table-cards">
             <thead>
               <tr class="border-b border-[#ECEAE4] text-[11px] font-bold text-[#7A8684] uppercase tracking-wider">
                 <th class="pb-3">Student Token</th>
@@ -7738,21 +7823,21 @@ function renderManagerPortalView() {
                 const feeStatus = getStudentFeeStatus(s);
                 return `
                   <tr class="hover:bg-[#F8F6F1]/50 transition-colors">
-                    <td class="py-3.5">
+                    <td class="py-3.5" data-label="Student Token">
                       <div class="font-bold text-[#141F1E]">${display.displayName}</div>
                       <div class="text-[11px] text-[#7A8684]">${s.timezone}</div>
                     </td>
-                    <td class="py-3.5 text-[#7A8684] font-medium">
+                    <td class="py-3.5 text-[#7A8684] font-medium" data-label="Guardian">
                       <span class="px-2 py-0.5 rounded bg-[#ECEAE4] text-[11px]">${display.guardianDisplay}</span>
                     </td>
-                    <td class="py-3.5 text-[#7A8684]">
+                    <td class="py-3.5 text-[#7A8684]" data-label="Contact">
                       <span class="px-2 py-0.5 rounded bg-[#ECEAE4] text-[11px]">${display.phoneDisplay}</span>
                     </td>
-                    <td class="py-3.5 text-[#334E4B] font-medium">${s.course}</td>
-                    <td class="py-3.5">
+                    <td class="py-3.5 text-[#334E4B] font-medium" data-label="Course Track">${s.course}</td>
+                    <td class="py-3.5" data-label="Fee Status">
                       ${renderStudentLedgerStatusPill(s)}
                     </td>
-                    <td class="py-3.5 text-right">
+                    <td class="py-3.5 text-right" data-label="Action">
                       <button onclick="triggerSystemReminder('${s.id}')" class="px-3 py-1.5 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors">
                         Send System Reminder
                       </button>
@@ -7917,7 +8002,7 @@ function renderTeacherPortalView() {
         </div>
 
         <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse min-w-[700px]">
+          <table class="w-full text-left border-collapse min-w-0 md:min-w-[700px] responsive-table-cards">
             <thead>
               <tr class="border-b border-[#ECEAE4] text-[11px] font-bold text-[#7A8684] uppercase tracking-wider">
                 <th class="pb-3">Student Token</th>
@@ -7932,16 +8017,16 @@ function renderTeacherPortalView() {
                 const display = getStudentDisplay(s, 'teacher');
                 return `
                   <tr class="hover:bg-[#F8F6F1]/50 transition-colors">
-                    <td class="py-3.5">
+                    <td class="py-3.5" data-label="Student Token">
                       <div class="font-bold text-[#141F1E]">${display.displayName}</div>
                       <div class="text-[11px] text-[#7A8684]">${s.timezone}</div>
                     </td>
-                    <td class="py-3.5 text-[#334E4B] font-medium">${s.course}</td>
-                    <td class="py-3.5 text-[#0E4D45] font-semibold">${s.lastSabaq ? s.lastSabaq.surah : 'First Lesson Pending'}</td>
-                    <td class="py-3.5">
+                    <td class="py-3.5 text-[#334E4B] font-medium" data-label="Course Track">${s.course}</td>
+                    <td class="py-3.5 text-[#0E4D45] font-semibold" data-label="Current Lesson">${s.lastSabaq ? s.lastSabaq.surah : 'First Lesson Pending'}</td>
+                    <td class="py-3.5" data-label="Rating">
                       <div class="text-amber-500 font-bold">${'â­'.repeat(s.lastSabaq ? s.lastSabaq.rating : 5)}</div>
                     </td>
-                    <td class="py-3.5 text-right pl-2">
+                    <td class="py-3.5 text-right pl-2" data-label="Action">
                       <button onclick="openSabaqLoggerModal('${s.id}')"
                         class="px-3 py-1 text-[11px] font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors whitespace-nowrap shadow-sm">
                         Log Sabaq
@@ -8149,7 +8234,7 @@ function renderStudentParentPortalView() {
         </div>
 
         <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse min-w-[700px]">
+          <table class="w-full text-left border-collapse min-w-0 md:min-w-[700px] responsive-table-cards">
             <thead>
               <tr class="border-b border-[#ECEAE4] text-[11px] font-bold text-[#7A8684] uppercase tracking-wider">
                 <th class="pb-3">Receipt / Invoice #</th>
@@ -8164,18 +8249,18 @@ function renderStudentParentPortalView() {
             <tbody class="divide-y divide-[#ECEAE4] text-xs">
               ${displayReceipts.map(rc => `
                 <tr class="hover:bg-[#F8F6F1]/50 transition-colors">
-                  <td class="py-3.5 font-bold text-[#141F1E]">${rc.id}</td>
-                  <td class="py-3.5 text-[#7A8684]">${rc.date}</td>
-                  <td class="py-3.5 text-[#334E4B] font-medium">${rc.allocatedTo}</td>
-                  <td class="py-3.5 text-[#7A8684]">${rc.method}</td>
-                  <td class="py-3.5 text-right font-bold text-[#0E4D45]">${rc.currency}${rc.amount}</td>
-                  <td class="py-3.5 text-center">
+                  <td class="py-3.5 font-bold text-[#141F1E]" data-label="Receipt #">${rc.id}</td>
+                  <td class="py-3.5 text-[#7A8684]" data-label="Date">${rc.date}</td>
+                  <td class="py-3.5 text-[#334E4B] font-medium" data-label="Allocated Session">${rc.allocatedTo}</td>
+                  <td class="py-3.5 text-[#7A8684]" data-label="Method">${rc.method}</td>
+                  <td class="py-3.5 text-right font-bold text-[#0E4D45]" data-label="Amount Paid">${rc.currency}${rc.amount}</td>
+                  <td class="py-3.5 text-center" data-label="Status">
                     <span class="ts-badge ts-badge-paid">${rc.status}</span>
                   </td>
-                  <td class="py-3.5 text-right pl-2">
+                  <td class="py-3.5 text-right pl-2" data-label="Action">
                     <button onclick="openReceiptModal('${rc.id}')"
                       class="px-3 py-1.5 text-xs font-bold rounded-full bg-[#FFFFFF] border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#0E4D45] hover:text-white transition-all shadow-sm whitespace-nowrap">
-                      Print / View Receipt â†—
+                      Print / View Receipt ↗
                     </button>
                   </td>
                 </tr>
@@ -8438,7 +8523,7 @@ function updateFIFOPreview() {
         <span class="font-bold text-[#141F1E]">Chronological Waterfall Preview (FIFO) ${isFamily ? '• Combined Family' : ''}</span>
         <span class="text-[#0E4D45] font-semibold">${currency}${amount} Allocated</span>
       </div>
-      <table class="w-full text-xs text-left">
+      <table class="w-full text-xs text-left responsive-table-cards">
         <thead class="bg-[#FFFFFF] border-b border-[#ECEAE4] text-[10px] uppercase font-bold text-[#7A8684]">
           <tr>
             <th class="p-2.5">Month</th>
@@ -8453,17 +8538,17 @@ function updateFIFOPreview() {
         <tbody class="divide-y divide-[#ECEAE4]">
           ${result.allocations.map(a => `
             <tr class="hover:bg-[#F8F6F1]/50">
-              <td class="p-2.5 font-bold text-[#141F1E]">${a.month} 2026</td>
-              ${isFamily ? `<td class="p-2.5 font-medium text-[#0E4D45]">${a.studentName.split(' ')[0]}</td>` : ''}
-              <td class="p-2.5 text-[#7A8684]">${a.currency}${a.feeDue}</td>
-              <td class="p-2.5 font-bold text-[#0E4D45]">+${a.currency}${a.allocatedAmount}</td>
-              <td class="p-2.5"><span class="text-[10px] uppercase font-semibold text-[#7A8684]">${a.prevStatus}</span></td>
-              <td class="p-2.5">
+              <td class="p-2.5 font-bold text-[#141F1E]" data-label="Month">${a.month} 2026</td>
+              ${isFamily ? `<td class="p-2.5 font-medium text-[#0E4D45]" data-label="Student">${a.studentName.split(' ')[0]}</td>` : ''}
+              <td class="p-2.5 text-[#7A8684]" data-label="Monthly Fee">${a.currency}${a.feeDue}</td>
+              <td class="p-2.5 font-bold text-[#0E4D45]" data-label="Allocated">+${a.currency}${a.allocatedAmount}</td>
+              <td class="p-2.5" data-label="Previous Status"><span class="text-[10px] uppercase font-semibold text-[#7A8684]">${a.prevStatus}</span></td>
+              <td class="p-2.5" data-label="New Status">
                 <span class="ts-badge ${a.newStatus === 'paid' ? 'ts-badge-paid' : (a.newStatus === 'advance' ? 'ts-badge-advance' : 'ts-badge-partial')}">
                   ${a.newStatus.toUpperCase()}
                 </span>
               </td>
-              <td class="p-2.5 text-right font-bold ${a.newRemainingDue > 0 ? 'text-[#991B1B]' : 'text-[#065F46]'}">
+              <td class="p-2.5 text-right font-bold ${a.newRemainingDue > 0 ? 'text-[#991B1B]' : 'text-[#065F46]'}" data-label="Remaining Due">
                 ${a.newRemainingDue > 0 ? `-${a.currency}${a.newRemainingDue}` : 'Settled ✓'}
               </td>
             </tr>

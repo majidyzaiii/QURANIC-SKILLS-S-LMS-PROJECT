@@ -60,30 +60,30 @@
        TOP DARK FOREST TEAL HEADER & HERO BANNER (#0E4D45) - EXACT TALENTSYNC GEOMETRY
        ========================================================================== -->
   <header class="bg-[#0E4D45] text-white pt-6 pb-20 w-full transition-colors">
-    <div class="max-w-7xl w-full mx-auto px-6 lg:px-10">
+    <div class="max-w-7xl w-full mx-auto px-3.5 sm:px-6 lg:px-10">
       
       <!-- Row 1: Brand Logo & User Profile Controls -->
-      <div class="flex items-center justify-between gap-4 pb-4">
+      <div class="flex items-center justify-between gap-2 sm:gap-4 pb-4">
         
         <!-- Left: Academy Official Brand Logo -->
         <div class="flex items-center shrink-0">
           <img id="academy-brand-logo" src="assets/logo.png" alt="Quranic Skills" 
-            class="h-11 sm:h-12 w-auto max-w-[220px] object-contain cursor-pointer transition-opacity hover:opacity-95" 
+            class="h-8 sm:h-11 md:h-12 w-auto max-w-[130px] sm:max-w-[180px] md:max-w-[220px] object-contain cursor-pointer transition-opacity hover:opacity-95" 
             onclick="switchRole('admin')" title="Quranic Skills Academy" />
         </div>
 
-        <!-- Right: Utility Icons & Sleek Profile Dropdown (Portal Switcher) -->
-        <div class="flex items-center gap-3 shrink-0">
+        <!-- Right: Utility Icons, Mobile Hamburger & Sleek Profile Dropdown -->
+        <div class="flex items-center gap-1.5 sm:gap-3 shrink-0">
           
-          <!-- Cloud Firestore Sync Status Badge -->
-          <div id="cloud-sync-status-badge" class="flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-[#14534B]/60 hover:bg-[#14534B] border border-[#236058] text-[#A3C2BE] hover:text-white transition-all cursor-pointer shadow-xs" onclick="checkCloudSyncStatus(event)" title="Firebase Cloud Firestore Status">
+          <!-- Cloud Firestore Sync Status Badge (Hidden on compact mobile to prevent overlap) -->
+          <div id="cloud-sync-status-badge" class="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-[#14534B]/60 hover:bg-[#14534B] border border-[#236058] text-[#A3C2BE] hover:text-white transition-all cursor-pointer shadow-xs" onclick="checkCloudSyncStatus(event)" title="Firebase Cloud Firestore Status">
             <span id="cloud-sync-dot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
             <span id="cloud-sync-text" class="text-[11px] tracking-wide font-medium">Firestore Connected</span>
           </div>
 
           <!-- Notification Bell Dropdown Container -->
           <div class="relative" id="notifications-dropdown-container">
-            <button onclick="toggleNotificationsDropdown(event)" id="notifications-dropdown-trigger" class="relative w-9 h-9 rounded-full bg-[#14534B]/60 hover:bg-[#14534B] flex items-center justify-center text-[#A3C2BE] hover:text-white transition-colors cursor-pointer" title="System Notifications & Activity">
+            <button onclick="toggleNotificationsDropdown(event)" id="notifications-dropdown-trigger" class="relative w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#14534B]/60 hover:bg-[#14534B] flex items-center justify-center text-[#A3C2BE] hover:text-white transition-colors cursor-pointer" title="System Notifications & Activity">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
               <span id="notification-badge-dot" class="absolute top-2 right-2 w-2 h-2 rounded-full bg-amber-400 hidden"></span>
             </button>
@@ -106,15 +106,20 @@
             </div>
           </div>
 
-          <!-- Settings Button Matching TalentSync -->
-          <button onclick="openSettingsModal()" class="w-9 h-9 rounded-full bg-[#14534B]/60 hover:bg-[#14534B] flex items-center justify-center text-[#A3C2BE] hover:text-white transition-colors cursor-pointer" title="Academy Settings & Global Policies">
+          <!-- Settings Button Matching TalentSync (Hidden on mobile; accessible via mobile drawer) -->
+          <button onclick="openSettingsModal()" class="hidden sm:flex w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#14534B]/60 hover:bg-[#14534B] items-center justify-center text-[#A3C2BE] hover:text-white transition-colors cursor-pointer" title="Academy Settings & Global Policies">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          </button>
+
+          <!-- Mobile Hamburger Drawer Trigger (Visible on mobile only) -->
+          <button type="button" onclick="toggleMobileDrawer()" class="md:hidden w-8 h-8 rounded-full bg-[#14534B]/70 hover:bg-[#14534B] flex items-center justify-center text-[#A3C2BE] hover:text-white transition-colors cursor-pointer" aria-label="Open Navigation Menu" title="Menu">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
           </button>
 
           <!-- User Profile & Portal Switcher Dropdown -->
           <div class="relative pl-1 border-l border-[#236058]" id="profile-dropdown-container">
-            <button onclick="toggleProfileDropdown(event)" id="profile-dropdown-trigger" class="flex items-center gap-2.5 p-1 pl-2 pr-2.5 rounded-full hover:bg-[#14534B]/60 transition-all border border-transparent hover:border-[#236058] cursor-pointer" title="Click to Switch Portal or View Profile">
-              <div id="top-user-avatar" class="w-9 h-9 rounded-full bg-[#14534B] border border-[#236058] flex items-center justify-center font-bold text-xs text-white shadow-sm flex-shrink-0">
+            <button onclick="toggleProfileDropdown(event)" id="profile-dropdown-trigger" class="flex items-center gap-2 p-1 sm:pl-2 sm:pr-2.5 rounded-full hover:bg-[#14534B]/60 transition-all border border-transparent hover:border-[#236058] cursor-pointer" title="Click to Switch Portal or View Profile">
+              <div id="top-user-avatar" class="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#14534B] border border-[#236058] flex items-center justify-center font-bold text-xs text-white shadow-sm flex-shrink-0">
                 AF
               </div>
               <div class="hidden lg:block text-left pr-1">
@@ -134,31 +139,31 @@
 
       </div>
 
-      <!-- Row 2: Dedicated Navigation Row Below Logo, Centered & Aligned from Both Sides -->
-      <div class="py-3 border-y border-[#236058]/50 flex items-center justify-center">
+      <!-- Row 2: Dedicated Navigation Row Below Logo (Hidden on mobile <768px, replaced by bottom bar & drawer) -->
+      <div class="hidden md:flex py-3 border-y border-[#236058]/50 items-center justify-center">
         <nav id="header-nav-links" class="flex items-center justify-center gap-1.5 bg-[#09342E]/70 p-1.5 rounded-full border border-[#236058]/60 overflow-x-auto max-w-full mx-auto">
           <!-- Dynamically populated by app.js based on role -->
         </nav>
       </div>
 
       <!-- Hero Greeting Row Matching TalentSync -->
-      <div class="pt-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div class="pt-6 sm:pt-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <span class="text-[15px] font-medium text-[#A3C2BE] block">Assalam-o-Alaikum,</span>
-          <h1 id="hero-user-name" class="text-2xl sm:text-[28px] font-bold text-white tracking-tight mt-0.5">Admin Farhan</h1>
+          <span class="text-xs sm:text-[15px] font-medium text-[#A3C2BE] block">Assalam-o-Alaikum,</span>
+          <h1 id="hero-user-name" class="text-xl sm:text-[28px] font-bold text-white tracking-tight mt-0.5">Admin Farhan</h1>
         </div>
 
-        <!-- Right Controls: Interactive Month/Year Selector, + Add Student, & White Receive Fee Pill -->
-        <div class="flex flex-wrap items-center gap-2.5">
+        <!-- Right Controls: Interactive Month/Year Selector, + Add Student (Full-width touch-friendly on mobile) -->
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
 
           <!-- + Add Student Global Header Button -->
-          <button onclick="openAddStudentModal()" class="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-full bg-[#14534B]/90 hover:bg-[#236058] text-white border border-[#236058] transition-all shadow-sm cursor-pointer" title="Enroll New Student">
+          <button onclick="openAddStudentModal()" class="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2 sm:py-1.5 text-xs font-semibold rounded-full bg-[#14534B]/90 hover:bg-[#236058] text-white border border-[#236058] transition-all shadow-sm cursor-pointer" title="Enroll New Student">
             <svg class="w-3.5 h-3.5 text-[#A3C2BE]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
             <span>+ Add Student</span>
           </button>
           
           <!-- Interactive Calendar / Month & Year Selector Popover Trigger -->
-          <div class="relative flex items-center bg-[#14534B]/90 border border-[#236058] rounded-full p-0.5 shadow-sm">
+          <div class="relative flex items-center justify-between sm:justify-start bg-[#14534B]/90 border border-[#236058] rounded-full p-0.5 shadow-sm w-full sm:w-auto">
             <button type="button" onclick="stepAcademicMonth(-1)" class="w-7 h-7 rounded-full flex items-center justify-center text-[#A3C2BE] hover:text-white hover:bg-[#236058] transition-colors cursor-pointer" title="Previous Month">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
             </button>
@@ -233,7 +238,7 @@
        MAIN PAGE BODY (WARM ALABASTER / SOFT CREAM: #F8F6F1)
        Holds Overlapping KPI cards, Bento Grid, and Dynamic Module Views
        ========================================================================== -->
-  <main class="flex-1 max-w-7xl w-full mx-auto px-6 lg:px-10 pb-16">
+  <main class="flex-1 max-w-7xl w-full mx-auto px-3.5 sm:px-6 lg:px-10 pb-24 md:pb-16 overflow-x-hidden">
     <div id="main-dynamic-content" class="w-full">
       <!-- Dynamic Views injected here via app.js -->
     </div>
@@ -2011,6 +2016,112 @@
 
     </div>
   </div>
+
+  <!-- ==========================================================================
+       MOBILE NAVIGATION SYSTEM (Drawer & Sticky Bottom App Bar)
+       ========================================================================== -->
+
+  <!-- Mobile Slide-out Drawer Backdrop -->
+  <div id="mobile-drawer-backdrop" class="fixed inset-0 bg-[#0E1F1C]/60 backdrop-blur-xs z-50 transition-opacity opacity-0 pointer-events-none md:hidden" onclick="closeMobileDrawer()"></div>
+
+  <!-- Mobile Slide-out Drawer Panel -->
+  <aside id="mobile-drawer" class="fixed top-0 bottom-0 left-0 w-[290px] max-w-[85vw] bg-[#FFFFFF] z-50 shadow-2xl transition-transform duration-250 ease-out -translate-x-full md:hidden flex flex-col">
+    <!-- Drawer Header -->
+    <div class="p-4 bg-[#0E4D45] text-white flex items-center justify-between border-b border-[#14534B]">
+      <div class="flex items-center gap-2">
+        <img src="assets/logo.png" alt="Quranic Skills" class="h-8 w-auto max-w-[150px] object-contain">
+      </div>
+      <button type="button" onclick="closeMobileDrawer()" class="w-8 h-8 rounded-full bg-[#14534B] hover:bg-[#236058] flex items-center justify-center text-white transition-colors cursor-pointer" title="Close Menu">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <!-- Drawer Scrollable Content -->
+    <div class="flex-1 overflow-y-auto p-4 space-y-4">
+      <!-- User Profile Card -->
+      <div class="p-3 rounded-2xl bg-[#F8F6F1] border border-[#ECEAE4] flex items-center gap-3">
+        <div id="drawer-user-avatar" class="w-10 h-10 rounded-full bg-[#0E4D45] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+          AF
+        </div>
+        <div class="min-w-0 flex-1">
+          <div id="drawer-user-name" class="text-xs font-bold text-[#141F1E] truncate">Admin Farhan Al-Husseini</div>
+          <div id="drawer-user-role" class="text-[10px] text-[#7A8684] truncate">Super Administrator</div>
+        </div>
+      </div>
+
+      <!-- Cloud Sync Status in Drawer -->
+      <div onclick="checkCloudSyncStatus(event)" class="p-2.5 rounded-xl bg-[#F8F6F1] hover:bg-[#E8EFEE] border border-[#ECEAE4] flex items-center justify-between cursor-pointer transition-colors shadow-2xs">
+        <div class="flex items-center gap-2">
+          <span id="drawer-cloud-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+          <span class="text-xs font-semibold text-[#141F1E]">Cloud Sync</span>
+        </div>
+        <span id="drawer-cloud-text" class="text-[11px] font-bold text-[#0E4D45]">Firestore Live</span>
+      </div>
+
+      <!-- Primary Navigation Links for Mobile -->
+      <div>
+        <span class="text-[10px] font-bold uppercase tracking-wider text-[#7A8684] block mb-2 px-1">Academy Navigation</span>
+        <div id="mobile-drawer-nav-links" class="space-y-1.5">
+          <!-- Dynamically populated by renderNavLinks() -->
+        </div>
+      </div>
+
+      <!-- Quick Actions for Mobile -->
+      <div class="pt-2 border-t border-[#ECEAE4]">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-[#7A8684] block mb-2 px-1">Quick Actions</span>
+        <div class="space-y-1.5">
+          <button onclick="closeMobileDrawer(); openAddStudentModal()" class="w-full flex items-center justify-center gap-2 py-2 px-3 text-xs font-bold rounded-xl bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-xs cursor-pointer">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
+            <span>+ Enroll Student</span>
+          </button>
+          <button onclick="closeMobileDrawer(); openReceiveFeeModal()" class="w-full flex items-center justify-center gap-2 py-2 px-3 text-xs font-bold rounded-xl bg-white border border-[#0E4D45] text-[#0E4D45] hover:bg-[#F8F6F1] shadow-2xs cursor-pointer">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+            <span>Receive Fee (FIFO)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Switch Role Grid -->
+      <div class="pt-2 border-t border-[#ECEAE4]">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-[#7A8684] block mb-2 px-1">Switch Role Portal</span>
+        <div class="grid grid-cols-2 gap-1.5 text-xs font-semibold">
+          <button onclick="switchRole('admin'); closeMobileDrawer()" class="p-2 rounded-xl text-left bg-[#F8F6F1] hover:bg-[#E8EFEE] text-[#0E4D45] border border-[#ECEAE4] cursor-pointer flex items-center justify-between">
+            <span>Admin</span>
+            <span class="text-[10px] text-[#7A8684] bg-white px-1.5 py-0.5 rounded border border-[#ECEAE4]">Root</span>
+          </button>
+          <button onclick="switchRole('manager'); closeMobileDrawer()" class="p-2 rounded-xl text-left bg-[#F8F6F1] hover:bg-[#E8EFEE] text-[#0E4D45] border border-[#ECEAE4] cursor-pointer flex items-center justify-between">
+            <span>Manager</span>
+            <span class="text-[10px] text-[#7A8684] bg-white px-1.5 py-0.5 rounded border border-[#ECEAE4]">Ops</span>
+          </button>
+          <button onclick="switchRole('teacher'); closeMobileDrawer()" class="p-2 rounded-xl text-left bg-[#F8F6F1] hover:bg-[#E8EFEE] text-[#0E4D45] border border-[#ECEAE4] cursor-pointer flex items-center justify-between">
+            <span>Teacher</span>
+            <span class="text-[10px] text-[#7A8684] bg-white px-1.5 py-0.5 rounded border border-[#ECEAE4]">Faculty</span>
+          </button>
+          <button onclick="switchRole('student'); closeMobileDrawer()" class="p-2 rounded-xl text-left bg-[#F8F6F1] hover:bg-[#E8EFEE] text-[#0E4D45] border border-[#ECEAE4] cursor-pointer flex items-center justify-between">
+            <span>Student</span>
+            <span class="text-[10px] text-[#7A8684] bg-white px-1.5 py-0.5 rounded border border-[#ECEAE4]">Parent</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Drawer Footer -->
+    <div class="p-3 bg-[#F8F6F1] border-t border-[#ECEAE4] flex items-center justify-between">
+      <button onclick="closeMobileDrawer(); openSettingsModal()" class="flex items-center gap-1.5 text-xs font-semibold text-[#334E4B] hover:text-[#0E4D45] cursor-pointer">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        <span>Settings</span>
+      </button>
+      <button onclick="closeMobileDrawer(); openNotificationsModal()" class="flex items-center gap-1.5 text-xs font-semibold text-[#334E4B] hover:text-[#0E4D45] cursor-pointer">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+        <span>Activity</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Sticky Mobile Bottom App Navigation Bar (max-width: 768px) -->
+  <nav id="mobile-bottom-nav" class="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-[#ECEAE4] md:hidden shadow-lg px-1.5 py-1 flex items-center justify-around safe-bottom">
+    <!-- Populated dynamically by renderNavLinks() -->
+  </nav>
 
   <!-- Helper Scripts for Pills -->
   <script>

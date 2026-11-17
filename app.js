@@ -5999,37 +5999,38 @@ function renderAdminFeeMatrixView() {
   });
 
   return `
-    <div class="ts-card p-6 mb-8">
+    <div class="ts-card p-3.5 sm:p-6 mb-8 overflow-hidden">
       
       <!-- Top Title & Quick Action Bar -->
       <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-6 pb-6 border-b border-[#ECEAE4]">
         <div>
-          <div class="flex items-center gap-3">
-            <h2 class="text-xl font-bold text-[#141F1E]">12-Month Academic Fee Ledger (${CURRENT_YEAR})</h2>
-            <span class="ts-badge ts-badge-paid">Admin PII Unlocked</span>
+          <div class="flex items-center gap-2 flex-wrap">
+            <h2 class="text-base sm:text-xl font-bold text-[#141F1E] leading-tight">12-Month Fee Ledger (${CURRENT_YEAR})</h2>
+            <span class="ts-badge ts-badge-paid text-[10px] sm:text-xs">Admin PII Unlocked</span>
           </div>
           <p class="text-xs text-[#7A8684] mt-1">
             Automated FIFO Waterfall settlement, multi-currency ledger, and family group sibling accounting.
           </p>
         </div>
 
-        <div class="flex flex-wrap items-center gap-2.5">
+        <!-- Action Buttons: 50% width each on mobile, auto-width on desktop -->
+        <div class="flex items-center gap-2 w-full sm:w-auto">
           <!-- + Add Student Button -->
-          <button onclick="openAddStudentModal()" class="px-4 py-2 text-xs font-semibold rounded-full bg-[#FFFFFF] hover:bg-[#F8F6F1] text-[#0E4D45] border border-[#ECEAE4] transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer">
-            <svg class="w-4 h-4 text-[#0E4D45]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
-            <span>+ Add Student</span>
+          <button onclick="openAddStudentModal()" class="flex-1 min-w-0 sm:flex-initial px-2.5 sm:px-4 py-2.5 sm:py-2 text-xs font-semibold rounded-full bg-[#FFFFFF] hover:bg-[#F8F6F1] text-[#0E4D45] border border-[#ECEAE4] transition-colors flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer">
+            <svg class="w-4 h-4 text-[#0E4D45] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
+            <span class="truncate">+ Add Student</span>
           </button>
           
           <!-- Receive Fee Primary Button -->
-          <button onclick="openReceiveFeeModal()" class="px-5 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors shadow-sm flex items-center gap-1.5 cursor-pointer">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-            <span>Receive Fee (FIFO)</span>
+          <button onclick="openReceiveFeeModal()" class="flex-1 min-w-0 sm:flex-initial px-2.5 sm:px-5 py-2.5 sm:py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors shadow-sm flex items-center justify-center gap-1.5 cursor-pointer">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+            <span class="truncate">+ Receive Fee</span>
           </button>
         </div>
       </div>
 
-      <!-- Consolidated Stripe/Linear Control Toolbar -->
-      <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3.5 mb-4 pb-4 border-b border-[#ECEAE4]">
+      <!-- Consolidated Stripe/Linear Control Toolbar (Hidden on Mobile) -->
+      <div class="hidden md:flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3.5 mb-4 pb-4 border-b border-[#ECEAE4]">
         
         <!-- Left: Status Filter Pills + Family Toggle -->
         <div class="flex items-center gap-3 flex-wrap sm:flex-nowrap">
@@ -6138,8 +6139,8 @@ function renderAdminFeeMatrixView() {
 
       </div>
 
-      <!-- Single Consolidated Info Strip: Minimalist Legend & Active Month Stats -->
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs mb-4 text-[#7A8684]">
+      <!-- Single Consolidated Info Strip: Minimalist Legend & Active Month Stats (Hidden on Mobile) -->
+      <div class="hidden md:flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs mb-4 text-[#7A8684]">
         <!-- Simplified Legend: Requirement 1: No redundant brackets -->
         <div class="flex items-center gap-3.5 flex-wrap">
           <span class="text-[11px] font-semibold uppercase tracking-wider text-[#9CA3AF]">Legend:</span>
@@ -6177,8 +6178,64 @@ function renderAdminFeeMatrixView() {
         </div>
       </div>
 
-      <!-- 12-Month Matrix Visual Table -->
-      <div class="overflow-x-auto w-full max-w-full rounded-2xl touch-pan-x">
+      <!-- MOBILE ONLY: Clean Full-width Search Bar + Adjacent Filter Button (Requirement 1) -->
+      <div class="flex md:hidden items-center gap-2 w-full mb-3">
+        <div class="relative flex-1 min-w-0">
+          <input 
+            type="text" 
+            id="fee-matrix-mobile-search-input"
+            placeholder="Search student, family, or ID..." 
+            oninput="setSearchQuery(this.value)" 
+            onkeyup="setSearchQuery(this.value)"
+            value="${AppState.searchQuery}" 
+            class="h-10 w-full text-xs bg-[#F8F6F1] border border-[#ECEAE4] rounded-xl pl-9 pr-7 text-[#141F1E] outline-none focus:border-[#0E4D45] shadow-2xs font-medium"
+          />
+          <svg class="w-4 h-4 text-[#7A8684] absolute left-3 top-3 pointer-events-none" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          </svg>
+          ${AppState.searchQuery ? `
+            <button onclick="setSearchQuery('')" class="absolute right-2.5 top-2.5 text-[#7A8684] hover:text-[#141F1E] text-xs font-bold cursor-pointer" title="Clear search">✕</button>
+          ` : ''}
+        </div>
+
+        <!-- Filter Icon Button (Triggers Mobile Bottom Sheet) -->
+        <button 
+          type="button" 
+          onclick="openFeeFilterBottomSheet()" 
+          class="relative h-10 px-3.5 rounded-xl border border-[#ECEAE4] bg-white hover:bg-[#F8F6F1] flex items-center justify-center gap-1.5 text-xs font-semibold text-[#141F1E] shadow-2xs shrink-0 cursor-pointer transition-colors"
+          title="Open Filter Sheet"
+        >
+          <svg class="w-4 h-4 text-[#0E4D45]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.539.092.917.56.917 1.107v1.86a2.25 2.25 0 01-.659 1.59l-5.433 5.433a2.25 2.25 0 00-.659 1.59v3.427a1.5 1.5 0 01-.44 1.06l-2.25 2.25A1.125 1.125 0 0110 21.375V15.25a2.25 2.25 0 00-.659-1.59L3.908 8.227A2.25 2.25 0 013.25 6.645V4.785c0-.547.378-1.015.917-1.107A48.507 48.507 0 0112 3z"></path>
+          </svg>
+          <span class="text-xs font-medium">Filter</span>
+          ${(AppState.selectedFilter !== 'all' || AppState.selectedCurrency !== 'all' || isFamilyGrouped) ? `
+            <span class="w-2 h-2 rounded-full bg-[#0E4D45]"></span>
+          ` : ''}
+        </button>
+      </div>
+
+      <!-- Mobile Active Filter Summary & Quick Stats (Discreet, 1 Line) -->
+      <div class="flex md:hidden items-center justify-between text-[11px] text-[#7A8684] mb-4 pb-2 border-b border-[#ECEAE4]">
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <span class="font-bold text-[#141F1E]">${filtered.length}</span> students
+          ${AppState.selectedFilter !== 'all' ? `
+            <span class="px-1.5 py-0.5 rounded-md bg-[#0E4D45]/10 text-[#0E4D45] font-semibold capitalize">${AppState.selectedFilter}</span>
+          ` : ''}
+          ${isFamilyGrouped ? `
+            <span class="px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700 font-semibold">Family</span>
+          ` : ''}
+          ${AppState.selectedCurrency !== 'all' ? `
+            <span class="px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 font-semibold">${AppState.selectedCurrency}</span>
+          ` : ''}
+        </div>
+        <div class="font-semibold text-[#0E4D45]">
+          ${MONTHS_LIST[CURRENT_MONTH_INDEX]}: $${monthTotalCollected.toLocaleString()}
+        </div>
+      </div>
+
+      <!-- Desktop: 12-Month Matrix Visual Table (Hidden on Mobile) -->
+      <div class="hidden md:block overflow-x-auto w-full max-w-full rounded-2xl touch-pan-x">
         <table class="w-full text-left border-collapse min-w-[980px]">
           <thead>
             <tr class="border-b border-[#ECEAE4] text-[11px] font-semibold text-[#7A8684] uppercase tracking-wider">
@@ -6276,6 +6333,11 @@ function renderAdminFeeMatrixView() {
         </table>
       </div>
 
+      <!-- Mobile: Stacked Responsive Cards View (Requirement 2, 3, 4, 5) -->
+      <div class="block md:hidden space-y-3.5 w-full">
+        ${renderMobileFeeLedgerContent(filtered, isFamilyGrouped)}
+      </div>
+
     </div>
   `;
 }
@@ -6307,14 +6369,359 @@ function setCurrencyFilter(curr) {
 
 function setSearchQuery(q) {
   AppState.searchQuery = q;
-  const inputEl = document.getElementById('fee-matrix-search-input');
-  const cursorPos = inputEl ? inputEl.selectionStart : null;
+  const desktopInput = document.getElementById('fee-matrix-search-input');
+  const mobileInput = document.getElementById('fee-matrix-mobile-search-input');
+  const isMobileActive = mobileInput && document.activeElement === mobileInput;
+  const activeInput = isMobileActive ? mobileInput : desktopInput;
+  const cursorPos = activeInput ? activeInput.selectionStart : null;
+
   renderApp();
-  const refreshedInput = document.getElementById('fee-matrix-search-input');
+
+  const refreshedInput = document.getElementById(isMobileActive ? 'fee-matrix-mobile-search-input' : 'fee-matrix-search-input');
   if (refreshedInput && cursorPos !== null) {
     refreshedInput.focus();
     refreshedInput.setSelectionRange(cursorPos, cursorPos);
   }
+}
+
+// ==========================================
+// MOBILE 12-MONTH FEE LEDGER (STRIPE AESTHETIC)
+// ==========================================
+
+function renderMobileFeeLedgerContent(filtered, isFamilyGrouped) {
+  if (!AppState.students || AppState.students.length === 0) {
+    return `
+      <div class="p-8 text-center bg-[#F8F6F1] rounded-2xl border border-[#ECEAE4]">
+        <div class="w-12 h-12 rounded-full bg-[#E8EFEE] text-[#0E4D45] flex items-center justify-center mx-auto mb-3">
+          <svg class="w-6 h-6 text-[#0E4D45]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"/></svg>
+        </div>
+        <p class="text-xs font-bold text-[#141F1E]">No active students found.</p>
+        <p class="text-[11px] text-[#7A8684] mt-1 mb-4">Enroll your first student to activate the fee ledger.</p>
+        <button onclick="openAddStudentModal()" class="w-full py-2.5 text-xs font-bold rounded-xl bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-sm flex items-center justify-center gap-1.5 cursor-pointer">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+          <span>+ Add Student</span>
+        </button>
+      </div>
+    `;
+  }
+
+  if (filtered.length === 0) {
+    return `
+      <div class="p-8 text-center bg-[#F8F6F1] rounded-2xl border border-[#ECEAE4]">
+        <p class="text-xs font-bold text-[#141F1E]">No students match your filter</p>
+        <p class="text-[11px] text-[#7A8684] mt-1 mb-3">Try adjusting your search query or payment status filter.</p>
+        <button onclick="resetFeeFilters()" class="px-4 py-2 text-xs font-semibold rounded-xl bg-white border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#E8EFEE] transition-colors cursor-pointer">
+          Clear All Filters
+        </button>
+      </div>
+    `;
+  }
+
+  if (isFamilyGrouped) {
+    const famMap = {};
+    filtered.forEach(s => {
+      const famId = s.familyId || s.familyTag || 'FAM-101';
+      if (!famMap[famId]) {
+        famMap[famId] = {
+          familyId: famId,
+          guardianName: s.guardianName || 'Guardian',
+          currency: s.currency || '$',
+          students: [],
+          totalMonthlyFee: 0,
+          totalDue: 0
+        };
+      }
+      famMap[famId].students.push(s);
+      famMap[famId].totalMonthlyFee += s.monthlyFee || 0;
+      famMap[famId].totalDue += getStudentBalanceDue(s);
+    });
+
+    const familyList = Object.values(famMap);
+    if (familyList.length === 0) {
+      return `
+        <div class="p-8 text-center bg-[#F8F6F1] rounded-2xl border border-[#ECEAE4]">
+          <p class="text-xs text-[#7A8684]">No family records match the selected filter.</p>
+        </div>
+      `;
+    }
+    return familyList.map(fam => renderMobileFamilyLedgerGroup(fam)).join('');
+  }
+
+  return filtered.map(student => renderMobileStudentFeeCard(student, false)).join('');
+}
+
+function renderMobileStudentFeeCard(student, isChildOfFamily = false) {
+  const balanceDue = getStudentBalanceDue(student);
+
+  return `
+    <div class="bg-white rounded-2xl border border-[#ECEAE4] p-4 shadow-2xs hover:shadow-sm transition-all overflow-hidden ${isChildOfFamily ? 'border-l-4 border-l-[#0E4D45]' : ''}">
+      
+      <!-- 1. Card Header: Avatar, Name, ID, Monthly Fee, Status Badge -->
+      <div class="flex items-start justify-between gap-2 pb-3 border-b border-[#ECEAE4]/80">
+        
+        <!-- Left: Avatar + Student Meta -->
+        <div class="flex items-center gap-2.5 min-w-0 flex-1">
+          <img 
+            src="${student.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop&crop=faces'}" 
+            alt="${student.firstName}" 
+            class="w-10 h-10 rounded-full object-cover shrink-0 border border-[#ECEAE4]" 
+            onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(student.firstName + ' ' + (student.lastName || ''))}&background=0E4D45&color=fff';" 
+          />
+          <div class="min-w-0 flex-1">
+            <div class="font-bold text-sm text-[#141F1E] truncate">
+              ${student.firstName} ${student.lastName || ''}
+            </div>
+            <div class="text-[11px] text-gray-500 mt-0.5 flex items-center gap-1.5 flex-wrap">
+              <span class="text-[10px] text-gray-400 font-mono">${student.id}</span>
+              ${(student.familyId || student.familyTag) ? `
+                <span class="text-gray-300">·</span>
+                <span class="text-[9px] px-1.5 py-0.2 rounded bg-gray-100 text-gray-600 font-medium">${student.familyId || student.familyTag}</span>
+              ` : ''}
+              <span class="text-gray-300">·</span>
+              <span class="truncate max-w-[110px]">${student.course || 'Quran'}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Monthly Fee & Status Badge -->
+        <div class="text-right shrink-0">
+          <div class="font-bold text-sm text-[#141F1E]">
+            ${student.currency}${student.monthlyFee}<span class="text-[10px] text-gray-400 font-normal">/mo</span>
+          </div>
+          <div class="mt-1">
+            ${renderStudentLedgerStatusPill(student)}
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 2. Compact 12-Month Visualization (No Horizontal Scroll) -->
+      <div class="pt-3 pb-2">
+        <div class="flex items-center justify-between text-[11px] text-[#7A8684] mb-2 font-medium">
+          <span class="text-[10px] uppercase font-bold tracking-wider text-gray-400">12-Month Status (${CURRENT_YEAR})</span>
+          <span class="text-[10px] font-semibold ${balanceDue > 0 ? 'text-red-600' : 'text-emerald-600'}">
+            ${balanceDue > 0 ? `-${student.currency}${balanceDue} Due` : 'Clear ✓'}
+          </span>
+        </div>
+
+        <!-- 12 Color-Coded Circular Indicators (6x2 Grid) -->
+        <div class="grid grid-cols-6 gap-1 w-full">
+          ${student.months.map((m, idx) => {
+            const isCurrentMonth = idx === CURRENT_MONTH_INDEX;
+            let dotBg = 'bg-gray-100 text-gray-400 border-gray-200';
+            let dotIndicator = 'bg-gray-300';
+            let amountText = '—';
+
+            if (m.status === 'paid') {
+              dotBg = 'bg-emerald-50 text-emerald-800 border-emerald-200';
+              dotIndicator = 'bg-emerald-500';
+              amountText = `${student.currency}${m.amountPaid}`;
+            } else if (m.status === 'partial') {
+              dotBg = 'bg-amber-50 text-amber-800 border-amber-200';
+              dotIndicator = 'bg-amber-500';
+              amountText = `${student.currency}${m.amountPaid}`;
+            } else if (m.status === 'advance') {
+              dotBg = 'bg-teal-50 text-teal-800 border-teal-200';
+              dotIndicator = 'bg-teal-500';
+              amountText = `${student.currency}${m.amountPaid}`;
+            } else if (m.status === 'defaulter') {
+              dotBg = 'bg-red-50 text-red-800 border-red-200';
+              dotIndicator = 'bg-red-500';
+              amountText = `${student.currency}${m.feeDue || student.monthlyFee}`;
+            }
+
+            return `
+              <button 
+                type="button"
+                onclick="openMonthDetailModal('${student.id}', ${idx})" 
+                class="flex flex-col items-center justify-center py-1 px-0.5 rounded-xl transition-all hover:bg-gray-50 active:scale-95 cursor-pointer ${isCurrentMonth ? 'bg-[#0E4D45]/[0.05] ring-1 ring-[#0E4D45]' : ''}"
+                title="${m.month} ${CURRENT_YEAR}: ${m.status.toUpperCase()} (${amountText})"
+              >
+                <div class="w-6 h-6 rounded-full flex items-center justify-center border ${dotBg} shadow-2xs">
+                  <span class="w-2 h-2 rounded-full ${dotIndicator}"></span>
+                </div>
+                <span class="text-[9px] font-semibold mt-0.5 ${isCurrentMonth ? 'text-[#0E4D45] font-bold' : 'text-gray-500'}">${m.month}</span>
+              </button>
+            `;
+          }).join('')}
+        </div>
+      </div>
+
+      <!-- 3. Bottom Action Row: Thumb-Friendly Touch Targets -->
+      <div class="flex items-center gap-1.5 pt-2.5 mt-1 border-t border-[#ECEAE4]/80">
+        <button 
+          onclick="openReceiveFeeModal('${student.id}')" 
+          class="flex-1 py-2 px-2 text-xs font-bold rounded-xl bg-[#0E4D45] hover:bg-[#14534B] text-white flex items-center justify-center gap-1 shadow-2xs transition-colors cursor-pointer"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+          <span>Pay Fee</span>
+        </button>
+
+        <button 
+          onclick="openWhatsAppFeeReminder('${student.id}')" 
+          class="py-2 px-2.5 text-xs font-semibold rounded-xl bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#128C7E] flex items-center justify-center gap-1 transition-colors cursor-pointer"
+          title="Send WhatsApp Reminder"
+        >
+          <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+          <span class="text-[11px]">WhatsApp</span>
+        </button>
+
+        <button 
+          onclick="openMonthDetailModal('${student.id}', ${CURRENT_MONTH_INDEX})" 
+          class="py-2 px-2.5 text-xs font-semibold rounded-xl bg-[#F8F6F1] hover:bg-[#E8EFEE] text-[#141F1E] border border-[#ECEAE4] flex items-center justify-center gap-1 transition-colors cursor-pointer"
+          title="Inspect Details"
+        >
+          <span class="text-[11px]">Details</span>
+        </button>
+      </div>
+
+    </div>
+  `;
+}
+
+function renderMobileFamilyLedgerGroup(fam) {
+  const isCollapsed = Boolean(AppState.collapsedFamilies && AppState.collapsedFamilies[fam.familyId]);
+
+  return `
+    <div class="bg-[#F8F6F1] rounded-2xl border border-[#ECEAE4] p-4 shadow-2xs space-y-3">
+      <!-- Family Summary Header -->
+      <div class="flex items-start justify-between gap-2">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded-md bg-[#0E4D45] text-white text-[10px] font-bold">${fam.familyId}</span>
+            <span class="font-bold text-sm text-[#141F1E]">${fam.guardianName}</span>
+          </div>
+          <p class="text-[11px] text-gray-500 mt-0.5">${fam.students.length} Enrolled Sibling${fam.students.length > 1 ? 's' : ''} · ${fam.currency}${fam.totalMonthlyFee}/mo</p>
+        </div>
+        <div class="text-right">
+          <span class="text-[10px] text-gray-400 font-medium block">Total Balance</span>
+          <span class="text-xs font-bold ${fam.totalDue > 0 ? 'text-red-600' : 'text-emerald-600'}">
+            ${fam.totalDue > 0 ? `-${fam.currency}${fam.totalDue} Due` : 'Clear ✓'}
+          </span>
+        </div>
+      </div>
+
+      <!-- Family Action Buttons -->
+      <div class="flex items-center gap-2">
+        <button 
+          onclick="openReceiveFeeModal('${fam.familyId}')" 
+          class="flex-1 py-1.5 px-3 rounded-xl bg-white border border-[#ECEAE4] text-xs font-semibold text-[#0E4D45] hover:bg-[#E8EFEE] transition-colors shadow-2xs cursor-pointer"
+        >
+          Pay Family Invoice
+        </button>
+        <button 
+          onclick="toggleFamilyCollapse('${fam.familyId}')" 
+          class="py-1.5 px-3 rounded-xl bg-white border border-[#ECEAE4] text-xs font-semibold text-[#7A8684] hover:text-[#141F1E] transition-colors shadow-2xs cursor-pointer"
+        >
+          ${isCollapsed ? 'Show Students ▼' : 'Hide Students ▲'}
+        </button>
+      </div>
+
+      <!-- Sibling Student Cards -->
+      ${!isCollapsed ? `
+        <div class="space-y-2.5 pt-1">
+          ${fam.students.map(st => renderMobileStudentFeeCard(st, true)).join('')}
+        </div>
+      ` : ''}
+    </div>
+  `;
+}
+
+function openFeeFilterBottomSheet() {
+  const sheet = document.getElementById('fee-filter-bottom-sheet');
+  if (!sheet) return;
+  updateFeeFilterBottomSheetUI();
+  sheet.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeFeeFilterBottomSheet() {
+  const sheet = document.getElementById('fee-filter-bottom-sheet');
+  if (sheet) {
+    sheet.classList.remove('active');
+    document.body.style.overflow = '';
+  }
+}
+
+function handleFeeFilterBackdropClick(event) {
+  if (event.target.id === 'fee-filter-bottom-sheet') {
+    closeFeeFilterBottomSheet();
+  }
+}
+
+function updateFeeFilterBottomSheetUI() {
+  const statusContainer = document.getElementById('bottom-sheet-status-filters');
+  const familyToggle = document.getElementById('bottom-sheet-family-toggle');
+  const currencyContainer = document.getElementById('bottom-sheet-currency-filters');
+  const monthLabel = document.getElementById('bottom-sheet-month-label');
+
+  if (monthLabel) {
+    monthLabel.textContent = `${MONTHS_LIST[CURRENT_MONTH_INDEX]} ${CURRENT_YEAR}`;
+  }
+
+  if (statusContainer) {
+    const statuses = [
+      { id: 'all', label: `All (${AppState.students ? AppState.students.length : 0})` },
+      { id: 'paid', label: 'Paid' },
+      { id: 'partial', label: 'Partial' },
+      { id: 'advance', label: 'Advance' },
+      { id: 'defaulter', label: 'Overdue' }
+    ];
+    statusContainer.innerHTML = statuses.map(s => {
+      const active = AppState.selectedFilter === s.id;
+      return `
+        <button 
+          type="button" 
+          onclick="setFeeFilter('${s.id}'); updateFeeFilterBottomSheetUI();" 
+          class="py-2 px-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer border text-center ${active ? 'bg-[#0E4D45] text-white border-[#0E4D45] shadow-xs' : 'bg-white text-gray-700 border-[#ECEAE4] hover:bg-[#F8F6F1]'}"
+        >
+          ${s.label}
+        </button>
+      `;
+    }).join('');
+  }
+
+  if (familyToggle) {
+    const isGrouped = Boolean(AppState.groupByFamily || AppState.selectedFilter === 'family');
+    familyToggle.setAttribute('aria-checked', isGrouped ? 'true' : 'false');
+    familyToggle.innerHTML = `
+      <div class="transition-colors relative" style="width: 28px; height: 16px; border-radius: 9999px; background-color: ${isGrouped ? '#0E4D45' : '#CBD5E1'}; position: relative;">
+        <div class="transition-all shadow-xs" style="width: 12px; height: 12px; border-radius: 9999px; background-color: #FFFFFF; position: absolute; top: 2px; left: ${isGrouped ? '14px' : '2px'};"></div>
+      </div>
+      <span class="text-xs font-bold ${isGrouped ? 'text-[#0E4D45]' : 'text-gray-400'}">${isGrouped ? 'ON' : 'OFF'}</span>
+    `;
+  }
+
+  if (currencyContainer) {
+    const currencies = [
+      { id: 'all', label: 'All' },
+      { id: 'USD', label: '$ USD' },
+      { id: 'GBP', label: '£ GBP' },
+      { id: 'EUR', label: '€ EUR' },
+      { id: 'CAD', label: 'C$ CAD' },
+      { id: 'PKR', label: 'Rs PKR' }
+    ];
+    currencyContainer.innerHTML = currencies.map(c => {
+      const active = AppState.selectedCurrency === c.id;
+      return `
+        <button 
+          type="button" 
+          onclick="setCurrencyFilter('${c.id}'); updateFeeFilterBottomSheetUI();" 
+          class="py-2 px-2 rounded-xl text-xs font-semibold transition-all cursor-pointer border text-center ${active ? 'bg-[#0E4D45] text-white border-[#0E4D45] shadow-xs' : 'bg-white text-gray-700 border-[#ECEAE4] hover:bg-[#F8F6F1]'}"
+        >
+          ${c.label}
+        </button>
+      `;
+    }).join('');
+  }
+}
+
+function resetFeeFilters() {
+  AppState.selectedFilter = 'all';
+  AppState.selectedCurrency = 'all';
+  AppState.groupByFamily = false;
+  AppState.searchQuery = '';
+  renderApp();
 }
 
 // ==========================================
@@ -7098,7 +7505,7 @@ function renderAdminStudentsDirectory() {
   ];
 
   return `
-    <div class="ts-card p-6 mb-8">
+    <div class="ts-card p-3.5 sm:p-6 mb-8 overflow-hidden">
       <!-- 1. Top Control Toolbar: Row 1 (Sub-Header Action Row - Reference Matched) -->
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
         <div class="flex items-center gap-3">
@@ -7217,7 +7624,7 @@ function renderAdminTeacherPayrollView() {
   });
 
   return `
-    <div class="ts-card p-6 mb-8">
+    <div class="ts-card p-3.5 sm:p-6 mb-8 overflow-hidden">
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-[#ECEAE4]">
         <div>
           <h2 class="text-xl font-bold text-[#141F1E]">Teacher Payroll & Class Accounting</h2>

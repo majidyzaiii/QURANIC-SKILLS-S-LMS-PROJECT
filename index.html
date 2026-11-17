@@ -54,7 +54,7 @@
     }
   </style>
 </head>
-<body class="bg-[#F8F6F1] text-[#141F1E] min-h-screen flex flex-col font-sans selection:bg-[#0E4D45] selection:text-white">
+<body class="bg-[#F8F6F1] text-[#141F1E] min-h-screen flex flex-col font-sans selection:bg-[#0E4D45] selection:text-white overflow-x-hidden">
 
   <!-- ==========================================================================
        TOP DARK FOREST TEAL HEADER & HERO BANNER (#0E4D45) - EXACT TALENTSYNC GEOMETRY
@@ -2008,6 +2008,88 @@
         </div>
       </div>
 
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MOBILE FEE LEDGER FILTER BOTTOM SHEET (STRIPE AESTHETIC)
+       ========================================================================== -->
+  <div id="fee-filter-bottom-sheet" class="mobile-bottom-sheet-backdrop" onclick="handleFeeFilterBackdropClick(event)">
+    <div class="mobile-bottom-sheet-content" onclick="event.stopPropagation()">
+      <!-- Handle Bar -->
+      <div class="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-4"></div>
+
+      <!-- Header -->
+      <div class="flex items-center justify-between pb-3 mb-4 border-b border-[#ECEAE4]">
+        <div class="flex items-center gap-2">
+          <svg class="w-5 h-5 text-[#0E4D45]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.539.092.917.56.917 1.107v1.86a2.25 2.25 0 01-.659 1.59l-5.433 5.433a2.25 2.25 0 00-.659 1.59v3.427a1.5 1.5 0 01-.44 1.06l-2.25 2.25A1.125 1.125 0 0110 21.375V15.25a2.25 2.25 0 00-.659-1.59L3.908 8.227A2.25 2.25 0 013.25 6.645V4.785c0-.547.378-1.015.917-1.107A48.507 48.507 0 0112 3z"></path></svg>
+          <h3 class="text-base font-bold text-[#141F1E]">Filter Fee Ledger</h3>
+        </div>
+        <button type="button" onclick="closeFeeFilterBottomSheet()" class="w-8 h-8 rounded-full border border-[#ECEAE4] bg-[#F8F6F1] text-[#7A8684] hover:text-[#141F1E] flex items-center justify-center text-sm font-bold cursor-pointer">✕</button>
+      </div>
+
+      <div class="space-y-4 text-xs">
+        <!-- 1. Fee Status Filter Pills -->
+        <div>
+          <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-2">Payment Status</label>
+          <div class="grid grid-cols-3 gap-2" id="bottom-sheet-status-filters">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <!-- 2. Family Group Toggle -->
+        <div class="flex items-center justify-between p-3 rounded-xl bg-[#F8F6F1] border border-[#ECEAE4]">
+          <div>
+            <span class="font-bold text-xs text-[#141F1E] block">Group by Family</span>
+            <span class="text-[11px] text-gray-500">Group sibling accounts together</span>
+          </div>
+          <button 
+            type="button" 
+            role="switch" 
+            id="bottom-sheet-family-toggle"
+            onclick="toggleGroupByFamily(); updateFeeFilterBottomSheetUI();" 
+            class="flex items-center gap-2 cursor-pointer"
+          >
+            <!-- Dynamically populated -->
+          </button>
+        </div>
+
+        <!-- 3. Currency Filter -->
+        <div>
+          <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-2">Currency</label>
+          <div class="grid grid-cols-3 gap-2" id="bottom-sheet-currency-filters">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <!-- 4. Month Stepper / Selector -->
+        <div>
+          <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-2">Active Ledger Month</label>
+          <div class="flex items-center justify-between p-2.5 rounded-xl border border-[#ECEAE4] bg-white shadow-2xs">
+            <button type="button" onclick="stepAcademicMonth(-1); updateFeeFilterBottomSheetUI();" class="w-8 h-8 rounded-lg border border-[#ECEAE4] bg-[#F8F6F1] flex items-center justify-center font-bold text-gray-600 hover:text-[#0E4D45] cursor-pointer">‹</button>
+            <span id="bottom-sheet-month-label" class="text-xs font-bold text-[#141F1E]"></span>
+            <button type="button" onclick="stepAcademicMonth(1); updateFeeFilterBottomSheetUI();" class="w-8 h-8 rounded-lg border border-[#ECEAE4] bg-[#F8F6F1] flex items-center justify-center font-bold text-gray-600 hover:text-[#0E4D45] cursor-pointer">›</button>
+          </div>
+        </div>
+
+        <!-- 5. Legend Guide -->
+        <div class="p-3 rounded-xl bg-gray-50 border border-gray-200">
+          <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-2">Legend Reference</span>
+          <div class="flex flex-wrap items-center gap-3 text-[11px]">
+            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span><span class="font-medium text-gray-700">Paid</span></div>
+            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span><span class="font-medium text-gray-700">Partial</span></div>
+            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-teal-500"></span><span class="font-medium text-gray-700">Advance</span></div>
+            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-red-500"></span><span class="font-medium text-gray-700">Overdue</span></div>
+            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-gray-300"></span><span class="font-medium text-gray-500">Upcoming</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center gap-2 pt-4 mt-4 border-t border-[#ECEAE4]">
+        <button type="button" onclick="resetFeeFilters(); updateFeeFilterBottomSheetUI();" class="flex-1 py-2.5 text-xs font-semibold rounded-xl bg-[#F8F6F1] hover:bg-[#ECEAE4] text-gray-700 border border-[#ECEAE4] transition-colors cursor-pointer">Reset All</button>
+        <button type="button" onclick="closeFeeFilterBottomSheet()" class="flex-1 py-2.5 text-xs font-bold rounded-xl bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-sm transition-colors cursor-pointer">Apply Filters</button>
+      </div>
     </div>
   </div>
 

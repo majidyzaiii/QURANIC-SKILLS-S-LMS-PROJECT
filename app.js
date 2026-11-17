@@ -58,33 +58,23 @@ function updateCloudSyncUI(status, label) {
   const badge = document.getElementById('cloud-sync-status-badge');
   const dot = document.getElementById('cloud-sync-dot');
   const text = document.getElementById('cloud-sync-text');
-  const drawerDot = document.getElementById('drawer-cloud-dot');
-  const drawerText = document.getElementById('drawer-cloud-text');
 
   if (status === 'connected') {
     if (dot) dot.className = 'w-2 h-2 rounded-full bg-emerald-400';
     if (text) text.textContent = label || 'Firestore Live';
     if (badge) badge.title = 'Cloud Firestore is actively syncing in real-time across devices';
-    if (drawerDot) drawerDot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400';
-    if (drawerText) drawerText.textContent = label || 'Firestore Live';
   } else if (status === 'connecting') {
     if (dot) dot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-pulse';
     if (text) text.textContent = label || 'Connecting Cloud...';
     if (badge) badge.title = 'Connecting to Firebase Cloud Firestore...';
-    if (drawerDot) drawerDot.className = 'w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse';
-    if (drawerText) drawerText.textContent = label || 'Connecting...';
   } else if (status === 'api_inactive') {
     if (dot) dot.className = 'w-2 h-2 rounded-full bg-amber-400';
     if (text) text.textContent = label || 'Firestore: Pending Activation';
     if (badge) badge.title = 'Cloud Firestore API needs 1-click activation in Google/Firebase Console. Local cache is active.';
-    if (drawerDot) drawerDot.className = 'w-2.5 h-2.5 rounded-full bg-amber-400';
-    if (drawerText) drawerText.textContent = label || 'Pending Activation';
   } else {
     if (dot) dot.className = 'w-2 h-2 rounded-full bg-amber-500';
     if (text) text.textContent = label || 'Local Cache Active';
     if (badge) badge.title = 'Offline / Local cache active.';
-    if (drawerDot) drawerDot.className = 'w-2.5 h-2.5 rounded-full bg-amber-500';
-    if (drawerText) drawerText.textContent = label || 'Local Cache Active';
   }
 }
 
@@ -4471,34 +4461,41 @@ function updateRolePillUI() {
   }
 }
 
-// Mobile Slide-out Drawer Controller
-function toggleMobileDrawer() {
+// Mobile Slide-out Drawer Controller (High-Performance Hardware-Accelerated)
+function toggleMobileDrawer(e) {
+  if (e && e.stopPropagation) e.stopPropagation();
   const drawer = document.getElementById('mobile-drawer');
   const backdrop = document.getElementById('mobile-drawer-backdrop');
   if (!drawer || !backdrop) return;
-  const isOpen = !drawer.classList.contains('-translate-x-full');
+  const isOpen = drawer.classList.contains('drawer-open');
   if (isOpen) {
-    closeMobileDrawer();
+    closeMobileDrawer(e);
   } else {
-    drawer.classList.remove('-translate-x-full');
-    backdrop.classList.remove('opacity-0', 'pointer-events-none');
-    backdrop.classList.add('opacity-100');
-    document.body.style.overflow = 'hidden';
+    drawer.classList.add('drawer-open');
+    backdrop.classList.add('drawer-open');
+    document.body.classList.add('drawer-open-lock');
   }
 }
 
-function closeMobileDrawer() {
+function closeMobileDrawer(e) {
+  if (e && e.stopPropagation) e.stopPropagation();
   const drawer = document.getElementById('mobile-drawer');
   const backdrop = document.getElementById('mobile-drawer-backdrop');
   if (!drawer || !backdrop) return;
-  drawer.classList.add('-translate-x-full');
-  backdrop.classList.add('opacity-0', 'pointer-events-none');
-  backdrop.classList.remove('opacity-100');
-  document.body.style.overflow = '';
+  drawer.classList.remove('drawer-open');
+  backdrop.classList.remove('drawer-open');
+  document.body.classList.remove('drawer-open-lock');
 }
 
 window.toggleMobileDrawer = toggleMobileDrawer;
 window.closeMobileDrawer = closeMobileDrawer;
+
+// Keyboard accessibility: Escape key closes drawer
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closeMobileDrawer();
+  }
+});
 
 function renderApp() {
   const container = document.getElementById('main-dynamic-content');
@@ -4542,7 +4539,7 @@ function renderNavLinks() {
   if (AppState.currentRole === 'admin') {
     links = [
       { id: 'dashboard', label: 'Dashboard', shortLabel: 'Dashboard', icon: 'M3 3h7v7H3V3zm11 0h7v7h-7V3zm0 11h7v7h-7v-7zM3 14h7v7H3v-7z' },
-      { id: 'fee-matrix', label: '12-Month Fee Ledger', shortLabel: 'Fee Ledger', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
+      { id: 'fee-matrix', label: '12-Month Fee Ledger', shortLabel: 'Fees', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
       { id: 'students', label: 'Full PII Directory', shortLabel: 'Students', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },
       { id: 'teachers', label: 'Teacher Payroll', shortLabel: 'Payroll', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' },
       { id: 'trials-notices', label: 'Trials & Notices', shortLabel: 'Trials', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' }
@@ -4576,7 +4573,7 @@ function renderNavLinks() {
         ? 'bg-[#236058] text-white shadow-sm font-semibold' 
         : 'text-[#A3C2BE] hover:text-white hover:bg-[#14534B]/60 font-medium';
       return `
-        <button onclick="setNavTab('${link.id}')" class="flex items-center gap-2 px-4 py-2 rounded-full text-xs whitespace-nowrap flex-shrink-0 cursor-pointer transition-all ${activeClasses}">
+        <button type="button" onclick="setNavTab('${link.id}')" class="flex items-center gap-2 px-4 py-2 rounded-full text-xs whitespace-nowrap flex-shrink-0 cursor-pointer transition-all ${activeClasses}">
           <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="${link.icon}"></path></svg>
           <span>${link.label}</span>
         </button>
@@ -4592,7 +4589,7 @@ function renderNavLinks() {
         ? 'bg-[#0E4D45] text-white font-bold shadow-xs'
         : 'text-[#141F1E] hover:bg-[#F8F6F1] font-semibold';
       return `
-        <button onclick="setNavTab('${link.id}'); closeMobileDrawer()" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer ${activeClasses}">
+        <button type="button" onclick="setNavTab('${link.id}'); closeMobileDrawer(event)" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer ${activeClasses}">
           <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="${link.icon}"></path></svg>
           <span class="truncate">${link.label}</span>
         </button>
@@ -4606,15 +4603,15 @@ function renderNavLinks() {
     bottomNavContainer.innerHTML = bottomSlice.map(link => {
       const isActive = AppState.activeNav === link.id;
       return `
-        <button onclick="setNavTab('${link.id}')" class="flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all cursor-pointer ${isActive ? 'text-[#0E4D45] font-bold' : 'text-[#7A8684] hover:text-[#141F1E] font-medium'}">
-          <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="${isActive ? '2' : '1.5'}" d="${link.icon}"></path></svg>
-          <span class="text-[10px] leading-tight truncate max-w-[65px]">${link.shortLabel || link.label.split(' ')[0]}</span>
+        <button type="button" onclick="setNavTab('${link.id}')" class="flex flex-col items-center justify-center flex-1 min-w-0 py-1 px-0.5 rounded-xl transition-all cursor-pointer ${isActive ? 'text-[#0E4D45] font-bold' : 'text-[#7A8684] hover:text-[#141F1E] font-medium'}">
+          <svg class="w-5 h-5 mb-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="${isActive ? '2' : '1.5'}" d="${link.icon}"></path></svg>
+          <span class="text-[10px] leading-tight truncate">${link.shortLabel || link.label.split(' ')[0]}</span>
         </button>
       `;
     }).join('') + `
-      <button onclick="toggleMobileDrawer()" class="flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl text-[#7A8684] hover:text-[#0E4D45] font-medium transition-all cursor-pointer" title="More Menu">
-        <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
-        <span class="text-[10px] leading-tight">More</span>
+      <button type="button" onclick="toggleMobileDrawer(event)" class="flex flex-col items-center justify-center flex-1 min-w-0 py-1 px-0.5 rounded-xl text-[#7A8684] hover:text-[#0E4D45] font-medium transition-all cursor-pointer" title="More Menu">
+        <svg class="w-5 h-5 mb-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+        <span class="text-[10px] leading-tight truncate">More</span>
       </button>
     `;
   }

@@ -106,7 +106,7 @@
           </button>
 
           <!-- Mobile Hamburger Drawer Trigger (Visible on mobile only) -->
-          <button type="button" onclick="toggleMobileDrawer()" class="md:hidden w-8 h-8 rounded-full bg-[#14534B]/70 hover:bg-[#14534B] flex items-center justify-center text-[#A3C2BE] hover:text-white transition-colors cursor-pointer" aria-label="Open Navigation Menu" title="Menu">
+          <button type="button" onclick="toggleMobileDrawer(event)" class="md:hidden w-8 h-8 rounded-full bg-[#14534B]/70 hover:bg-[#14534B] flex items-center justify-center text-[#A3C2BE] hover:text-white transition-colors cursor-pointer" aria-label="Open Navigation Menu" title="Menu">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
           </button>
 
@@ -2098,22 +2098,22 @@
        ========================================================================== -->
 
   <!-- Mobile Slide-out Drawer Backdrop -->
-  <div id="mobile-drawer-backdrop" class="fixed inset-0 bg-[#0E1F1C]/60 backdrop-blur-xs z-50 transition-opacity opacity-0 pointer-events-none md:hidden" onclick="closeMobileDrawer()"></div>
+  <div id="mobile-drawer-backdrop" class="fixed inset-0 md:hidden" onclick="closeMobileDrawer(event)"></div>
 
   <!-- Mobile Slide-out Drawer Panel -->
-  <aside id="mobile-drawer" class="fixed top-0 bottom-0 left-0 w-[290px] max-w-[85vw] bg-[#FFFFFF] z-50 shadow-2xl transition-transform duration-250 ease-out -translate-x-full md:hidden flex flex-col">
+  <aside id="mobile-drawer" class="md:hidden flex flex-col">
     <!-- Drawer Header -->
-    <div class="p-4 bg-[#0E4D45] text-white flex items-center justify-between border-b border-[#14534B]">
+    <div class="p-4 bg-[#0E4D45] text-white flex items-center justify-between border-b border-[#14534B] shrink-0">
       <div class="flex items-center gap-2">
         <img src="assets/logo.png" alt="Quranic Skills" class="h-8 w-auto max-w-[150px] object-contain">
       </div>
-      <button type="button" onclick="closeMobileDrawer()" class="w-8 h-8 rounded-full bg-[#14534B] hover:bg-[#236058] flex items-center justify-center text-white transition-colors cursor-pointer" title="Close Menu">
+      <button type="button" onclick="closeMobileDrawer(event)" class="w-8 h-8 rounded-full bg-[#14534B] hover:bg-[#236058] flex items-center justify-center text-white transition-colors cursor-pointer" title="Close Menu">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
     </div>
 
     <!-- Drawer Scrollable Content -->
-    <div class="flex-1 overflow-y-auto p-4 space-y-4">
+    <div class="drawer-scroll-body flex-1 p-4 space-y-4">
       <!-- User Profile Card -->
       <div class="p-3 rounded-2xl bg-[#F8F6F1] border border-[#ECEAE4] flex items-center gap-3">
         <div id="drawer-user-avatar" class="w-10 h-10 rounded-full bg-[#0E4D45] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
@@ -2125,20 +2125,30 @@
         </div>
       </div>
 
-      <!-- Cloud Sync Status in Drawer -->
-      <div onclick="checkCloudSyncStatus(event)" class="p-2.5 rounded-xl bg-[#F8F6F1] hover:bg-[#E8EFEE] border border-[#ECEAE4] flex items-center justify-between cursor-pointer transition-colors shadow-2xs">
-        <div class="flex items-center gap-2">
-          <span id="drawer-cloud-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
-          <span class="text-xs font-semibold text-[#141F1E]">Cloud Sync</span>
-        </div>
-        <span id="drawer-cloud-text" class="text-[11px] font-bold text-[#0E4D45]">Firestore Live</span>
-      </div>
-
-      <!-- Primary Navigation Links for Mobile -->
+      <!-- Primary Navigation Links for Mobile (Statically rendered for instant consistency) -->
       <div>
         <span class="text-[10px] font-bold uppercase tracking-wider text-[#7A8684] block mb-2 px-1">Academy Navigation</span>
         <div id="mobile-drawer-nav-links" class="space-y-1.5">
-          <!-- Dynamically populated by renderNavLinks() -->
+          <button type="button" onclick="setNavTab('dashboard'); closeMobileDrawer(event)" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer bg-[#0E4D45] text-white font-bold shadow-xs">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 3h7v7H3V3zm11 0h7v7h-7V3zm0 11h7v7h-7v-7zM3 14h7v7H3v-7z"></path></svg>
+            <span class="truncate">Dashboard</span>
+          </button>
+          <button type="button" onclick="setNavTab('fee-matrix'); closeMobileDrawer(event)" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer text-[#141F1E] hover:bg-[#F8F6F1] font-semibold">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <span class="truncate">12-Month Fee Ledger</span>
+          </button>
+          <button type="button" onclick="setNavTab('students'); closeMobileDrawer(event)" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer text-[#141F1E] hover:bg-[#F8F6F1] font-semibold">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+            <span class="truncate">Full PII Directory</span>
+          </button>
+          <button type="button" onclick="setNavTab('teachers'); closeMobileDrawer(event)" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer text-[#141F1E] hover:bg-[#F8F6F1] font-semibold">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+            <span class="truncate">Teacher Payroll</span>
+          </button>
+          <button type="button" onclick="setNavTab('trials-notices'); closeMobileDrawer(event)" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer text-[#141F1E] hover:bg-[#F8F6F1] font-semibold">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+            <span class="truncate">Trials & Notices</span>
+          </button>
         </div>
       </div>
 
@@ -2146,11 +2156,11 @@
       <div class="pt-2 border-t border-[#ECEAE4]">
         <span class="text-[10px] font-bold uppercase tracking-wider text-[#7A8684] block mb-2 px-1">Quick Actions</span>
         <div class="space-y-1.5">
-          <button onclick="closeMobileDrawer(); openAddStudentModal()" class="w-full flex items-center justify-center gap-2 py-2 px-3 text-xs font-bold rounded-xl bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-xs cursor-pointer">
+          <button type="button" onclick="closeMobileDrawer(event); openAddStudentModal()" class="w-full flex items-center justify-center gap-2 py-2 px-3 text-xs font-bold rounded-xl bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-xs cursor-pointer">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
             <span>+ Enroll Student</span>
           </button>
-          <button onclick="closeMobileDrawer(); openReceiveFeeModal()" class="w-full flex items-center justify-center gap-2 py-2 px-3 text-xs font-bold rounded-xl bg-white border border-[#0E4D45] text-[#0E4D45] hover:bg-[#F8F6F1] shadow-2xs cursor-pointer">
+          <button type="button" onclick="closeMobileDrawer(event); openReceiveFeeModal()" class="w-full flex items-center justify-center gap-2 py-2 px-3 text-xs font-bold rounded-xl bg-white border border-[#0E4D45] text-[#0E4D45] hover:bg-[#F8F6F1] shadow-2xs cursor-pointer">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
             <span>Receive Fee (FIFO)</span>
           </button>
@@ -2161,19 +2171,19 @@
       <div class="pt-2 border-t border-[#ECEAE4]">
         <span class="text-[10px] font-bold uppercase tracking-wider text-[#7A8684] block mb-2 px-1">Switch Role Portal</span>
         <div class="grid grid-cols-2 gap-1.5 text-xs font-semibold">
-          <button onclick="switchRole('admin'); closeMobileDrawer()" class="p-2 rounded-xl text-left bg-[#F8F6F1] hover:bg-[#E8EFEE] text-[#0E4D45] border border-[#ECEAE4] cursor-pointer flex items-center justify-between">
+          <button type="button" onclick="switchRole('admin'); closeMobileDrawer(event)" class="p-2 rounded-xl text-left bg-[#F8F6F1] hover:bg-[#E8EFEE] text-[#0E4D45] border border-[#ECEAE4] cursor-pointer flex items-center justify-between">
             <span>Admin</span>
             <span class="text-[10px] text-[#7A8684] bg-white px-1.5 py-0.5 rounded border border-[#ECEAE4]">Root</span>
           </button>
-          <button onclick="switchRole('manager'); closeMobileDrawer()" class="p-2 rounded-xl text-left bg-[#F8F6F1] hover:bg-[#E8EFEE] text-[#0E4D45] border border-[#ECEAE4] cursor-pointer flex items-center justify-between">
+          <button type="button" onclick="switchRole('manager'); closeMobileDrawer(event)" class="p-2 rounded-xl text-left bg-[#F8F6F1] hover:bg-[#E8EFEE] text-[#0E4D45] border border-[#ECEAE4] cursor-pointer flex items-center justify-between">
             <span>Manager</span>
             <span class="text-[10px] text-[#7A8684] bg-white px-1.5 py-0.5 rounded border border-[#ECEAE4]">Ops</span>
           </button>
-          <button onclick="switchRole('teacher'); closeMobileDrawer()" class="p-2 rounded-xl text-left bg-[#F8F6F1] hover:bg-[#E8EFEE] text-[#0E4D45] border border-[#ECEAE4] cursor-pointer flex items-center justify-between">
+          <button type="button" onclick="switchRole('teacher'); closeMobileDrawer(event)" class="p-2 rounded-xl text-left bg-[#F8F6F1] hover:bg-[#E8EFEE] text-[#0E4D45] border border-[#ECEAE4] cursor-pointer flex items-center justify-between">
             <span>Teacher</span>
             <span class="text-[10px] text-[#7A8684] bg-white px-1.5 py-0.5 rounded border border-[#ECEAE4]">Faculty</span>
           </button>
-          <button onclick="switchRole('student'); closeMobileDrawer()" class="p-2 rounded-xl text-left bg-[#F8F6F1] hover:bg-[#E8EFEE] text-[#0E4D45] border border-[#ECEAE4] cursor-pointer flex items-center justify-between">
+          <button type="button" onclick="switchRole('student'); closeMobileDrawer(event)" class="p-2 rounded-xl text-left bg-[#F8F6F1] hover:bg-[#E8EFEE] text-[#0E4D45] border border-[#ECEAE4] cursor-pointer flex items-center justify-between">
             <span>Student</span>
             <span class="text-[10px] text-[#7A8684] bg-white px-1.5 py-0.5 rounded border border-[#ECEAE4]">Parent</span>
           </button>
@@ -2182,12 +2192,12 @@
     </div>
 
     <!-- Drawer Footer -->
-    <div class="p-3 bg-[#F8F6F1] border-t border-[#ECEAE4] flex items-center justify-between">
-      <button onclick="closeMobileDrawer(); openSettingsModal()" class="flex items-center gap-1.5 text-xs font-semibold text-[#334E4B] hover:text-[#0E4D45] cursor-pointer">
+    <div class="p-3 bg-[#F8F6F1] border-t border-[#ECEAE4] flex items-center justify-between shrink-0">
+      <button type="button" onclick="closeMobileDrawer(event); openSettingsModal()" class="flex items-center gap-1.5 text-xs font-semibold text-[#334E4B] hover:text-[#0E4D45] cursor-pointer">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
         <span>Settings</span>
       </button>
-      <button onclick="closeMobileDrawer(); openNotificationsModal()" class="flex items-center gap-1.5 text-xs font-semibold text-[#334E4B] hover:text-[#0E4D45] cursor-pointer">
+      <button type="button" onclick="closeMobileDrawer(event); openNotificationsModal()" class="flex items-center gap-1.5 text-xs font-semibold text-[#334E4B] hover:text-[#0E4D45] cursor-pointer">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
         <span>Activity</span>
       </button>
@@ -2195,8 +2205,27 @@
   </aside>
 
   <!-- Sticky Mobile Bottom App Navigation Bar (max-width: 768px) -->
-  <nav id="mobile-bottom-nav" class="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-[#ECEAE4] md:hidden shadow-lg px-1.5 py-1 flex items-center justify-around safe-bottom">
-    <!-- Populated dynamically by renderNavLinks() -->
+  <nav id="mobile-bottom-nav" class="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-[#ECEAE4] md:hidden shadow-lg px-1 py-1 flex items-center justify-around safe-bottom">
+    <button type="button" onclick="setNavTab('dashboard')" class="flex flex-col items-center justify-center flex-1 min-w-0 py-1 px-0.5 rounded-xl transition-all cursor-pointer text-[#0E4D45] font-bold">
+      <svg class="w-5 h-5 mb-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h7v7H3V3zm11 0h7v7h-7V3zm0 11h7v7h-7v-7zM3 14h7v7H3v-7z"></path></svg>
+      <span class="text-[10px] leading-tight truncate">Dashboard</span>
+    </button>
+    <button type="button" onclick="setNavTab('fee-matrix')" class="flex flex-col items-center justify-center flex-1 min-w-0 py-1 px-0.5 rounded-xl transition-all cursor-pointer text-[#7A8684] hover:text-[#141F1E] font-medium">
+      <svg class="w-5 h-5 mb-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+      <span class="text-[10px] leading-tight truncate">Fees</span>
+    </button>
+    <button type="button" onclick="setNavTab('students')" class="flex flex-col items-center justify-center flex-1 min-w-0 py-1 px-0.5 rounded-xl transition-all cursor-pointer text-[#7A8684] hover:text-[#141F1E] font-medium">
+      <svg class="w-5 h-5 mb-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+      <span class="text-[10px] leading-tight truncate">Students</span>
+    </button>
+    <button type="button" onclick="setNavTab('teachers')" class="flex flex-col items-center justify-center flex-1 min-w-0 py-1 px-0.5 rounded-xl transition-all cursor-pointer text-[#7A8684] hover:text-[#141F1E] font-medium">
+      <svg class="w-5 h-5 mb-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+      <span class="text-[10px] leading-tight truncate">Payroll</span>
+    </button>
+    <button type="button" onclick="toggleMobileDrawer(event)" class="flex flex-col items-center justify-center flex-1 min-w-0 py-1 px-0.5 rounded-xl text-[#7A8684] hover:text-[#0E4D45] font-medium transition-all cursor-pointer" title="More Menu">
+      <svg class="w-5 h-5 mb-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+      <span class="text-[10px] leading-tight truncate">More</span>
+    </button>
   </nav>
 
   <!-- Helper Scripts for Pills -->

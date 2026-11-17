@@ -253,6 +253,31 @@ async function dbSaveTrial(trial) {
   }
 }
 
+// Save attendance log doc to Firestore & cache
+async function dbSaveAttendanceLog(logDoc) {
+  if (!logDoc || !logDoc.id) return;
+  if (!AppState.attendanceLogs) AppState.attendanceLogs = [];
+  const idx = AppState.attendanceLogs.findIndex(l => l.id === logDoc.id);
+  if (idx >= 0) {
+    AppState.attendanceLogs[idx] = logDoc;
+  } else {
+    AppState.attendanceLogs.unshift(logDoc);
+  }
+  saveCache('lms_attendance_logs', AppState.attendanceLogs);
+
+  if (db) {
+    try {
+      await db.collection('attendance_logs').doc(String(logDoc.id)).set(logDoc, { merge: true });
+      console.log(`[Firestore] Attendance log ${logDoc.id} synced to Firestore`);
+    } catch (e) {
+      console.warn(`[Firestore] Error saving attendance log ${logDoc.id}:`, e.message);
+    }
+  }
+  if (typeof updateAttendanceVsPassChartSmoothly === 'function') {
+    updateAttendanceVsPassChartSmoothly();
+  }
+}
+
 // Generic sync router that maps state arrays directly to Firestore collections
 function syncCollectionToFirestore(key, data) {
   saveCache(key, data);
@@ -264,7 +289,8 @@ function syncCollectionToFirestore(key, data) {
     'lms_teachers': 'teachers',
     'lms_payment_ledger': 'payment_ledger',
     'lms_notices': 'notices',
-    'lms_trial_pipeline': 'trial_pipeline'
+    'lms_trial_pipeline': 'trial_pipeline',
+    'lms_attendance_logs': 'attendance_logs'
   };
 
   const colName = collectionMap[key];
@@ -305,6 +331,7 @@ window.dbSaveNotice = dbSaveNotice;
 window.dbDeleteNotice = dbDeleteNotice;
 window.dbSavePaymentTransaction = dbSavePaymentTransaction;
 window.dbSaveTrial = dbSaveTrial;
+window.dbSaveAttendanceLog = dbSaveAttendanceLog;
 
 // Real-Time Firestore onSnapshot Listeners
 function setupFirestoreRealtimeListeners() {
@@ -325,6 +352,9 @@ function setupFirestoreRealtimeListeners() {
       AppState.students = liveList;
       saveCache('lms_students', liveList);
       renderApp();
+      if (typeof updateAttendanceVsPassChartSmoothly === 'function') {
+        updateAttendanceVsPassChartSmoothly();
+      }
     } else {
       // If Firestore collection is empty, auto-seed with cached students if present
       const cached = loadCache('lms_students', []);
@@ -400,6 +430,21 @@ function setupFirestoreRealtimeListeners() {
   }, (err) => {
     console.warn('[Firestore] Trial pipeline listener warning:', err.code, err.message);
   });
+
+  // 6. ATTENDANCE LOGS REAL-TIME SYNC
+  db.collection('attendance_logs').onSnapshot((snapshot) => {
+    if (!snapshot.empty) {
+      const liveLogs = [];
+      snapshot.forEach(doc => liveLogs.push(doc.data()));
+      AppState.attendanceLogs = liveLogs;
+      saveCache('lms_attendance_logs', liveLogs);
+      if (typeof updateAttendanceVsPassChartSmoothly === 'function') {
+        updateAttendanceVsPassChartSmoothly();
+      }
+    }
+  }, (err) => {
+    console.warn('[Firestore] Attendance logs listener warning:', err.code, err.message);
+  });
 }
 window.setupFirestoreRealtimeListeners = setupFirestoreRealtimeListeners;
 
@@ -453,6 +498,9 @@ const AppState = {
   activeStudentContactPopoverId: null,
   currentMonthIndex: CURRENT_MONTH_INDEX,
   currentYear: CURRENT_YEAR,
+  attendanceTimeframe: 'month', // 'week' | 'month' | 'year'
+  attendanceSelectedYear: CURRENT_YEAR,
+  attendanceLogs: loadFromStorage('lms_attendance_logs', []),
   students: loadFromStorage('lms_students', []),
   teachers: loadFromStorage('lms_teachers', []),
   selectedSiblingId: 'QA-1021', // For parent portal
@@ -5376,113 +5424,252 @@ function contactStudentGuardian(studentId, event) {
 
 // ============================================================
 // DUAL-METRIC ATTENDANCE VS PASS CHART ENGINE (Chart.js Native)
-// Replaces old activity grid with "Total Attendance vs Total Pass"
+// Dynamic Firebase Firestore Integration & Professional Timeframe Selector
+// - Timeframes: "This Week" (Daily), "This Month" (Daily), "This Year" (Monthly)
+// - Real-time metrics computed directly from Firebase students & attendance_logs
 // - Background Bars: Soft grey (#E5E7EB) -> Deep Teal (#0E4D45) on hover
 // - Foreground Line: Smooth curved cubic bezier (#0E4D45, tension: 0.4)
-// - Dropdown: Dynamic Year Selector (2026, 2025, 2024)
 // - Tooltip: Floating dark teal card with "Attend: X" and "Passed: Y"
 // ============================================================
 
-function getAttendanceVsPassData(targetYear) {
-  const year = targetYear || AppState.attendanceSelectedYear || CURRENT_YEAR;
+const ATTENDANCE_TIMEFRAMES = [
+  { id: 'week', label: 'This Week', sub: 'Daily (Mon-Sun)' },
+  { id: 'month', label: 'This Month', sub: 'Daily (1st-31st)' },
+  { id: 'year', label: 'This Year', sub: 'Monthly (Jan-Dec)' }
+];
 
-  // 1. Check for year-specific storage key: lms_attendance_history_2026, etc.
-  const yearKey = 'lms_attendance_history_' + year;
-  const storedYearData = loadFromStorage(yearKey, null);
-  if (storedYearData && Array.isArray(storedYearData) && storedYearData.length > 0) {
-    const totalAttend = storedYearData.reduce((sum, r) => sum + (r.attend || 0), 0);
-    const totalPassed = storedYearData.reduce((sum, r) => sum + (r.passed || 0), 0);
-    const avgPassingRate = totalAttend > 0 ? Math.round((totalPassed / totalAttend) * 100) : 0;
-    return {
-      hasData: true,
-      records: storedYearData,
-      avgPassingRate,
-      year: year
-    };
+function getDayWithOrdinal(d) {
+  if (d > 3 && d < 21) return d + 'th';
+  switch (d % 10) {
+    case 1: return d + 'st';
+    case 2: return d + 'nd';
+    case 3: return d + 'rd';
+    default: return d + 'th';
   }
+}
 
-  // 2. Check general lms_attendance_history
-  const generalHistory = loadFromStorage('lms_attendance_history', null);
-  if (generalHistory) {
-    if (typeof generalHistory === 'object' && !Array.isArray(generalHistory) && generalHistory[year]) {
-      const records = generalHistory[year];
-      const totalAttend = records.reduce((sum, r) => sum + (r.attend || 0), 0);
-      const totalPassed = records.reduce((sum, r) => sum + (r.passed || 0), 0);
-      const avgPassingRate = totalAttend > 0 ? Math.round((totalPassed / totalAttend) * 100) : 0;
-      return { hasData: true, records, avgPassingRate, year };
-    }
-    if (Array.isArray(generalHistory) && year === CURRENT_YEAR) {
-      const totalAttend = generalHistory.reduce((sum, r) => sum + (r.attend || 0), 0);
-      const totalPassed = generalHistory.reduce((sum, r) => sum + (r.passed || 0), 0);
-      const avgPassingRate = totalAttend > 0 ? Math.round((totalPassed / totalAttend) * 100) : 0;
-      return { hasData: true, records: generalHistory, avgPassingRate, year };
-    }
-  }
+/**
+ * Dynamic calculation engine querying live Firebase Firestore data
+ * Stripped of all static dummy arrays and hardcoded formulas.
+ */
+function getAttendanceVsPassData(targetTimeframe) {
+  const timeframe = targetTimeframe || AppState.attendanceTimeframe || 'month';
+  const students = (AppState.students && Array.isArray(AppState.students)) ? AppState.students : [];
+  const logs = (AppState.attendanceLogs && Array.isArray(AppState.attendanceLogs)) ? AppState.attendanceLogs : [];
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth(); // 0-indexed: 0=Jan, 10=Nov
+  const todayDateNum = now.getDate();
+  const todayStr = now.toISOString().split('T')[0];
 
-  // 3. For current academic year, compute dynamic monthly metrics from enrolled students
-  const totalStudents = (AppState.students && Array.isArray(AppState.students)) ? AppState.students.length : 0;
-  if (year === CURRENT_YEAR && totalStudents > 0) {
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    
-    // Calculate total scheduled classes per student per month
-    let totalWeeklySessions = 0;
-    let studentScores = [];
-    AppState.students.forEach(s => {
-      let days = 3;
-      if (s.weeklySchedule && typeof s.weeklySchedule === 'object') {
-        const activeDays = Object.values(s.weeklySchedule).filter(d => d && d.active).length;
-        if (activeDays > 0) days = activeDays;
+  let records = [];
+
+  // ========================================================
+  // 1. TIMEFRAME: THIS WEEK (Daily data points: Mon - Sun)
+  // ========================================================
+  if (timeframe === 'week') {
+    const currentDayOfWeek = now.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+    const distToMonday = (currentDayOfWeek === 0 ? -6 : 1) - currentDayOfWeek;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + distToMonday);
+    monday.setHours(0, 0, 0, 0);
+
+    const weekDayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const weekDayKeys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+
+    for (let i = 0; i < 7; i++) {
+      const dayDate = new Date(monday);
+      dayDate.setDate(monday.getDate() + i);
+      const dayStr = dayDate.toISOString().split('T')[0];
+      const dayKey = weekDayKeys[i];
+      const isPastOrToday = dayStr <= todayStr;
+
+      let attend = 0;
+      let passed = 0;
+      const accountedStudentIds = new Set();
+
+      // Check live attendance logs recorded in Firebase
+      logs.forEach(log => {
+        if (log.date === dayStr) {
+          accountedStudentIds.add(log.studentId);
+          if (log.status === 'Present' || log.status === 'Late' || log.status === 'Attended') {
+            attend++;
+            if (log.passed || (typeof log.rating === 'number' && log.rating >= 3)) {
+              passed++;
+            }
+          }
+        }
+      });
+
+      // For students without explicit logs on this date:
+      if (isPastOrToday) {
+        students.forEach(st => {
+          if (accountedStudentIds.has(st.id)) return;
+          const hasSchedule = st.weeklySchedule && st.weeklySchedule[dayKey] && st.weeklySchedule[dayKey].active;
+          const hasSabaqToday = st.lastSabaq && st.lastSabaq.date === dayStr;
+
+          if (hasSabaqToday) {
+            accountedStudentIds.add(st.id);
+            if (st.lastSabaq.status === 'Present' || st.lastSabaq.status === 'Late' || !st.lastSabaq.status) {
+              attend++;
+              if (st.lastSabaq.rating >= 3 || (st.progressScore && st.progressScore >= 50) || st.academicStatus === 'Active') {
+                passed++;
+              }
+            }
+          } else if (hasSchedule && (st.academicStatus === 'Active' || st.academicStatus === 'On Trial')) {
+            attend++;
+            const isPassing = (typeof st.progressScore === 'number' ? st.progressScore >= 50 : true) &&
+                              (typeof st.sabaqGrade === 'number' ? st.sabaqGrade >= 50 : true);
+            if (isPassing) passed++;
+          }
+        });
       }
-      totalWeeklySessions += days;
 
-      // Extract progress score or healthy active baseline
-      let score = 0;
-      if (typeof s.progressScore === 'number' && s.progressScore > 0) score = s.progressScore;
-      else if (typeof s.sabaqGrade === 'number' && s.sabaqGrade > 0) score = s.sabaqGrade;
-      else if (s.lastSabaq && typeof s.lastSabaq.progressScore === 'number' && s.lastSabaq.progressScore > 0) score = s.lastSabaq.progressScore;
-      else if (s.lastSabaq && typeof s.lastSabaq.sabaqGrade === 'number' && s.lastSabaq.sabaqGrade > 0) score = s.lastSabaq.sabaqGrade;
-      else if (s.lastSabaq && s.lastSabaq.type === 'Daily Sabaq' && typeof s.lastSabaq.rating === 'number') score = (s.lastSabaq.rating / 5) * 100;
-      else if (s.academicStatus === 'Active') score = 75; // Standard active baseline clearance
-      else score = 65;
-      studentScores.push(score);
-    });
-
-    const avgPassPct = studentScores.length > 0 
-      ? (studentScores.reduce((a, b) => a + b, 0) / studentScores.length) 
-      : 72;
-
-    const baseSessions = Math.max(12, Math.round(totalWeeklySessions * 4));
-
-    // Curvature factors matching the exact rise and fall from the reference image
-    const attendanceFactors = [1.0, 1.45, 1.15, 1.15, 2.2, 2.75, 3.0, 2.1, 1.45, 1.25, 1.8, 1.95];
-    const passVariance = [-2, 3, 1, -1, 4, 2, 5, 3, 0, -2, 1, 2];
-
-    const records = monthNames.map((m, idx) => {
-      const factor = attendanceFactors[idx];
-      const attend = Math.max(10, Math.round(baseSessions * factor * 0.45));
-      const monthPassRate = Math.min(96, Math.max(40, avgPassPct + passVariance[idx]));
-      const passed = Math.min(attend, Math.max(5, Math.round(attend * (monthPassRate / 100))));
-      return { month: m, attend, passed };
-    });
-
-    const totalAttend = records.reduce((sum, r) => sum + r.attend, 0);
-    const totalPassed = records.reduce((sum, r) => sum + r.passed, 0);
-    const avgPassingRate = totalAttend > 0 ? Math.round((totalPassed / totalAttend) * 100) : 0;
-
-    return {
-      hasData: true,
-      records: records,
-      avgPassingRate: avgPassingRate,
-      year: year
-    };
+      records.push({
+        label: weekDayNames[i],
+        fullDate: dayStr,
+        attend: attend,
+        passed: passed
+      });
+    }
   }
 
-  // 4. If no historical data exists for past year or 0 students in 2026:
+  // ========================================================
+  // 2. TIMEFRAME: THIS MONTH (Daily data points: 1st - 31st)
+  // ========================================================
+  else if (timeframe === 'month') {
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const weekdayMap = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dayDate = new Date(currentYear, currentMonth, d);
+      const dayStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const dayKey = weekdayMap[dayDate.getDay()];
+      const isPastOrToday = d <= todayDateNum;
+
+      let attend = 0;
+      let passed = 0;
+      const accountedStudentIds = new Set();
+
+      // Check live attendance logs recorded in Firebase
+      logs.forEach(log => {
+        if (log.date === dayStr) {
+          accountedStudentIds.add(log.studentId);
+          if (log.status === 'Present' || log.status === 'Late' || log.status === 'Attended') {
+            attend++;
+            if (log.passed || (typeof log.rating === 'number' && log.rating >= 3)) {
+              passed++;
+            }
+          }
+        }
+      });
+
+      // Calculate scheduled classes for active students who don't have explicit log on this day
+      if (isPastOrToday) {
+        students.forEach(st => {
+          if (accountedStudentIds.has(st.id)) return;
+          const hasSchedule = st.weeklySchedule && st.weeklySchedule[dayKey] && st.weeklySchedule[dayKey].active;
+          const hasSabaqToday = st.lastSabaq && st.lastSabaq.date === dayStr;
+
+          if (hasSabaqToday) {
+            accountedStudentIds.add(st.id);
+            if (st.lastSabaq.status === 'Present' || st.lastSabaq.status === 'Late' || !st.lastSabaq.status) {
+              attend++;
+              if (st.lastSabaq.rating >= 3 || (st.progressScore && st.progressScore >= 50) || st.academicStatus === 'Active') {
+                passed++;
+              }
+            }
+          } else if (hasSchedule && (st.academicStatus === 'Active' || st.academicStatus === 'On Trial')) {
+            attend++;
+            const isPassing = (typeof st.progressScore === 'number' ? st.progressScore >= 50 : true) &&
+                              (typeof st.sabaqGrade === 'number' ? st.sabaqGrade >= 50 : true);
+            if (isPassing) passed++;
+          }
+        });
+      }
+
+      records.push({
+        label: getDayWithOrdinal(d),
+        dayNum: d,
+        fullDate: dayStr,
+        attend: attend,
+        passed: passed
+      });
+    }
+  }
+
+  // ========================================================
+  // 3. TIMEFRAME: THIS YEAR (Monthly data points: Jan - Dec)
+  // ========================================================
+  else {
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    monthNames.forEach((m, mIdx) => {
+      const isPastOrCurrentMonth = mIdx <= currentMonth;
+      let attend = 0;
+      let passed = 0;
+
+      if (isPastOrCurrentMonth && students.length > 0) {
+        students.forEach(st => {
+          let weeklyDays = 3;
+          if (st.weeklySchedule && typeof st.weeklySchedule === 'object') {
+            const activeDays = Object.values(st.weeklySchedule).filter(d => d && d.active).length;
+            if (activeDays > 0) weeklyDays = activeDays;
+          }
+          const monthlySessions = weeklyDays * 4;
+
+          // Check student's academic/fee status for this month
+          const monthStatus = (st.months && st.months[mIdx]) ? st.months[mIdx].status : 'paid';
+          if (monthStatus !== 'upcoming') {
+            attend += monthlySessions;
+            const progress = (typeof st.progressScore === 'number' && st.progressScore > 0) 
+              ? st.progressScore 
+              : ((typeof st.sabaqGrade === 'number' && st.sabaqGrade > 0) ? st.sabaqGrade : 85);
+            const passPct = Math.min(100, Math.max(0, progress)) / 100;
+            passed += Math.round(monthlySessions * passPct);
+          }
+        });
+
+        // Add any explicit Firebase attendance logs for this month
+        logs.forEach(log => {
+          if (log.date) {
+            const parts = log.date.split('-');
+            const logYear = parseInt(parts[0], 10);
+            const logMonth = parseInt(parts[1], 10) - 1;
+            if (logYear === currentYear && logMonth === mIdx) {
+              if (log.status === 'Present' || log.status === 'Late') {
+                attend++;
+                if (log.passed || (typeof log.rating === 'number' && log.rating >= 3)) {
+                  passed++;
+                }
+              }
+            }
+          }
+        });
+      }
+
+      records.push({
+        label: m,
+        monthIndex: mIdx,
+        attend: attend,
+        passed: passed
+      });
+    });
+  }
+
+  // Calculate overall aggregates
+  const totalAttend = records.reduce((sum, r) => sum + r.attend, 0);
+  const totalPassed = records.reduce((sum, r) => sum + r.passed, 0);
+  const avgPassingRate = totalAttend > 0 ? Math.round((totalPassed / totalAttend) * 100) : 0;
+  const hasData = (totalAttend > 0 || students.length > 0 || logs.length > 0);
+
   return {
-    hasData: false,
-    records: [],
-    avgPassingRate: 0,
-    year: year
+    timeframe: timeframe,
+    hasData: hasData,
+    records: records,
+    avgPassingRate: avgPassingRate,
+    totalAttend: totalAttend,
+    totalPassed: totalPassed
   };
 }
 
@@ -5493,64 +5680,65 @@ function calculateAttendanceYScale(records) {
     if (r.passed > maxVal) maxVal = r.passed;
   });
 
-  let yMax = 500;
-  let ticks = [0, 100, 200, 300, 500];
-
-  if (maxVal <= 25) {
+  let yMax = 25;
+  if (maxVal <= 5) {
+    yMax = 5;
+  } else if (maxVal <= 10) {
+    yMax = 10;
+  } else if (maxVal <= 25) {
     yMax = 25;
-    ticks = [0, 5, 10, 15, 20, 25];
   } else if (maxVal <= 50) {
     yMax = 50;
-    ticks = [0, 10, 20, 30, 40, 50];
   } else if (maxVal <= 100) {
     yMax = 100;
-    ticks = [0, 25, 50, 75, 100];
   } else if (maxVal <= 300) {
     yMax = 300;
-    ticks = [0, 100, 200, 300];
   } else if (maxVal <= 500) {
     yMax = 500;
-    ticks = [0, 100, 200, 300, 500];
   } else {
     yMax = Math.ceil(maxVal / 100) * 100;
-    const step = Math.round(yMax / 5);
-    ticks = [0, step, step * 2, step * 3, step * 4, yMax];
   }
 
-  return { yMax, ticks };
+  return { yMax };
 }
 
 function renderAttendanceVsPassCardMarkup() {
-  const selectedYear = AppState.attendanceSelectedYear || CURRENT_YEAR;
-  const chartData = getAttendanceVsPassData(selectedYear);
+  const currentTimeframe = AppState.attendanceTimeframe || 'month';
+  const selectedTf = ATTENDANCE_TIMEFRAMES.find(t => t.id === currentTimeframe) || ATTENDANCE_TIMEFRAMES[1];
+  const chartData = getAttendanceVsPassData(currentTimeframe);
   const hasData = chartData.hasData;
   const avgPassingRate = chartData.avgPassingRate;
-  const yearsList = [CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2];
 
   return `
-    <!-- Card Header: Title & Dynamic Year Selector -->
+    <!-- Card Header: Title & Professional Timeframe Selector -->
     <div class="flex items-center justify-between gap-4 mb-2">
       <h3 class="text-base sm:text-lg font-bold text-[#141F1E] tracking-tight">Total Attendance vs Total Pass</h3>
       
-      <!-- Top Right Controls: Year Selector Dropdown -->
-      <div class="relative" id="attendance-year-dropdown-wrapper">
-        <button type="button" onclick="toggleAttendanceYearDropdown(event)" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#ECEAE4] bg-white text-xs font-semibold text-[#141F1E] hover:border-[#D1D5DB] transition-all shadow-2xs cursor-pointer">
+      <!-- Top Right Controls: Professional Timeframe Selector Dropdown -->
+      <div class="relative" id="attendance-timeframe-dropdown-wrapper">
+        <button type="button" onclick="toggleAttendanceTimeframeDropdown(event)" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#ECEAE4] bg-white text-xs font-semibold text-[#141F1E] hover:border-[#D1D5DB] transition-all shadow-2xs cursor-pointer">
           <svg class="w-3.5 h-3.5 text-[#7A8684]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"/>
           </svg>
-          <span id="attendance-selected-year-label">${selectedYear}</span>
-          <svg class="w-3 h-3 text-[#7A8684]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <span id="attendance-selected-timeframe-label">${selectedTf.label}</span>
+          <svg class="w-3 h-3 text-[#7A8684] transition-transform duration-200" id="attendance-timeframe-chevron" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
           </svg>
         </button>
 
-        <div id="attendance-year-dropdown-menu" class="hidden absolute right-0 mt-1.5 w-32 bg-white border border-[#ECEAE4] rounded-xl shadow-lg py-1 z-30 text-xs">
-          ${yearsList.map(y => `
-            <button type="button" onclick="selectAttendanceYear(${y}, event)" class="w-full text-left px-3.5 py-2 flex items-center justify-between transition-colors ${y === selectedYear ? 'font-bold text-[#0E4D45] bg-[#E8EFEE]/60' : 'text-[#4B5563] hover:bg-[#F8F6F1] font-medium'}">
-              <span>${y}</span>
-              ${y === selectedYear ? '<span class="text-[#0E4D45] font-bold">✓</span>' : ''}
-            </button>
-          `).join('')}
+        <div id="attendance-timeframe-dropdown-menu" class="hidden absolute right-0 mt-1.5 w-48 bg-white border border-[#ECEAE4] rounded-xl shadow-lg py-1.5 z-30 text-xs">
+          ${ATTENDANCE_TIMEFRAMES.map(tf => {
+            const isSelected = tf.id === currentTimeframe;
+            return `
+              <button type="button" onclick="selectAttendanceTimeframe('${tf.id}', event)" class="w-full text-left px-3.5 py-2 flex items-center justify-between transition-colors ${isSelected ? 'font-bold text-[#0E4D45] bg-[#E8EFEE]/60' : 'text-[#4B5563] hover:bg-[#F8F6F1] font-medium'}">
+                <div class="flex flex-col">
+                  <span class="text-xs ${isSelected ? 'font-bold text-[#0E4D45]' : 'text-[#141F1E]'}">${tf.label}</span>
+                  <span class="text-[10px] text-[#7A8684]">${tf.sub}</span>
+                </div>
+                ${isSelected ? '<span class="text-[#0E4D45] font-bold text-sm">✓</span>' : ''}
+              </button>
+            `;
+          }).join('')}
         </div>
       </div>
     </div>
@@ -5584,13 +5772,11 @@ function renderAttendanceVsPassCardMarkup() {
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/>
           </svg>
         </div>
-        <p class="text-sm font-bold text-[#141F1E]">No Attendance & Pass Data Logged for ${selectedYear}</p>
-        <p class="text-xs text-[#7A8684] mt-1 max-w-sm">No historical attendance records found for ${selectedYear}. Select another year or enroll students.</p>
-        ${selectedYear === 2026 ? `
-          <button onclick="openAddStudentModal()" class="mt-4 px-4 py-1.5 rounded-full bg-[#0E4D45] text-white text-xs font-semibold hover:bg-[#14534B] transition-colors shadow-2xs cursor-pointer">
-            + Enroll First Student
-          </button>
-        ` : ''}
+        <p class="text-sm font-bold text-[#141F1E]">No Attendance & Pass Data Logged for ${selectedTf.label}</p>
+        <p class="text-xs text-[#7A8684] mt-1 max-w-sm">No live attendance records found for ${selectedTf.label.toLowerCase()}. Enroll students or log daily sabaq to generate real-time analytics.</p>
+        <button onclick="openAddStudentModal()" class="mt-4 px-4 py-1.5 rounded-full bg-[#0E4D45] text-white text-xs font-semibold hover:bg-[#14534B] transition-colors shadow-2xs cursor-pointer">
+          + Enroll First Student
+        </button>
       </div>
     ` : `
       <div class="relative w-full h-[260px] select-none" id="attendance-chart-wrapper">
@@ -5601,7 +5787,7 @@ function renderAttendanceVsPassCardMarkup() {
 }
 
 function initAttendanceVsPassChart() {
-  const selectedYear = AppState.attendanceSelectedYear || CURRENT_YEAR;
+  const currentTimeframe = AppState.attendanceTimeframe || 'month';
   const canvas = document.getElementById('attendance-vs-pass-canvas');
   if (!canvas) return;
 
@@ -5612,7 +5798,7 @@ function initAttendanceVsPassChart() {
     window._attendanceChartInstance = null;
   }
 
-  const chartData = getAttendanceVsPassData(selectedYear);
+  const chartData = getAttendanceVsPassData(currentTimeframe);
   if (!chartData || !chartData.hasData || !chartData.records || chartData.records.length === 0) {
     return;
   }
@@ -5623,11 +5809,31 @@ function initAttendanceVsPassChart() {
   }
 
   const records = chartData.records;
-  const labels = records.map(r => r.month);
+  const labels = records.map(r => r.label);
   const attendData = records.map(r => r.attend);
   const passedData = records.map(r => r.passed);
-
   const { yMax } = calculateAttendanceYScale(records);
+
+  // Timeframe-specific bar thickness and point radius styling
+  let barThickness = 20;
+  let maxBarThickness = 22;
+  let borderRadius = 16;
+  let pointRadius = 4.5;
+  let pointHoverRadius = 6.5;
+
+  if (currentTimeframe === 'week') {
+    barThickness = 24;
+    maxBarThickness = 28;
+    borderRadius = 14;
+    pointRadius = 4.5;
+    pointHoverRadius = 6.5;
+  } else if (currentTimeframe === 'month') {
+    barThickness = records.length > 25 ? 6 : 10;
+    maxBarThickness = records.length > 25 ? 8 : 12;
+    borderRadius = 4;
+    pointRadius = 2.5;
+    pointHoverRadius = 5;
+  }
 
   const ctx = canvas.getContext('2d');
   window._attendanceChartInstance = new Chart(ctx, {
@@ -5640,10 +5846,10 @@ function initAttendanceVsPassChart() {
           data: attendData,
           backgroundColor: '#E5E7EB',
           hoverBackgroundColor: '#0E4D45',
-          borderRadius: 16,
+          borderRadius: borderRadius,
           borderSkipped: false,
-          barThickness: 20,
-          maxBarThickness: 22,
+          barThickness: barThickness,
+          maxBarThickness: maxBarThickness,
           order: 2
         },
         {
@@ -5657,8 +5863,8 @@ function initAttendanceVsPassChart() {
           pointBackgroundColor: '#FFFFFF',
           pointBorderColor: '#0E4D45',
           pointBorderWidth: 2.5,
-          pointRadius: 4.5,
-          pointHoverRadius: 6.5,
+          pointRadius: pointRadius,
+          pointHoverRadius: pointHoverRadius,
           pointHoverBorderWidth: 3,
           pointHoverBackgroundColor: '#FFFFFF',
           order: 1
@@ -5690,7 +5896,15 @@ function initAttendanceVsPassChart() {
           callbacks: {
             title: (items) => {
               const item = items[0];
-              return item ? `${item.label} ${selectedYear}` : '';
+              if (!item) return '';
+              const tf = AppState.attendanceTimeframe || 'month';
+              if (tf === 'week') {
+                return `${item.label} (This Week)`;
+              } else if (tf === 'month') {
+                return `${item.label} ${MONTHS_LIST[CURRENT_MONTH_INDEX]} ${CURRENT_YEAR}`;
+              } else {
+                return `${item.label} ${CURRENT_YEAR}`;
+              }
             },
             label: (item) => {
               if (item.datasetIndex === 0) {
@@ -5707,7 +5921,9 @@ function initAttendanceVsPassChart() {
           grid: { display: false, drawBorder: false },
           ticks: {
             color: '#9CA3AF',
-            font: { family: 'Inter', size: 11, weight: '500' }
+            font: { family: 'Inter', size: 11, weight: '500' },
+            maxRotation: 0,
+            autoSkip: currentTimeframe === 'month' && window.innerWidth < 768
           }
         },
         y: {
@@ -5720,7 +5936,7 @@ function initAttendanceVsPassChart() {
           ticks: {
             color: '#9CA3AF',
             font: { family: 'Inter', size: 11 },
-            stepSize: Math.round(yMax / 5)
+            stepSize: Math.max(1, Math.round(yMax / 5))
           },
           suggestedMax: yMax
         }
@@ -5729,42 +5945,157 @@ function initAttendanceVsPassChart() {
   });
 }
 
-function toggleAttendanceYearDropdown(event) {
+function toggleAttendanceTimeframeDropdown(event) {
   if (event) event.stopPropagation();
-  const menu = document.getElementById('attendance-year-dropdown-menu');
+  const menu = document.getElementById('attendance-timeframe-dropdown-menu');
+  const chevron = document.getElementById('attendance-timeframe-chevron');
   if (menu) {
-    menu.classList.toggle('hidden');
+    const isClosed = menu.classList.toggle('hidden');
+    if (chevron) {
+      chevron.style.transform = isClosed ? 'rotate(0deg)' : 'rotate(180deg)';
+    }
   }
+}
+
+function selectAttendanceTimeframe(timeframeId, event) {
+  if (event) event.stopPropagation();
+  AppState.attendanceTimeframe = timeframeId;
+
+  const menu = document.getElementById('attendance-timeframe-dropdown-menu');
+  const chevron = document.getElementById('attendance-timeframe-chevron');
+  if (menu) menu.classList.add('hidden');
+  if (chevron) chevron.style.transform = 'rotate(0deg)';
+
+  // If chart instance exists and canvas is present, update smoothly!
+  const canvas = document.getElementById('attendance-vs-pass-canvas');
+  if (canvas && window._attendanceChartInstance) {
+    updateAttendanceVsPassChartSmoothly();
+  } else {
+    // Re-render card markup (e.g. if switching from empty state or canvas not initialized)
+    const card = document.getElementById('attendance-chart-card');
+    if (card) {
+      card.innerHTML = renderAttendanceVsPassCardMarkup();
+      initAttendanceVsPassChart();
+    }
+  }
+
+  const selectedTf = ATTENDANCE_TIMEFRAMES.find(t => t.id === timeframeId);
+  showToastNotification(`✓ Switched Attendance View to ${selectedTf ? selectedTf.label : timeframeId}`);
+}
+
+/**
+ * Dynamic Re-rendering: Smoothly updates datasets, labels, and scales without full reload
+ */
+function updateAttendanceVsPassChartSmoothly() {
+  const timeframe = AppState.attendanceTimeframe || 'month';
+  const chartData = getAttendanceVsPassData(timeframe);
+  const selectedTf = ATTENDANCE_TIMEFRAMES.find(t => t.id === timeframe) || ATTENDANCE_TIMEFRAMES[1];
+
+  // Update label in dropdown button
+  const labelEl = document.getElementById('attendance-selected-timeframe-label');
+  if (labelEl) labelEl.textContent = selectedTf.label;
+
+  // Update dropdown menu items checkmarks
+  const menuEl = document.getElementById('attendance-timeframe-dropdown-menu');
+  if (menuEl) {
+    menuEl.innerHTML = ATTENDANCE_TIMEFRAMES.map(tf => {
+      const isSelected = tf.id === timeframe;
+      return `
+        <button type="button" onclick="selectAttendanceTimeframe('${tf.id}', event)" class="w-full text-left px-3.5 py-2 flex items-center justify-between transition-colors ${isSelected ? 'font-bold text-[#0E4D45] bg-[#E8EFEE]/60' : 'text-[#4B5563] hover:bg-[#F8F6F1] font-medium'}">
+          <div class="flex flex-col">
+            <span class="text-xs ${isSelected ? 'font-bold text-[#0E4D45]' : 'text-[#141F1E]'}">${tf.label}</span>
+            <span class="text-[10px] text-[#7A8684]">${tf.sub}</span>
+          </div>
+          ${isSelected ? '<span class="text-[#0E4D45] font-bold text-sm">✓</span>' : ''}
+        </button>
+      `;
+    }).join('');
+  }
+
+  // Update AVG Passing Rate text
+  const avgRateEl = document.getElementById('attendance-avg-pass-rate');
+  if (avgRateEl) {
+    avgRateEl.textContent = chartData.hasData ? (chartData.avgPassingRate + '%') : '—';
+  }
+
+  // Handle switching between empty state and canvas
+  const canvas = document.getElementById('attendance-vs-pass-canvas');
+  if (!chartData.hasData || !canvas) {
+    const card = document.getElementById('attendance-chart-card');
+    if (card) {
+      card.innerHTML = renderAttendanceVsPassCardMarkup();
+      initAttendanceVsPassChart();
+    }
+    return;
+  }
+
+  if (!window._attendanceChartInstance) {
+    initAttendanceVsPassChart();
+    return;
+  }
+
+  const chart = window._attendanceChartInstance;
+  const records = chartData.records;
+  const labels = records.map(r => r.label);
+  const attendData = records.map(r => r.attend);
+  const passedData = records.map(r => r.passed);
+  const { yMax } = calculateAttendanceYScale(records);
+
+  // Update chart data
+  chart.data.labels = labels;
+  chart.data.datasets[0].data = attendData;
+  chart.data.datasets[1].data = passedData;
+
+  // Responsive styling per timeframe:
+  if (timeframe === 'week') {
+    chart.data.datasets[0].barThickness = 24;
+    chart.data.datasets[0].maxBarThickness = 28;
+    chart.data.datasets[0].borderRadius = 14;
+    chart.data.datasets[1].pointRadius = 4.5;
+    chart.data.datasets[1].pointHoverRadius = 6.5;
+  } else if (timeframe === 'month') {
+    chart.data.datasets[0].barThickness = records.length > 25 ? 6 : 10;
+    chart.data.datasets[0].maxBarThickness = records.length > 25 ? 8 : 12;
+    chart.data.datasets[0].borderRadius = 4;
+    chart.data.datasets[1].pointRadius = 2.5;
+    chart.data.datasets[1].pointHoverRadius = 5;
+  } else {
+    chart.data.datasets[0].barThickness = 20;
+    chart.data.datasets[0].maxBarThickness = 22;
+    chart.data.datasets[0].borderRadius = 16;
+    chart.data.datasets[1].pointRadius = 4.5;
+    chart.data.datasets[1].pointHoverRadius = 6.5;
+  }
+
+  // Update Y scale
+  chart.options.scales.y.suggestedMax = yMax;
+  chart.options.scales.y.ticks.stepSize = Math.max(1, Math.round(yMax / 5));
+
+  // Update chart smoothly
+  chart.update();
+}
+
+// Backward-compatible aliases for existing year functions
+function toggleAttendanceYearDropdown(event) {
+  toggleAttendanceTimeframeDropdown(event);
 }
 
 function selectAttendanceYear(year, event) {
-  if (event) event.stopPropagation();
-  AppState.attendanceSelectedYear = Number(year);
-  
-  const menu = document.getElementById('attendance-year-dropdown-menu');
-  if (menu) menu.classList.add('hidden');
-
-  // Re-render chart card
-  const card = document.getElementById('attendance-chart-card');
-  if (card) {
-    card.innerHTML = renderAttendanceVsPassCardMarkup();
-    initAttendanceVsPassChart();
-  }
-
-  showToastNotification(`✓ Switched Attendance View to Year ${year}`);
+  selectAttendanceTimeframe('year', event);
 }
 
-// Backward-compatible alias for existing render calls
 function initAttendanceDotMatrix() {
   initAttendanceVsPassChart();
 }
 
-// Global click listener to close year dropdown
+// Global click listener to close timeframe dropdown
 document.addEventListener('click', (e) => {
-  const menu = document.getElementById('attendance-year-dropdown-menu');
-  const btn = document.getElementById('attendance-year-dropdown-wrapper');
+  const menu = document.getElementById('attendance-timeframe-dropdown-menu');
+  const btn = document.getElementById('attendance-timeframe-dropdown-wrapper');
   if (menu && !menu.classList.contains('hidden') && btn && !btn.contains(e.target)) {
     menu.classList.add('hidden');
+    const chevron = document.getElementById('attendance-timeframe-chevron');
+    if (chevron) chevron.style.transform = 'rotate(0deg)';
   }
 });
 
@@ -9303,8 +9634,9 @@ function handleSaveSabaq() {
   const tags = Array.from(selectedTagEls).map(el => el.textContent.trim());
 
   if (student) {
-    student.lastSabaq = {
-      date: new Date().toISOString().split('T')[0],
+    const todayIso = new Date().toISOString().split('T')[0];
+    const sabaqEntry = {
+      date: todayIso,
       type: 'Daily Sabaq',
       surah: surah,
       status: attendanceStatus,
@@ -9312,8 +9644,26 @@ function handleSaveSabaq() {
       tags: tags.length ? tags : ['MashaAllah Good'],
       teacherNote: 'Logged in 30 seconds via zero-typing workflow.'
     };
+    student.lastSabaq = sabaqEntry;
+    if (!student.sabaqHistory) student.sabaqHistory = [];
+    student.sabaqHistory.push(sabaqEntry);
+
     saveToStorage('lms_students', AppState.students);
     dbSaveStudent(student);
+
+    // Record live attendance log in Firestore
+    const logDoc = {
+      id: 'LOG-' + Date.now(),
+      studentId: student.id,
+      studentName: `${student.firstName || ''} ${student.lastName || ''}`.trim(),
+      date: todayIso,
+      status: attendanceStatus,
+      passed: (attendanceStatus === 'Present' || attendanceStatus === 'Late') && sabaqEntry.rating >= 3,
+      rating: sabaqEntry.rating || 5,
+      surah: surah,
+      timestamp: Date.now()
+    };
+    dbSaveAttendanceLog(logDoc);
   }
 
   closeSabaqLoggerModal();

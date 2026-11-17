@@ -6390,117 +6390,34 @@ function renderAdminFeeMatrixView() {
     <div class="ts-card p-3.5 sm:p-6 mb-8 overflow-hidden">
       
       <!-- Top Title & Quick Action Bar -->
-      <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-6 pb-6 border-b border-[#ECEAE4]">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 pb-4 border-b border-[#ECEAE4]">
         <div>
           <div class="flex items-center gap-2 flex-wrap">
-            <h2 class="text-base sm:text-xl font-bold text-[#141F1E] leading-tight">12-Month Fee Ledger (${CURRENT_YEAR})</h2>
+            <h2 class="text-base sm:text-xl font-bold text-[#141F1E] leading-tight">12-Month Fee Ledger <span class="text-[#0E4D45]">(${CURRENT_YEAR})</span></h2>
             <span class="ts-badge ts-badge-paid text-[10px] sm:text-xs">Admin PII Unlocked</span>
           </div>
-          <p class="text-xs text-[#7A8684] mt-1">
+          <p class="text-xs text-[#7A8684] mt-1 hidden sm:block">
             Automated FIFO Waterfall settlement, multi-currency ledger, and family group sibling accounting.
           </p>
         </div>
 
-        <!-- Primary Action Button: Receive Fee -->
-        <div class="flex items-center gap-2 w-full sm:w-auto">
-          <!-- Receive Fee Primary Button -->
+        <!-- Primary Action Button: Receive Fee (Full-width on mobile, auto-width on desktop) -->
+        <div class="w-full sm:w-auto mt-2 sm:mt-0">
           <button onclick="openReceiveFeeModal()" class="w-full sm:w-auto px-5 py-2.5 sm:py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors shadow-sm flex items-center justify-center gap-1.5 cursor-pointer">
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-            <span>+ Receive Fee (FIFO)</span>
+            <span>Receive Fee (FIFO)</span>
           </button>
         </div>
       </div>
 
-      <!-- Consolidated Stripe/Linear Control Toolbar (Hidden on Mobile) -->
-      <div class="hidden md:flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3.5 mb-4 pb-4 border-b border-[#ECEAE4]">
+      <!-- PART 2: DESKTOP LINEAR GRID TOOLBAR (Consolidated to ONE Single Row below Title) -->
+      <div class="hidden md:flex items-center justify-between gap-3 mb-3 pb-3 border-b border-[#ECEAE4]">
         
-        <!-- Left: Status Filter Pills + Family Toggle -->
-        <div class="flex items-center gap-3 flex-wrap sm:flex-nowrap">
-          <div class="inline-flex p-0.5 bg-[#F8F6F1] rounded-xl border border-[#ECEAE4]">
-            <button 
-              type="button" 
-              onclick="setFeeFilter('all')" 
-              class="px-3 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${AppState.selectedFilter === 'all' ? 'bg-white shadow-xs text-[#141F1E] font-bold' : 'text-[#7A8684] hover:text-[#141F1E] font-medium'}"
-            >
-              All (${AppState.students.length})
-            </button>
-            <button 
-              type="button" 
-              onclick="setFeeFilter('paid')" 
-              class="px-3 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${AppState.selectedFilter === 'paid' ? 'bg-white shadow-xs text-[#141F1E] font-bold' : 'text-[#7A8684] hover:text-[#141F1E] font-medium'}"
-            >
-              Paid
-            </button>
-            <button 
-              type="button" 
-              onclick="setFeeFilter('partial')" 
-              class="px-3 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${AppState.selectedFilter === 'partial' ? 'bg-white shadow-xs text-[#141F1E] font-bold' : 'text-[#7A8684] hover:text-[#141F1E] font-medium'}"
-            >
-              Partial
-            </button>
-            <button 
-              type="button" 
-              onclick="setFeeFilter('advance')" 
-              class="px-3 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${AppState.selectedFilter === 'advance' ? 'bg-white shadow-xs text-[#141F1E] font-bold' : 'text-[#7A8684] hover:text-[#141F1E] font-medium'}"
-            >
-              Advance
-            </button>
-            <button 
-              type="button" 
-              onclick="setFeeFilter('defaulter')" 
-              class="px-3 py-1.5 text-xs rounded-lg transition-all cursor-pointer ${AppState.selectedFilter === 'defaulter' ? 'bg-white shadow-xs text-[#141F1E] font-bold' : 'text-[#7A8684] hover:text-[#141F1E] font-medium'}"
-            >
-              Overdue
-            </button>
-          </div>
-
-          <!-- Divider -->
-          <div class="h-5 w-px bg-[#ECEAE4] hidden sm:block"></div>
-
-          <!-- Family Group Toggle Switch -->
-          <button 
-            type="button" 
-            role="switch" 
-            aria-checked="${isFamilyGrouped ? 'true' : 'false'}" 
-            onclick="toggleGroupByFamily()" 
-            class="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-[#ECEAE4] bg-white hover:bg-[#F8F6F1] transition-all cursor-pointer text-xs font-semibold ${isFamilyGrouped ? 'text-[#0E4D45] border-[#0E4D45]/30' : 'text-[#7A8684]'}"
-            title="Toggle family grouped ledger"
-          >
-            <div class="transition-colors relative" style="width: 28px; height: 16px; border-radius: 9999px; background-color: ${isFamilyGrouped ? '#0E4D45' : '#CBD5E1'}; position: relative;">
-              <div class="transition-all shadow-xs" style="width: 12px; height: 12px; border-radius: 9999px; background-color: #FFFFFF; position: absolute; top: 2px; left: ${isFamilyGrouped ? '14px' : '2px'};"></div>
-            </div>
-            <span>Family Group</span>
-          </button>
-        </div>
-
-        <!-- Right: Active Period Stepper + Currency Select + Search Input -->
-        <div class="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
-          <!-- Active Period Month Stepper -->
-          <div class="inline-flex items-center h-8 rounded-lg border border-[#ECEAE4] bg-white px-1 shadow-2xs">
-            <button type="button" onclick="stepAcademicMonth(-1)" class="w-6 h-6 rounded flex items-center justify-center text-[#7A8684] hover:text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer" title="Previous Month">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-            </button>
-            <span class="text-xs font-bold text-[#141F1E] px-2 whitespace-nowrap">${MONTHS_LIST[CURRENT_MONTH_INDEX]} ${CURRENT_YEAR}</span>
-            <button type="button" onclick="stepAcademicMonth(1)" class="w-6 h-6 rounded flex items-center justify-center text-[#7A8684] hover:text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer" title="Next Month">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-            </button>
-          </div>
-
-          <!-- Currency Select -->
-          <select 
-            onchange="setCurrencyFilter(this.value)" 
-            class="h-8 text-xs bg-white border border-[#ECEAE4] rounded-lg px-2.5 text-[#141F1E] font-medium outline-none focus:border-[#0E4D45] cursor-pointer shadow-2xs shrink-0"
-          >
-            <option value="all" ${AppState.selectedCurrency === 'all' ? 'selected' : ''}>All Currencies</option>
-            <option value="USD" ${AppState.selectedCurrency === 'USD' ? 'selected' : ''}>$ USD</option>
-            <option value="GBP" ${AppState.selectedCurrency === 'GBP' ? 'selected' : ''}>£ GBP</option>
-            <option value="EUR" ${AppState.selectedCurrency === 'EUR' ? 'selected' : ''}>€ EUR</option>
-            <option value="CAD" ${AppState.selectedCurrency === 'CAD' ? 'selected' : ''}>C$ CAD</option>
-            <option value="PKR" ${AppState.selectedCurrency === 'PKR' ? 'selected' : ''}>Rs PKR</option>
-          </select>
-
+        <!-- Left: Search Box with Inline Filter ⚙️ Icon Button & Dropdown Popover -->
+        <div class="flex items-center gap-2 flex-1 max-w-md relative" id="desktop-fee-filter-container">
+          
           <!-- Search Input -->
-          <div class="relative w-48 sm:w-56">
+          <div class="relative flex-1">
             <input 
               type="text" 
               id="fee-matrix-search-input"
@@ -6508,111 +6425,207 @@ function renderAdminFeeMatrixView() {
               oninput="setSearchQuery(this.value)" 
               onkeyup="setSearchQuery(this.value)"
               value="${AppState.searchQuery}" 
-              class="h-8 w-full text-xs bg-white border border-[#ECEAE4] rounded-lg pl-8 pr-6 text-[#141F1E] outline-none focus:border-[#0E4D45] shadow-2xs font-medium"
+              class="h-9 w-full text-xs bg-white border border-[#ECEAE4] rounded-xl pl-8 pr-7 text-[#141F1E] outline-none focus:border-[#0E4D45] shadow-2xs font-medium transition-colors"
             />
-            <svg class="w-3.5 h-3.5 text-[#7A8684] absolute left-2.5 top-2.5 pointer-events-none" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+            <svg class="w-3.5 h-3.5 text-[#7A8684] absolute left-2.5 top-3 pointer-events-none" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
             </svg>
             ${AppState.searchQuery ? `
-              <button onclick="setSearchQuery('')" class="absolute right-2 top-2 text-[#7A8684] hover:text-[#141F1E] text-xs font-bold cursor-pointer" title="Clear search">✕</button>
+              <button onclick="setSearchQuery('')" class="absolute right-2 top-2.5 text-[#7A8684] hover:text-[#141F1E] text-xs font-bold cursor-pointer" title="Clear search">✕</button>
             ` : ''}
           </div>
+
+          <!-- Inline Filter ⚙️ Icon Button -->
+          <div class="relative">
+            <button 
+              type="button" 
+              id="fee-filter-dropdown-btn"
+              onclick="toggleFeeFilterDropdown(event)" 
+              class="relative h-9 px-3 rounded-xl border border-[#ECEAE4] bg-white hover:bg-[#F8F6F1] flex items-center justify-center gap-1.5 text-xs font-semibold text-[#141F1E] shadow-2xs shrink-0 cursor-pointer transition-colors"
+              title="Filter Ledger (Status, Family Group, Currency)"
+            >
+              <svg class="w-3.5 h-3.5 text-[#0E4D45]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+              </svg>
+              <span>Filter</span>
+              ${(AppState.selectedFilter !== 'all' || AppState.selectedCurrency !== 'all' || isFamilyGrouped) ? `
+                <span class="w-2 h-2 rounded-full bg-[#0E4D45]"></span>
+              ` : ''}
+            </button>
+
+            <!-- Dropdown Popover Overlay for Desktop Filters -->
+            <div id="fee-filter-dropdown-menu" class="hidden absolute left-0 mt-2 w-80 bg-white rounded-2xl border border-[#ECEAE4] shadow-2xl p-4 z-50 text-[#141F1E]">
+              <div class="flex items-center justify-between pb-2.5 mb-3 border-b border-[#ECEAE4]">
+                <span class="text-xs font-bold text-[#141F1E] flex items-center gap-1.5">
+                  <span>Filter Ledger</span>
+                  ${(AppState.selectedFilter !== 'all' || AppState.selectedCurrency !== 'all' || isFamilyGrouped) ? `
+                    <span class="text-[10px] px-1.5 py-0.2 rounded-full bg-[#0E4D45]/10 text-[#0E4D45] font-semibold">Active</span>
+                  ` : ''}
+                </span>
+                <button type="button" onclick="resetFeeFilters();" class="text-[11px] font-semibold text-[#0E4D45] hover:underline cursor-pointer">Reset</button>
+              </div>
+
+              <div class="space-y-3.5 text-xs">
+                <!-- Status Filter Pills -->
+                <div>
+                  <span class="text-[10px] font-bold uppercase tracking-wider text-[#7A8684] block mb-1.5">Payment Status</span>
+                  <div class="grid grid-cols-3 gap-1.5">
+                    ${[
+                      { id: 'all', label: `All (${AppState.students ? AppState.students.length : 0})` },
+                      { id: 'paid', label: 'Paid' },
+                      { id: 'partial', label: 'Partial' },
+                      { id: 'advance', label: 'Advance' },
+                      { id: 'defaulter', label: 'Overdue' }
+                    ].map(s => `
+                      <button 
+                        type="button" 
+                        onclick="setFeeFilter('${s.id}')" 
+                        class="py-1.5 px-2 rounded-xl text-xs font-semibold transition-all cursor-pointer border text-center ${AppState.selectedFilter === s.id ? 'bg-[#0E4D45] text-white border-[#0E4D45] shadow-xs' : 'bg-white text-gray-700 border-[#ECEAE4] hover:bg-[#F8F6F1]'}"
+                      >
+                        ${s.label}
+                      </button>
+                    `).join('')}
+                  </div>
+                </div>
+
+                <!-- Family Group Toggle -->
+                <div class="flex items-center justify-between p-2.5 rounded-xl bg-[#F8F6F1] border border-[#ECEAE4]">
+                  <div>
+                    <span class="font-bold text-xs text-[#141F1E] block">Family Group</span>
+                    <span class="text-[10px] text-gray-500">Group sibling accounts</span>
+                  </div>
+                  <button 
+                    type="button" 
+                    role="switch" 
+                    aria-checked="${isFamilyGrouped ? 'true' : 'false'}" 
+                    onclick="toggleGroupByFamily()" 
+                    class="flex items-center gap-2 cursor-pointer"
+                  >
+                    <div class="transition-colors relative" style="width: 28px; height: 16px; border-radius: 9999px; background-color: ${isFamilyGrouped ? '#0E4D45' : '#CBD5E1'}; position: relative;">
+                      <div class="transition-all shadow-xs" style="width: 12px; height: 12px; border-radius: 9999px; background-color: #FFFFFF; position: absolute; top: 2px; left: ${isFamilyGrouped ? '14px' : '2px'};"></div>
+                    </div>
+                    <span class="text-[11px] font-bold ${isFamilyGrouped ? 'text-[#0E4D45]' : 'text-gray-400'}">${isFamilyGrouped ? 'ON' : 'OFF'}</span>
+                  </button>
+                </div>
+
+                <!-- Currency Filter -->
+                <div>
+                  <span class="text-[10px] font-bold uppercase tracking-wider text-[#7A8684] block mb-1.5">Currency</span>
+                  <select 
+                    onchange="setCurrencyFilter(this.value)" 
+                    class="h-8 w-full text-xs bg-white border border-[#ECEAE4] rounded-xl px-2.5 text-[#141F1E] font-medium outline-none focus:border-[#0E4D45] cursor-pointer shadow-2xs"
+                  >
+                    <option value="all" ${AppState.selectedCurrency === 'all' ? 'selected' : ''}>All Currencies</option>
+                    <option value="USD" ${AppState.selectedCurrency === 'USD' ? 'selected' : ''}>$ USD</option>
+                    <option value="GBP" ${AppState.selectedCurrency === 'GBP' ? 'selected' : ''}>£ GBP</option>
+                    <option value="EUR" ${AppState.selectedCurrency === 'EUR' ? 'selected' : ''}>€ EUR</option>
+                    <option value="CAD" ${AppState.selectedCurrency === 'CAD' ? 'selected' : ''}>C$ CAD</option>
+                    <option value="PKR" ${AppState.selectedCurrency === 'PKR' ? 'selected' : ''}>Rs PKR</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
+        <!-- Right: Active Month Stepper < Nov 2026 > -->
+        <div class="inline-flex items-center h-9 rounded-xl border border-[#ECEAE4] bg-white px-1 shadow-2xs">
+          <button type="button" onclick="stepAcademicMonth(-1)" class="w-7 h-7 rounded-lg flex items-center justify-center text-[#7A8684] hover:text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer" title="Previous Month">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+          </button>
+          <span class="text-xs font-bold text-[#141F1E] px-2.5 whitespace-nowrap">${MONTHS_LIST[CURRENT_MONTH_INDEX]} ${CURRENT_YEAR}</span>
+          <button type="button" onclick="stepAcademicMonth(1)" class="w-7 h-7 rounded-lg flex items-center justify-center text-[#7A8684] hover:text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer" title="Next Month">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+          </button>
+        </div>
       </div>
 
-      <!-- Single Consolidated Info Strip: Minimalist Legend & Active Month Stats (Hidden on Mobile) -->
-      <div class="hidden md:flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs mb-4 text-[#7A8684]">
-        <!-- Simplified Legend: Requirement 1: No redundant brackets -->
-        <div class="flex items-center gap-3.5 flex-wrap">
-          <span class="text-[11px] font-semibold uppercase tracking-wider text-[#9CA3AF]">Legend:</span>
-          <div class="flex items-center gap-1.5 font-medium text-[#141F1E]">
-            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-            <span>Paid</span>
-          </div>
-          <div class="flex items-center gap-1.5 font-medium text-[#141F1E]">
-            <span class="w-2 h-2 rounded-full bg-amber-500"></span>
-            <span>Partial</span>
-          </div>
-          <div class="flex items-center gap-1.5 font-medium text-[#141F1E]">
-            <span class="w-2 h-2 rounded-full bg-teal-500"></span>
-            <span>Advance</span>
-          </div>
-          <div class="flex items-center gap-1.5 font-medium text-[#141F1E]">
-            <span class="w-2 h-2 rounded-full bg-red-500"></span>
-            <span>Overdue</span>
-          </div>
-          <div class="flex items-center gap-1.5 font-medium text-[#9CA3AF]">
-            <span class="w-2 h-2 rounded-full bg-gray-300"></span>
-            <span>Upcoming</span>
-          </div>
+      <!-- PART 2: DESKTOP EMBEDDED LEGEND & STATS ROW (Requirement 3) -->
+      <div class="hidden md:flex items-center justify-between gap-4 text-xs mb-4 text-[#7A8684] flex-wrap">
+        <div class="flex items-center gap-3">
+          <span class="text-[10px] font-bold uppercase tracking-wider text-[#9CA3AF]">LEGEND:</span>
+          <div class="flex items-center gap-1.5 font-medium text-[#141F1E]"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><span>Paid</span></div>
+          <div class="flex items-center gap-1.5 font-medium text-[#141F1E]"><span class="w-2 h-2 rounded-full bg-amber-500"></span><span>Partial</span></div>
+          <div class="flex items-center gap-1.5 font-medium text-[#141F1E]"><span class="w-2 h-2 rounded-full bg-teal-500"></span><span>Advance</span></div>
+          <div class="flex items-center gap-1.5 font-medium text-[#141F1E]"><span class="w-2 h-2 rounded-full bg-red-500"></span><span>Overdue</span></div>
+          <div class="flex items-center gap-1.5 font-medium text-[#9CA3AF]"><span class="w-2 h-2 rounded-full bg-gray-300"></span><span>Upcoming</span></div>
         </div>
 
-        <!-- Active Month Distribution Stats -->
-        <div class="flex items-center gap-3 text-xs self-start sm:self-auto">
-          <span class="text-[#065F46] font-medium"><strong class="font-bold text-[#141F1E]">${monthPaidCount}</strong> Paid</span>
+        <div class="flex items-center gap-2.5 text-xs">
+          <span class="text-emerald-700 font-semibold">${monthPaidCount} Paid</span>
           <span class="text-gray-300">·</span>
-          <span class="text-[#B45309] font-medium"><strong class="font-bold text-[#141F1E]">${monthPartialCount}</strong> Partial</span>
+          <span class="text-amber-700 font-semibold">${monthPartialCount} Partial</span>
           <span class="text-gray-300">·</span>
-          <span class="text-[#991B1B] font-medium"><strong class="font-bold text-[#141F1E]">${monthOverdueCount}</strong> Overdue</span>
+          <span class="text-red-700 font-semibold">${monthOverdueCount} Overdue</span>
           <span class="text-gray-300">·</span>
-          <span class="text-[#141F1E] font-medium"><strong class="font-bold text-[#0E4D45]">$${monthTotalCollected.toLocaleString()}</strong> Month Total</span>
+          <span class="text-[#0E4D45] font-bold">$${monthTotalCollected.toLocaleString()} Month Total</span>
         </div>
       </div>
 
-      <!-- MOBILE ONLY: Clean Full-width Search Bar + Adjacent Filter Button (Requirement 1) -->
-      <div class="flex md:hidden items-center gap-2 w-full mb-3">
-        <div class="relative flex-1 min-w-0">
-          <input 
-            type="text" 
-            id="fee-matrix-mobile-search-input"
-            placeholder="Search student, family, or ID..." 
-            oninput="setSearchQuery(this.value)" 
-            onkeyup="setSearchQuery(this.value)"
-            value="${AppState.searchQuery}" 
-            class="h-10 w-full text-xs bg-[#F8F6F1] border border-[#ECEAE4] rounded-xl pl-9 pr-7 text-[#141F1E] outline-none focus:border-[#0E4D45] shadow-2xs font-medium"
-          />
-          <svg class="w-4 h-4 text-[#7A8684] absolute left-3 top-3 pointer-events-none" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-          </svg>
-          ${AppState.searchQuery ? `
-            <button onclick="setSearchQuery('')" class="absolute right-2.5 top-2.5 text-[#7A8684] hover:text-[#141F1E] text-xs font-bold cursor-pointer" title="Clear search">✕</button>
-          ` : ''}
+      <!-- PART 3: MOBILE STACKED TOOLBAR (Requirements 1, 2, 3) -->
+      <div class="md:hidden space-y-2.5 mb-3">
+        <!-- Search field + inline Filter ⚙️ button -->
+        <div class="flex items-center gap-2 w-full">
+          <div class="relative flex-1 min-w-0">
+            <input 
+              type="text" 
+              id="fee-matrix-mobile-search-input"
+              placeholder="Search student or ID..." 
+              oninput="setSearchQuery(this.value)" 
+              onkeyup="setSearchQuery(this.value)"
+              value="${AppState.searchQuery}" 
+              class="h-10 w-full min-w-0 text-xs bg-white border border-[#ECEAE4] rounded-xl pl-8 pr-7 text-[#141F1E] outline-none focus:border-[#0E4D45] shadow-2xs font-medium"
+            />
+            <svg class="w-3.5 h-3.5 text-[#7A8684] absolute left-2.5 top-3.5 pointer-events-none" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+            ${AppState.searchQuery ? `
+              <button onclick="setSearchQuery('')" class="absolute right-2.5 top-2.5 text-[#7A8684] hover:text-[#141F1E] text-xs font-bold cursor-pointer" title="Clear search">✕</button>
+            ` : ''}
+          </div>
+
+          <!-- Inline Filter ⚙️ Icon Button -->
+          <button 
+            type="button" 
+            onclick="openFeeFilterBottomSheet()" 
+            class="relative h-10 px-3 rounded-xl border border-[#ECEAE4] bg-white hover:bg-[#F8F6F1] flex items-center justify-center gap-1.5 text-xs font-semibold text-[#141F1E] shadow-2xs shrink-0 cursor-pointer transition-colors"
+            title="Open Filter Sheet"
+          >
+            <svg class="w-4 h-4 text-[#0E4D45] shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+            <span class="text-xs">Filter</span>
+            ${(AppState.selectedFilter !== 'all' || AppState.selectedCurrency !== 'all' || isFamilyGrouped) ? `
+              <span class="w-1.5 h-1.5 rounded-full bg-[#0E4D45]"></span>
+            ` : ''}
+          </button>
         </div>
 
-        <!-- Filter Icon Button (Triggers Mobile Bottom Sheet) -->
-        <button 
-          type="button" 
-          onclick="openFeeFilterBottomSheet()" 
-          class="relative h-10 px-3.5 rounded-xl border border-[#ECEAE4] bg-white hover:bg-[#F8F6F1] flex items-center justify-center gap-1.5 text-xs font-semibold text-[#141F1E] shadow-2xs shrink-0 cursor-pointer transition-colors"
-          title="Open Filter Sheet"
-        >
-          <svg class="w-4 h-4 text-[#0E4D45]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.539.092.917.56.917 1.107v1.86a2.25 2.25 0 01-.659 1.59l-5.433 5.433a2.25 2.25 0 00-.659 1.59v3.427a1.5 1.5 0 01-.44 1.06l-2.25 2.25A1.125 1.125 0 0110 21.375V15.25a2.25 2.25 0 00-.659-1.59L3.908 8.227A2.25 2.25 0 013.25 6.645V4.785c0-.547.378-1.015.917-1.107A48.507 48.507 0 0112 3z"></path>
-          </svg>
-          <span class="text-xs font-medium">Filter</span>
-          ${(AppState.selectedFilter !== 'all' || AppState.selectedCurrency !== 'all' || isFamilyGrouped) ? `
-            <span class="w-2 h-2 rounded-full bg-[#0E4D45]"></span>
-          ` : ''}
-        </button>
-      </div>
-
-      <!-- Mobile Active Filter Summary & Quick Stats (Discreet, 1 Line) -->
-      <div class="flex md:hidden items-center justify-between text-[11px] text-[#7A8684] mb-4 pb-2 border-b border-[#ECEAE4]">
-        <div class="flex items-center gap-1.5 flex-wrap">
-          <span class="font-bold text-[#141F1E]">${filtered.length}</span> students
-          ${AppState.selectedFilter !== 'all' ? `
-            <span class="px-1.5 py-0.5 rounded-md bg-[#0E4D45]/10 text-[#0E4D45] font-semibold capitalize">${AppState.selectedFilter}</span>
-          ` : ''}
-          ${isFamilyGrouped ? `
-            <span class="px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700 font-semibold">Family</span>
-          ` : ''}
-          ${AppState.selectedCurrency !== 'all' ? `
-            <span class="px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 font-semibold">${AppState.selectedCurrency}</span>
-          ` : ''}
+        <!-- Stacked Date Switcher < Nov 2026 > below Search Bar -->
+        <div class="flex items-center justify-between w-full h-9 px-2 rounded-xl bg-white border border-[#ECEAE4] shadow-2xs">
+          <button type="button" onclick="stepAcademicMonth(-1)" class="w-7 h-7 rounded-lg flex items-center justify-center text-[#7A8684] hover:text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer" title="Previous Month">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+          </button>
+          <span class="text-xs font-bold text-[#141F1E] tracking-tight">${MONTHS_LIST[CURRENT_MONTH_INDEX]} ${CURRENT_YEAR}</span>
+          <button type="button" onclick="stepAcademicMonth(1)" class="w-7 h-7 rounded-lg flex items-center justify-center text-[#7A8684] hover:text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer" title="Next Month">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+          </button>
         </div>
-        <div class="font-semibold text-[#0E4D45]">
-          ${MONTHS_LIST[CURRENT_MONTH_INDEX]}: $${monthTotalCollected.toLocaleString()}
+
+        <!-- Compact Stats: Mini-legend and quick counts in a tiny single-line flex block -->
+        <div class="flex items-center justify-between text-[10px] text-[#7A8684] py-1.5 px-2.5 rounded-xl bg-[#F8F6F1] border border-[#ECEAE4]">
+          <div class="flex items-center gap-1.5 truncate">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span><span class="font-bold text-[#141F1E]">${monthPaidCount}</span> Paid
+            <span class="text-gray-300">·</span>
+            <span class="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0"></span><span class="font-bold text-[#141F1E]">${monthPartialCount}</span> Partial
+            <span class="text-gray-300">·</span>
+            <span class="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0"></span><span class="font-bold text-[#141F1E]">${monthOverdueCount}</span> Overdue
+          </div>
+          <div class="font-bold text-[#0E4D45] shrink-0 pl-2">
+            $${monthTotalCollected.toLocaleString()} Total
+          </div>
         </div>
       </div>
 
@@ -6725,6 +6738,7 @@ function renderAdminFeeMatrixView() {
 
 function setFeeFilter(filter) {
   AppState.selectedFilter = filter;
+  closeFeeFilterDropdown();
   renderApp();
 }
 
@@ -6733,6 +6747,7 @@ function toggleGroupByFamily() {
   if (!AppState.groupByFamily && AppState.selectedFilter === 'family') {
     AppState.selectedFilter = 'all';
   }
+  closeFeeFilterDropdown();
   renderApp();
 }
 
@@ -6745,6 +6760,7 @@ function toggleFamilyCollapse(familyId, event) {
 
 function setCurrencyFilter(curr) {
   AppState.selectedCurrency = curr;
+  closeFeeFilterDropdown();
   renderApp();
 }
 
@@ -6834,7 +6850,7 @@ function renderMobileStudentFeeCard(student, isChildOfFamily = false) {
   const balanceDue = getStudentBalanceDue(student);
 
   return `
-    <div class="bg-white rounded-2xl border border-[#ECEAE4] p-4 shadow-2xs hover:shadow-sm transition-all overflow-hidden ${isChildOfFamily ? 'border-l-4 border-l-[#0E4D45]' : ''}">
+    <div class="bg-white rounded-2xl border border-[#ECEAE4] p-4 shadow-2xs hover:shadow-sm transition-all overflow-hidden max-w-full w-full ${isChildOfFamily ? 'border-l-4 border-l-[#0E4D45]' : ''}">
       
       <!-- 1. Card Header: Avatar, Name, ID, Monthly Fee, Status Badge -->
       <div class="flex items-start justify-between gap-2 pb-3 border-b border-[#ECEAE4]/80">
@@ -6852,13 +6868,13 @@ function renderMobileStudentFeeCard(student, isChildOfFamily = false) {
               ${student.firstName} ${student.lastName || ''}
             </div>
             <div class="text-[11px] text-gray-500 mt-0.5 flex items-center gap-1.5 flex-wrap">
-              <span class="text-[10px] text-gray-400 font-mono">${student.id}</span>
+              <span class="text-[10px] text-gray-500 font-mono font-medium">ID: ${student.id}</span>
               ${(student.familyId || student.familyTag) ? `
                 <span class="text-gray-300">·</span>
                 <span class="text-[9px] px-1.5 py-0.2 rounded bg-gray-100 text-gray-600 font-medium">${student.familyId || student.familyTag}</span>
               ` : ''}
               <span class="text-gray-300">·</span>
-              <span class="truncate max-w-[110px]">${student.course || 'Quran'}</span>
+              <span class="truncate max-w-[100px] text-gray-500">${student.course || 'Quran'}</span>
             </div>
           </div>
         </div>
@@ -6866,7 +6882,7 @@ function renderMobileStudentFeeCard(student, isChildOfFamily = false) {
         <!-- Right: Monthly Fee & Status Badge -->
         <div class="text-right shrink-0">
           <div class="font-bold text-sm text-[#141F1E]">
-            ${student.currency}${student.monthlyFee}<span class="text-[10px] text-gray-400 font-normal">/mo</span>
+            ${student.currency || '$'}${student.monthlyFee || 0}<span class="text-[10px] text-gray-400 font-normal">/mo</span>
           </div>
           <div class="mt-1">
             ${renderStudentLedgerStatusPill(student)}
@@ -6875,52 +6891,50 @@ function renderMobileStudentFeeCard(student, isChildOfFamily = false) {
 
       </div>
 
-      <!-- 2. Compact 12-Month Visualization (No Horizontal Scroll) -->
+      <!-- 2. Compact 12-Month Visualization (grid grid-cols-4 gap-2) with colored indicator dots -->
       <div class="pt-3 pb-2">
         <div class="flex items-center justify-between text-[11px] text-[#7A8684] mb-2 font-medium">
           <span class="text-[10px] uppercase font-bold tracking-wider text-gray-400">12-Month Status (${CURRENT_YEAR})</span>
           <span class="text-[10px] font-semibold ${balanceDue > 0 ? 'text-red-600' : 'text-emerald-600'}">
-            ${balanceDue > 0 ? `-${student.currency}${balanceDue} Due` : 'Clear ✓'}
+            ${balanceDue > 0 ? `-${student.currency || '$'}${balanceDue} Due` : 'Clear ✓'}
           </span>
         </div>
 
-        <!-- 12 Color-Coded Circular Indicators (6x2 Grid) -->
-        <div class="grid grid-cols-6 gap-1 w-full">
+        <!-- 12 Months as a compact wrap-around grid (grid grid-cols-4 gap-2) -->
+        <div class="grid grid-cols-4 gap-2 w-full">
           ${student.months.map((m, idx) => {
             const isCurrentMonth = idx === CURRENT_MONTH_INDEX;
-            let dotBg = 'bg-gray-100 text-gray-400 border-gray-200';
             let dotIndicator = 'bg-gray-300';
+            let pillBg = 'bg-[#F8F6F1]/70 text-gray-600 border-[#ECEAE4]';
             let amountText = '—';
 
             if (m.status === 'paid') {
-              dotBg = 'bg-emerald-50 text-emerald-800 border-emerald-200';
               dotIndicator = 'bg-emerald-500';
-              amountText = `${student.currency}${m.amountPaid}`;
+              pillBg = 'bg-emerald-50/70 text-emerald-900 border-emerald-200/80';
+              amountText = `${student.currency || '$'}${m.amountPaid}`;
             } else if (m.status === 'partial') {
-              dotBg = 'bg-amber-50 text-amber-800 border-amber-200';
               dotIndicator = 'bg-amber-500';
-              amountText = `${student.currency}${m.amountPaid}`;
+              pillBg = 'bg-amber-50/70 text-amber-900 border-amber-200/80';
+              amountText = `${student.currency || '$'}${m.amountPaid}`;
             } else if (m.status === 'advance') {
-              dotBg = 'bg-teal-50 text-teal-800 border-teal-200';
               dotIndicator = 'bg-teal-500';
-              amountText = `${student.currency}${m.amountPaid}`;
+              pillBg = 'bg-teal-50/70 text-teal-900 border-teal-200/80';
+              amountText = `${student.currency || '$'}${m.amountPaid}`;
             } else if (m.status === 'defaulter') {
-              dotBg = 'bg-red-50 text-red-800 border-red-200';
               dotIndicator = 'bg-red-500';
-              amountText = `${student.currency}${m.feeDue || student.monthlyFee}`;
+              pillBg = 'bg-red-50/70 text-red-900 border-red-200/80';
+              amountText = `${student.currency || '$'}${m.feeDue || student.monthlyFee}`;
             }
 
             return `
               <button 
                 type="button"
                 onclick="openMonthDetailModal('${student.id}', ${idx})" 
-                class="flex flex-col items-center justify-center py-1 px-0.5 rounded-xl transition-all hover:bg-gray-50 active:scale-95 cursor-pointer ${isCurrentMonth ? 'bg-[#0E4D45]/[0.05] ring-1 ring-[#0E4D45]' : ''}"
+                class="flex items-center justify-center gap-1.5 py-1.5 px-1.5 rounded-xl border text-center transition-all hover:shadow-2xs active:scale-95 cursor-pointer ${pillBg} ${isCurrentMonth ? 'ring-1.5 ring-[#0E4D45] font-bold' : ''}"
                 title="${m.month} ${CURRENT_YEAR}: ${m.status.toUpperCase()} (${amountText})"
               >
-                <div class="w-6 h-6 rounded-full flex items-center justify-center border ${dotBg} shadow-2xs">
-                  <span class="w-2 h-2 rounded-full ${dotIndicator}"></span>
-                </div>
-                <span class="text-[9px] font-semibold mt-0.5 ${isCurrentMonth ? 'text-[#0E4D45] font-bold' : 'text-gray-500'}">${m.month}</span>
+                <span class="w-2 h-2 rounded-full ${dotIndicator} shrink-0"></span>
+                <span class="text-[11px] font-semibold leading-none truncate">${m.month}</span>
               </button>
             `;
           }).join('')}
@@ -6928,7 +6942,7 @@ function renderMobileStudentFeeCard(student, isChildOfFamily = false) {
       </div>
 
       <!-- 3. Bottom Action Row: Thumb-Friendly Touch Targets -->
-      <div class="flex items-center gap-1.5 pt-2.5 mt-1 border-t border-[#ECEAE4]/80">
+      <div class="flex items-center gap-2 pt-2.5 mt-1 border-t border-[#ECEAE4]/80">
         <button 
           onclick="openReceiveFeeModal('${student.id}')" 
           class="flex-1 py-2 px-2 text-xs font-bold rounded-xl bg-[#0E4D45] hover:bg-[#14534B] text-white flex items-center justify-center gap-1 shadow-2xs transition-colors cursor-pointer"
@@ -6939,19 +6953,19 @@ function renderMobileStudentFeeCard(student, isChildOfFamily = false) {
 
         <button 
           onclick="openWhatsAppFeeReminder('${student.id}')" 
-          class="py-2 px-2.5 text-xs font-semibold rounded-xl bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#128C7E] flex items-center justify-center gap-1 transition-colors cursor-pointer"
+          class="py-2 px-3 text-xs font-semibold rounded-xl bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#128C7E] flex items-center justify-center gap-1 transition-colors cursor-pointer"
           title="Send WhatsApp Reminder"
         >
           <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
-          <span class="text-[11px]">WhatsApp</span>
+          <span class="text-[11px] font-semibold">WhatsApp</span>
         </button>
 
         <button 
           onclick="openMonthDetailModal('${student.id}', ${CURRENT_MONTH_INDEX})" 
-          class="py-2 px-2.5 text-xs font-semibold rounded-xl bg-[#F8F6F1] hover:bg-[#E8EFEE] text-[#141F1E] border border-[#ECEAE4] flex items-center justify-center gap-1 transition-colors cursor-pointer"
-          title="Inspect Details"
+          class="py-2 px-3 text-xs font-semibold rounded-xl bg-[#F8F6F1] hover:bg-[#E8EFEE] text-[#141F1E] border border-[#ECEAE4] transition-colors cursor-pointer"
+          title="View Statement & Details"
         >
-          <span class="text-[11px]">Details</span>
+          Details
         </button>
       </div>
 
@@ -7006,6 +7020,30 @@ function renderMobileFamilyLedgerGroup(fam) {
     </div>
   `;
 }
+
+function toggleFeeFilterDropdown(event) {
+  if (event) event.stopPropagation();
+  const menu = document.getElementById('fee-filter-dropdown-menu');
+  if (!menu) return;
+  menu.classList.toggle('hidden');
+}
+
+function closeFeeFilterDropdown() {
+  const menu = document.getElementById('fee-filter-dropdown-menu');
+  if (menu && !menu.classList.contains('hidden')) {
+    menu.classList.add('hidden');
+  }
+}
+
+window.toggleFeeFilterDropdown = toggleFeeFilterDropdown;
+window.closeFeeFilterDropdown = closeFeeFilterDropdown;
+
+document.addEventListener('click', (e) => {
+  const container = document.getElementById('desktop-fee-filter-container');
+  if (container && !container.contains(e.target)) {
+    closeFeeFilterDropdown();
+  }
+});
 
 function openFeeFilterBottomSheet() {
   const sheet = document.getElementById('fee-filter-bottom-sheet');
@@ -7101,6 +7139,7 @@ function resetFeeFilters() {
   AppState.selectedCurrency = 'all';
   AppState.groupByFamily = false;
   AppState.searchQuery = '';
+  closeFeeFilterDropdown();
   renderApp();
 }
 

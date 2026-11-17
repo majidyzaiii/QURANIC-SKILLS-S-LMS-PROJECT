@@ -10,31 +10,399 @@
  */
 
 // ==========================================
-// 0. BROWSER LOCALSTORAGE PERSISTENCE HELPERS
+// 0. FIREBASE CLOUD FIRESTORE ENGINE & PERSISTENCE
 // ==========================================
 
-function saveToStorage(key, data) {
+const firebaseConfig = {
+  apiKey: "AIzaSyCdJK7BPNQfVuKI6w-TeYdLRrweyDzfpRo",
+  authDomain: "quranic-skills-lms.firebaseapp.com",
+  projectId: "quranic-skills-lms",
+  storageBucket: "quranic-skills-lms.firebasestorage.app",
+  messagingSenderId: "978881807901",
+  appId: "1:978881807901:web:206410c6b007539fe9e8f4",
+  measurementId: "G-HQR5J5256T"
+};
+
+let db = null;
+let isFirestoreReady = false;
+let isFirestoreConnected = false;
+let firestoreSyncStatus = 'initializing'; // 'connected' | 'connecting' | 'fallback' | 'api_inactive'
+let firestoreSyncError = null;
+
+// Local In-Memory Cache with LocalStorage fallback for zero-latency boot & offline recovery
+const _cloudLocalCache = {};
+
+function saveCache(key, data) {
+  _cloudLocalCache[key] = data;
   try {
     localStorage.setItem(key, JSON.stringify(data));
-  } catch (error) {
-    console.warn(`[Storage] Failed to save key "${key}":`, error);
+  } catch (e) {}
+}
+
+function loadCache(key, defaultData) {
+  if (_cloudLocalCache[key] !== undefined) return _cloudLocalCache[key];
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw !== null && raw !== undefined) {
+      const parsed = JSON.parse(raw);
+      _cloudLocalCache[key] = parsed;
+      return parsed;
+    }
+  } catch (e) {}
+  return defaultData;
+}
+
+// UI Status Indicator updater
+function updateCloudSyncUI(status, label) {
+  firestoreSyncStatus = status;
+  const badge = document.getElementById('cloud-sync-status-badge');
+  const dot = document.getElementById('cloud-sync-dot');
+  const text = document.getElementById('cloud-sync-text');
+  if (!badge || !dot || !text) return;
+
+  if (status === 'connected') {
+    dot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+    text.textContent = label || 'Firestore Live';
+    badge.title = 'Cloud Firestore is actively syncing in real-time across devices';
+  } else if (status === 'connecting') {
+    dot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-pulse';
+    text.textContent = label || 'Connecting Cloud...';
+    badge.title = 'Connecting to Firebase Cloud Firestore...';
+  } else if (status === 'api_inactive') {
+    dot.className = 'w-2 h-2 rounded-full bg-amber-400';
+    text.textContent = label || 'Firestore: Pending Activation';
+    badge.title = 'Cloud Firestore API needs 1-click activation in Google/Firebase Console. Local cache is active.';
+  } else {
+    dot.className = 'w-2 h-2 rounded-full bg-amber-500';
+    text.textContent = label || 'Local Cache Active';
+    badge.title = 'Offline / Local cache active.';
   }
+}
+
+// Interactive status inspector for Admin
+function checkCloudSyncStatus(event) {
+  if (event) event.stopPropagation();
+  let statusText = isFirestoreConnected ? '🟢 Connected & Live' : (firestoreSyncStatus === 'api_inactive' ? '⚠️ API Pending Activation in Google Cloud' : '🟡 Local Cache Active');
+  let msg = `🔥 Firebase Cloud Firestore Status:\n\n` +
+    `• Status: ${statusText}\n` +
+    `• Project ID: ${firebaseConfig.projectId}\n` +
+    `• Synced Collections: students, teachers, payment_ledger, notices, trial_pipeline\n\n`;
+  if (firestoreSyncStatus === 'api_inactive' || firestoreSyncError) {
+    msg += `To enable live multi-device syncing:\n1. Open: https://console.firebase.google.com/project/${firebaseConfig.projectId}/firestore\n2. Click "Create Database" and select "Start in test mode"\n3. Once created, Cloud Firestore will automatically connect in real-time!\n\nAll existing data is currently preserved safely in local cache.`;
+  } else {
+    msg += `All data modifications automatically sync across all open browser tabs and devices in real-time.`;
+  }
+  alert(msg);
+}
+window.checkCloudSyncStatus = checkCloudSyncStatus;
+
+// Initialize Firebase SDK
+try {
+  if (typeof firebase !== 'undefined') {
+    if (!firebase.apps || !firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    db = firebase.firestore();
+    if (db.settings) {
+      db.settings({ experimentalAutoDetectLongPolling: true, merge: true });
+    }
+    isFirestoreReady = true;
+    console.log('[Firestore] Firebase App & Firestore initialized successfully');
+  } else {
+    console.warn('[Firestore] Firebase Compat SDK not detected. Operating in cache mode.');
+  }
+} catch (err) {
+  console.warn('[Firestore] Initialization error:', err);
+  firestoreSyncError = err.message;
+}
+
+// ==========================================
+// FIRESTORE CRUD & REAL-TIME REPOSITORY
+// ==========================================
+
+// Save student doc to Firestore
+async function dbSaveStudent(student) {
+  if (!student || !student.id) return;
+  const idx = AppState.students.findIndex(s => s.id === student.id);
+  if (idx >= 0) {
+    AppState.students[idx] = student;
+  } else {
+    AppState.students.unshift(student);
+  }
+  saveCache('lms_students', AppState.students);
+
+  if (db) {
+    try {
+      await db.collection('students').doc(String(student.id)).set(student, { merge: true });
+      console.log(`[Firestore] Student ${student.id} synced to Firestore`);
+    } catch (e) {
+      console.warn(`[Firestore] Error saving student ${student.id}:`, e.message);
+    }
+  }
+}
+
+// Delete student doc from Firestore
+async function dbDeleteStudent(studentId) {
+  if (!studentId) return;
+  AppState.students = AppState.students.filter(s => s.id !== studentId);
+  saveCache('lms_students', AppState.students);
+
+  if (db) {
+    try {
+      await db.collection('students').doc(String(studentId)).delete();
+      console.log(`[Firestore] Student ${studentId} deleted from Firestore`);
+    } catch (e) {
+      console.warn(`[Firestore] Error deleting student ${studentId}:`, e.message);
+    }
+  }
+}
+
+// Save teacher doc to Firestore
+async function dbSaveTeacher(teacher) {
+  if (!teacher || !teacher.id) return;
+  const idx = AppState.teachers.findIndex(t => t.id === teacher.id);
+  if (idx >= 0) {
+    AppState.teachers[idx] = teacher;
+  } else {
+    AppState.teachers.push(teacher);
+  }
+  saveCache('lms_teachers', AppState.teachers);
+
+  if (db) {
+    try {
+      await db.collection('teachers').doc(String(teacher.id)).set(teacher, { merge: true });
+      console.log(`[Firestore] Teacher ${teacher.id} synced to Firestore`);
+    } catch (e) {
+      console.warn(`[Firestore] Error saving teacher ${teacher.id}:`, e.message);
+    }
+  }
+}
+
+// Save notice doc to Firestore
+async function dbSaveNotice(notice) {
+  if (!notice || !notice.id) return;
+  const idx = ACADEMY_NOTICES.findIndex(n => n.id === notice.id);
+  if (idx >= 0) {
+    ACADEMY_NOTICES[idx] = notice;
+  } else {
+    ACADEMY_NOTICES.unshift(notice);
+  }
+  saveCache('lms_notices', ACADEMY_NOTICES);
+
+  if (db) {
+    try {
+      await db.collection('notices').doc(String(notice.id)).set(notice, { merge: true });
+      console.log(`[Firestore] Notice ${notice.id} synced to Firestore`);
+    } catch (e) {
+      console.warn(`[Firestore] Error saving notice ${notice.id}:`, e.message);
+    }
+  }
+}
+
+// Delete notice doc from Firestore
+async function dbDeleteNotice(noticeId) {
+  if (!noticeId) return;
+  const idx = ACADEMY_NOTICES.findIndex(n => n.id === noticeId);
+  if (idx >= 0) ACADEMY_NOTICES.splice(idx, 1);
+  saveCache('lms_notices', ACADEMY_NOTICES);
+
+  if (db) {
+    try {
+      await db.collection('notices').doc(String(noticeId)).delete();
+      console.log(`[Firestore] Notice ${noticeId} deleted from Firestore`);
+    } catch (e) {
+      console.warn(`[Firestore] Error deleting notice ${noticeId}:`, e.message);
+    }
+  }
+}
+
+// Save payment ledger transaction to Firestore
+async function dbSavePaymentTransaction(tx) {
+  if (!tx) return;
+  const txId = tx.id || `TX-${Date.now()}`;
+  tx.id = txId;
+  PAYMENT_LEDGER.unshift(tx);
+  saveCache('lms_payment_ledger', PAYMENT_LEDGER);
+
+  if (db) {
+    try {
+      await db.collection('payment_ledger').doc(String(txId)).set(tx);
+      console.log(`[Firestore] Payment transaction ${txId} synced to Firestore`);
+    } catch (e) {
+      console.warn(`[Firestore] Error saving payment ${txId}:`, e.message);
+    }
+  }
+}
+
+// Save trial pipeline lead to Firestore
+async function dbSaveTrial(trial) {
+  if (!trial) return;
+  const trId = trial.id || `TR-${Date.now()}`;
+  trial.id = trId;
+  const idx = TRIAL_PIPELINE.findIndex(t => t.id === trId);
+  if (idx >= 0) TRIAL_PIPELINE[idx] = trial;
+  else TRIAL_PIPELINE.unshift(trial);
+  saveCache('lms_trial_pipeline', TRIAL_PIPELINE);
+
+  if (db) {
+    try {
+      await db.collection('trial_pipeline').doc(String(trId)).set(trial);
+      console.log(`[Firestore] Trial lead ${trId} synced to Firestore`);
+    } catch (e) {
+      console.warn(`[Firestore] Error saving trial ${trId}:`, e.message);
+    }
+  }
+}
+
+// Generic sync router that maps state arrays directly to Firestore collections
+function syncCollectionToFirestore(key, data) {
+  saveCache(key, data);
+
+  if (!db || !Array.isArray(data)) return;
+
+  const collectionMap = {
+    'lms_students': 'students',
+    'lms_teachers': 'teachers',
+    'lms_payment_ledger': 'payment_ledger',
+    'lms_notices': 'notices',
+    'lms_trial_pipeline': 'trial_pipeline'
+  };
+
+  const colName = collectionMap[key];
+  if (!colName) return;
+
+  try {
+    const batch = db.batch();
+    data.forEach(item => {
+      if (item && item.id) {
+        const docRef = db.collection(colName).doc(String(item.id));
+        batch.set(docRef, item, { merge: true });
+      }
+    });
+    batch.commit().catch(err => {
+      console.warn(`[Firestore] Batch sync warning for ${colName}:`, err.message);
+    });
+  } catch (err) {
+    console.warn(`[Firestore] Sync error for ${colName}:`, err);
+  }
+}
+
+// Storage adapter functions routing directly to Firestore sync
+function saveToStorage(key, data) {
+  syncCollectionToFirestore(key, data);
 }
 
 function loadFromStorage(key, defaultData) {
-  try {
-    const raw = localStorage.getItem(key);
-    if (raw === null || raw === undefined) return defaultData;
-    return JSON.parse(raw);
-  } catch (error) {
-    console.warn(`[Storage] Failed to load key "${key}", falling back to default:`, error);
-    return defaultData;
-  }
+  return loadCache(key, defaultData);
 }
 
-// Expose storage helpers to window for console/test access
+// Expose helpers globally
 window.saveToStorage = saveToStorage;
 window.loadFromStorage = loadFromStorage;
+window.dbSaveStudent = dbSaveStudent;
+window.dbDeleteStudent = dbDeleteStudent;
+window.dbSaveTeacher = dbSaveTeacher;
+window.dbSaveNotice = dbSaveNotice;
+window.dbDeleteNotice = dbDeleteNotice;
+window.dbSavePaymentTransaction = dbSavePaymentTransaction;
+window.dbSaveTrial = dbSaveTrial;
+
+// Real-Time Firestore onSnapshot Listeners
+function setupFirestoreRealtimeListeners() {
+  if (!db) {
+    updateCloudSyncUI('fallback', 'Local Cache Active');
+    return;
+  }
+
+  updateCloudSyncUI('connecting', 'Connecting Cloud...');
+
+  // 1. STUDENTS COLLECTION REAL-TIME SYNC
+  db.collection('students').onSnapshot((snapshot) => {
+    isFirestoreConnected = true;
+    updateCloudSyncUI('connected', 'Firestore Live');
+    if (!snapshot.empty) {
+      const liveList = [];
+      snapshot.forEach(doc => liveList.push(doc.data()));
+      AppState.students = liveList;
+      saveCache('lms_students', liveList);
+      renderApp();
+    } else {
+      // If Firestore collection is empty, auto-seed with cached students if present
+      const cached = loadCache('lms_students', []);
+      if (cached && cached.length > 0) {
+        console.log('[Firestore] Auto-migrating cached students to Firestore...');
+        cached.forEach(st => {
+          if (st.id) db.collection('students').doc(String(st.id)).set(st);
+        });
+      }
+    }
+  }, (err) => {
+    console.warn('[Firestore] Students listener warning:', err.code, err.message);
+    firestoreSyncError = err.message;
+    if (err.message && err.message.includes('API has not been used')) {
+      updateCloudSyncUI('api_inactive', 'Firestore: Activate in Console');
+    } else {
+      updateCloudSyncUI('fallback', 'Local Cache Active');
+    }
+  });
+
+  // 2. TEACHERS COLLECTION REAL-TIME SYNC
+  db.collection('teachers').onSnapshot((snapshot) => {
+    if (!snapshot.empty) {
+      const liveList = [];
+      snapshot.forEach(doc => liveList.push(doc.data()));
+      AppState.teachers = liveList;
+      saveCache('lms_teachers', liveList);
+      renderApp();
+    } else {
+      const cached = loadCache('lms_teachers', []);
+      if (cached && cached.length > 0) {
+        cached.forEach(t => {
+          if (t.id) db.collection('teachers').doc(String(t.id)).set(t);
+        });
+      }
+    }
+  }, (err) => {
+    console.warn('[Firestore] Teachers listener warning:', err.code, err.message);
+  });
+
+  // 3. PAYMENT LEDGER REAL-TIME SYNC
+  db.collection('payment_ledger').onSnapshot((snapshot) => {
+    if (!snapshot.empty) {
+      PAYMENT_LEDGER.length = 0;
+      snapshot.forEach(doc => PAYMENT_LEDGER.push(doc.data()));
+      saveCache('lms_payment_ledger', PAYMENT_LEDGER);
+      if (AppState.activeNav === 'fee-matrix') renderFeeMatrixTab();
+    }
+  }, (err) => {
+    console.warn('[Firestore] Ledger listener warning:', err.code, err.message);
+  });
+
+  // 4. NOTICES COLLECTION REAL-TIME SYNC
+  db.collection('notices').onSnapshot((snapshot) => {
+    if (!snapshot.empty) {
+      ACADEMY_NOTICES.length = 0;
+      snapshot.forEach(doc => ACADEMY_NOTICES.push(doc.data()));
+      saveCache('lms_notices', ACADEMY_NOTICES);
+      if (AppState.activeNav === 'trials-notices') renderTrialsNoticesTab();
+    }
+  }, (err) => {
+    console.warn('[Firestore] Notices listener warning:', err.code, err.message);
+  });
+
+  // 5. TRIAL PIPELINE REAL-TIME SYNC
+  db.collection('trial_pipeline').onSnapshot((snapshot) => {
+    if (!snapshot.empty) {
+      TRIAL_PIPELINE.length = 0;
+      snapshot.forEach(doc => TRIAL_PIPELINE.push(doc.data()));
+      saveCache('lms_trial_pipeline', TRIAL_PIPELINE);
+      if (AppState.activeNav === 'trials-notices') renderTrialsNoticesTab();
+    }
+  }, (err) => {
+    console.warn('[Firestore] Trial pipeline listener warning:', err.code, err.message);
+  });
+}
+window.setupFirestoreRealtimeListeners = setupFirestoreRealtimeListeners;
 
 // ==========================================
 // 1. MOCK DATABASE & INITIAL STATE
@@ -2556,6 +2924,7 @@ function handleSaveEditSchedule() {
 
   saveToStorage('lms_students', AppState.students);
   saveToStorage('lms_teachers', AppState.teachers);
+  dbSaveStudent(student);
 
   closeEditScheduleModal();
   renderApp();
@@ -3125,6 +3494,8 @@ function handleSaveNewStudent() {
 
   saveToStorage('lms_students', AppState.students);
   saveToStorage('lms_teachers', AppState.teachers);
+  dbSaveStudent(newStudent);
+  if (teacherObj) dbSaveTeacher(teacherObj);
 
   closeAddStudentModal();
   renderApp();
@@ -3264,6 +3635,7 @@ function handleSaveNewTeacher() {
 
   AppState.teachers.push(newTeacher);
   saveToStorage('lms_teachers', AppState.teachers);
+  dbSaveTeacher(newTeacher);
 
   closeAddTeacherModal();
   renderApp();
@@ -3279,6 +3651,7 @@ function toggleTeacherSalaryStatus(teacherId) {
   if (!teacher) return;
   teacher.salaryStatus = (teacher.salaryStatus === 'Paid') ? 'Pending' : 'Paid';
   saveToStorage('lms_teachers', AppState.teachers);
+  dbSaveTeacher(teacher);
   const assignedStudents = (AppState.students || []).filter(s => s.teacherId === teacher.id);
   const dynamicActiveCount = (teacher.activeStudents !== undefined && teacher.activeStudents > 0) ? teacher.activeStudents : assignedStudents.length;
   const hours = dynamicActiveCount * 18;
@@ -3362,6 +3735,8 @@ function approveTrialToStudent(trialId) {
   trial.status = 'Enrolled ✓';
   saveToStorage('lms_students', AppState.students);
   saveToStorage('lms_trial_pipeline', TRIAL_PIPELINE);
+  dbSaveStudent(newStudent);
+  dbSaveTrial(trial);
   showToastNotification(`✓ Trial ${trial.studentName} enrolled as regular student ${newId}!`);
   renderApp();
 }
@@ -3451,6 +3826,7 @@ function handleSaveNotice() {
       content: content
     };
     ACADEMY_NOTICES.unshift(newNotice);
+    dbSaveNotice(newNotice);
     showToastNotification(`✓ New Notice "${title}" published across Academy!`);
   }
 
@@ -3468,6 +3844,7 @@ function deleteNotice(noticeId) {
     if (index !== -1) {
       ACADEMY_NOTICES.splice(index, 1);
       saveToStorage('lms_notices', ACADEMY_NOTICES);
+      dbDeleteNotice(noticeId);
       showToastNotification(`✓ Notice "${notice.title}" deleted.`);
       AppState.activeNoticeActionMenuId = null;
       renderApp();
@@ -3669,7 +4046,7 @@ function commitFIFOPayment(targetId, amount, paymentMethod = 'Online Portal') {
 
   // Add to Payment Ledger
   const txnId = 'TXN-' + Math.floor(1000 + Math.random() * 9000);
-  PAYMENT_LEDGER.unshift({
+  const paymentTxn = {
     id: txnId,
     date: new Date().toISOString().split('T')[0],
     studentId: studentId,
@@ -3680,7 +4057,9 @@ function commitFIFOPayment(targetId, amount, paymentMethod = 'Online Portal') {
     allocatedTo: allocationSummary,
     method: paymentMethod,
     status: 'Completed'
-  });
+  };
+  PAYMENT_LEDGER.unshift(paymentTxn);
+  dbSavePaymentTransaction(paymentTxn);
 
   saveToStorage('lms_students', AppState.students);
   saveToStorage('lms_payment_ledger', PAYMENT_LEDGER);
@@ -6487,6 +6866,7 @@ function setStudentStatus(studentId, newStatus, event) {
 
   student.academicStatus = newStatus;
   saveToStorage('lms_students', AppState.students);
+  dbSaveStudent(student);
   AppState.activeStudentActionMenuId = null;
   renderApp();
 
@@ -6521,6 +6901,7 @@ function deleteStudent(studentId, event) {
     }
     saveToStorage('lms_students', AppState.students);
     saveToStorage('lms_teachers', AppState.teachers);
+    dbDeleteStudent(studentId);
     AppState.activeStudentActionMenuId = null;
     renderApp();
     showToastNotification(`✓ Student "${student.firstName} ${student.lastName}" deleted.`);
@@ -8453,6 +8834,7 @@ function handleSaveSabaq() {
       teacherNote: 'Logged in 30 seconds via zero-typing workflow.'
     };
     saveToStorage('lms_students', AppState.students);
+    dbSaveStudent(student);
   }
 
   closeSabaqLoggerModal();
@@ -8672,6 +9054,7 @@ document.addEventListener('DOMContentLoaded', () => {
       AppState.activeNav = hash;
     }
   }
+  setupFirestoreRealtimeListeners();
   renderApp();
   updateRolePillUI();
   renderNotificationsDropdownContent();

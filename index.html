@@ -75,6 +75,12 @@
         <!-- Right: Utility Icons & Sleek Profile Dropdown (Portal Switcher) -->
         <div class="flex items-center gap-3 shrink-0">
           
+          <!-- Cloud Firestore Sync Status Badge -->
+          <div id="cloud-sync-status-badge" class="flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-[#14534B]/60 hover:bg-[#14534B] border border-[#236058] text-[#A3C2BE] hover:text-white transition-all cursor-pointer shadow-xs" onclick="checkCloudSyncStatus(event)" title="Firebase Cloud Firestore Status">
+            <span id="cloud-sync-dot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span id="cloud-sync-text" class="text-[11px] tracking-wide font-medium">Firestore Connected</span>
+          </div>
+
           <!-- Notification Bell Dropdown Container -->
           <div class="relative" id="notifications-dropdown-container">
             <button onclick="toggleNotificationsDropdown(event)" id="notifications-dropdown-trigger" class="relative w-9 h-9 rounded-full bg-[#14534B]/60 hover:bg-[#14534B] flex items-center justify-center text-[#A3C2BE] hover:text-white transition-colors cursor-pointer" title="System Notifications & Activity">
@@ -2017,6 +2023,10 @@
       btn.classList.toggle('selected');
     }
   </script>
+
+  <!-- Firebase Cloud Firestore SDK (Compat v10) -->
+  <script src="firebase-app-compat.js"></script>
+  <script src="firebase-firestore-compat.js"></script>
 
   <!-- Chart.js 4.4 Engine (Dual-Metric Attendance vs Pass Chart) -->
   <script src="chart.min.js"></script>

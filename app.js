@@ -407,9 +407,14 @@ window.setupFirestoreRealtimeListeners = setupFirestoreRealtimeListeners;
 // 1. MOCK DATABASE & INITIAL STATE
 // ==========================================
 
+const _systemCurrentDate = new Date();
 const MONTHS_LIST = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-let CURRENT_MONTH_INDEX = 9; // October (0-indexed: Oct is 9)
-let CURRENT_YEAR = 2026;
+const FULL_MONTHS_LIST = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+let CURRENT_MONTH_INDEX = _systemCurrentDate.getMonth(); // Dynamically detects current system month (0-indexed: 0=Jan, 10=Nov, etc.)
+let CURRENT_YEAR = _systemCurrentDate.getFullYear(); // Dynamically detects current system year (e.g., 2026)
 
 const INITIAL_TEACHERS = loadFromStorage('lms_teachers', []);
 
@@ -446,8 +451,8 @@ const AppState = {
   activeNoticeActionMenuId: null,
   activeStudentSchedulePopoverId: null,
   activeStudentContactPopoverId: null,
-  currentMonthIndex: 9, // October
-  currentYear: 2026,
+  currentMonthIndex: CURRENT_MONTH_INDEX,
+  currentYear: CURRENT_YEAR,
   students: loadFromStorage('lms_students', []),
   teachers: loadFromStorage('lms_teachers', []),
   selectedSiblingId: 'QA-1021', // For parent portal
@@ -521,8 +526,17 @@ function renderMonthYearDropdownContent() {
   }).join('');
 }
 
+function updateHeaderDateDisplay() {
+  const heroText = document.getElementById('hero-date-text');
+  if (heroText) {
+    const fullMonth = FULL_MONTHS_LIST[CURRENT_MONTH_INDEX] || MONTHS_LIST[CURRENT_MONTH_INDEX];
+    heroText.textContent = `${fullMonth} ${CURRENT_YEAR}`;
+  }
+}
+window.updateHeaderDateDisplay = updateHeaderDateDisplay;
+
 function stepYear(delta) {
-  let targetYear = (CURRENT_YEAR || 2026) + delta;
+  let targetYear = (CURRENT_YEAR || _systemCurrentDate.getFullYear()) + delta;
   if (targetYear < 2020) targetYear = 2020;
   if (targetYear > 2050) targetYear = 2050;
 
@@ -535,10 +549,7 @@ function stepYear(delta) {
   }
 
   // Update hero date text
-  const heroText = document.getElementById('hero-date-text');
-  if (heroText) {
-    heroText.textContent = `${MONTHS_LIST[CURRENT_MONTH_INDEX]} ${CURRENT_YEAR}`;
-  }
+  updateHeaderDateDisplay();
 
   renderMonthYearDropdownContent();
   renderApp();
@@ -549,10 +560,8 @@ function changeYearSelection(year) {
   CURRENT_YEAR = Number(year);
   AppState.currentYear = CURRENT_YEAR;
 
-  const heroText = document.getElementById('hero-date-text');
-  if (heroText) {
-    heroText.textContent = `${MONTHS_LIST[CURRENT_MONTH_INDEX]} ${CURRENT_YEAR}`;
-  }
+  // Update hero date text
+  updateHeaderDateDisplay();
 
   renderMonthYearDropdownContent();
   renderApp();
@@ -566,14 +575,11 @@ function setAcademyMonthYear(monthIndex, year) {
   AppState.currentYear = CURRENT_YEAR;
 
   // Update hero date text
-  const heroText = document.getElementById('hero-date-text');
-  if (heroText) {
-    heroText.textContent = `${MONTHS_LIST[CURRENT_MONTH_INDEX]} ${CURRENT_YEAR}`;
-  }
+  updateHeaderDateDisplay();
 
   closeMonthYearDropdown();
   renderApp();
-  showToastNotification(`✓ Active Academic Period switched to ${MONTHS_LIST[CURRENT_MONTH_INDEX]} ${CURRENT_YEAR}`);
+  showToastNotification(`✓ Active Academic Period switched to ${FULL_MONTHS_LIST[CURRENT_MONTH_INDEX]} ${CURRENT_YEAR}`);
 }
 
 function stepAcademicMonth(delta) {
@@ -4528,6 +4534,7 @@ function renderApp() {
 
   // Update Top Navigation Bar active links
   renderNavLinks();
+  updateHeaderDateDisplay();
 }
 
 function renderNavLinks() {
@@ -5377,7 +5384,7 @@ function contactStudentGuardian(studentId, event) {
 // ============================================================
 
 function getAttendanceVsPassData(targetYear) {
-  const year = targetYear || AppState.attendanceSelectedYear || 2026;
+  const year = targetYear || AppState.attendanceSelectedYear || CURRENT_YEAR;
 
   // 1. Check for year-specific storage key: lms_attendance_history_2026, etc.
   const yearKey = 'lms_attendance_history_' + year;
@@ -5404,7 +5411,7 @@ function getAttendanceVsPassData(targetYear) {
       const avgPassingRate = totalAttend > 0 ? Math.round((totalPassed / totalAttend) * 100) : 0;
       return { hasData: true, records, avgPassingRate, year };
     }
-    if (Array.isArray(generalHistory) && year === 2026) {
+    if (Array.isArray(generalHistory) && year === CURRENT_YEAR) {
       const totalAttend = generalHistory.reduce((sum, r) => sum + (r.attend || 0), 0);
       const totalPassed = generalHistory.reduce((sum, r) => sum + (r.passed || 0), 0);
       const avgPassingRate = totalAttend > 0 ? Math.round((totalPassed / totalAttend) * 100) : 0;
@@ -5412,9 +5419,9 @@ function getAttendanceVsPassData(targetYear) {
     }
   }
 
-  // 3. For current academic year 2026, compute dynamic monthly metrics from enrolled students
+  // 3. For current academic year, compute dynamic monthly metrics from enrolled students
   const totalStudents = (AppState.students && Array.isArray(AppState.students)) ? AppState.students.length : 0;
-  if (year === 2026 && totalStudents > 0) {
+  if (year === CURRENT_YEAR && totalStudents > 0) {
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     
     // Calculate total scheduled classes per student per month
@@ -5514,11 +5521,11 @@ function calculateAttendanceYScale(records) {
 }
 
 function renderAttendanceVsPassCardMarkup() {
-  const selectedYear = AppState.attendanceSelectedYear || 2026;
+  const selectedYear = AppState.attendanceSelectedYear || CURRENT_YEAR;
   const chartData = getAttendanceVsPassData(selectedYear);
   const hasData = chartData.hasData;
   const avgPassingRate = chartData.avgPassingRate;
-  const yearsList = [2026, 2025, 2024];
+  const yearsList = [CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2];
 
   return `
     <!-- Card Header: Title & Dynamic Year Selector -->
@@ -5594,7 +5601,7 @@ function renderAttendanceVsPassCardMarkup() {
 }
 
 function initAttendanceVsPassChart() {
-  const selectedYear = AppState.attendanceSelectedYear || 2026;
+  const selectedYear = AppState.attendanceSelectedYear || CURRENT_YEAR;
   const canvas = document.getElementById('attendance-vs-pass-canvas');
   if (!canvas) return;
 
@@ -5619,7 +5626,6 @@ function initAttendanceVsPassChart() {
   const labels = records.map(r => r.month);
   const attendData = records.map(r => r.attend);
   const passedData = records.map(r => r.passed);
-  const activeIndex = 7; // August default active index matching reference design
 
   const { yMax } = calculateAttendanceYScale(records);
 
@@ -5632,7 +5638,7 @@ function initAttendanceVsPassChart() {
           type: 'bar',
           label: 'Total Attendance',
           data: attendData,
-          backgroundColor: records.map((r, i) => i === activeIndex ? '#0E4D45' : '#E5E7EB'),
+          backgroundColor: '#E5E7EB',
           hoverBackgroundColor: '#0E4D45',
           borderRadius: 16,
           borderSkipped: false,
@@ -5651,7 +5657,7 @@ function initAttendanceVsPassChart() {
           pointBackgroundColor: '#FFFFFF',
           pointBorderColor: '#0E4D45',
           pointBorderWidth: 2.5,
-          pointRadius: records.map((r, i) => i === activeIndex ? 6 : 4.5),
+          pointRadius: 4.5,
           pointHoverRadius: 6.5,
           pointHoverBorderWidth: 3,
           pointHoverBackgroundColor: '#FFFFFF',
@@ -5663,6 +5669,7 @@ function initAttendanceVsPassChart() {
       responsive: true,
       maintainAspectRatio: false,
       animation: { duration: 300 },
+      active: [], // Default state: no pre-highlighted elements on load
       interaction: {
         mode: 'index',
         intersect: false
@@ -5670,6 +5677,7 @@ function initAttendanceVsPassChart() {
       plugins: {
         legend: { display: false },
         tooltip: {
+          enabled: true,
           backgroundColor: '#0E4D45',
           titleColor: '#A3C2BE',
           bodyColor: '#FFFFFF',
@@ -5698,12 +5706,8 @@ function initAttendanceVsPassChart() {
         x: {
           grid: { display: false, drawBorder: false },
           ticks: {
-            color: (ctx) => ctx.index === activeIndex ? '#0E4D45' : '#9CA3AF',
-            font: (ctx) => ({
-              family: 'Inter',
-              size: 11,
-              weight: ctx.index === activeIndex ? '700' : '500'
-            })
+            color: '#9CA3AF',
+            font: { family: 'Inter', size: 11, weight: '500' }
           }
         },
         y: {
@@ -5723,21 +5727,6 @@ function initAttendanceVsPassChart() {
       }
     }
   });
-
-  // Activate August by default matching reference image
-  setTimeout(() => {
-    if (window._attendanceChartInstance && window._attendanceChartInstance.tooltip) {
-      window._attendanceChartInstance.setActiveElements([
-        { datasetIndex: 0, index: activeIndex },
-        { datasetIndex: 1, index: activeIndex }
-      ]);
-      window._attendanceChartInstance.tooltip.setActiveElements([
-        { datasetIndex: 0, index: activeIndex },
-        { datasetIndex: 1, index: activeIndex }
-      ]);
-      window._attendanceChartInstance.update();
-    }
-  }, 100);
 }
 
 function toggleAttendanceYearDropdown(event) {
@@ -9538,6 +9527,7 @@ function closeNotificationsModal() {
 
 // Initial Boot
 document.addEventListener('DOMContentLoaded', () => {
+  updateHeaderDateDisplay();
   if (window.location.hash) {
     const hash = window.location.hash.replace('#', '');
     if (['dashboard', 'fee-matrix', 'students', 'teachers', 'trials-notices'].includes(hash)) {

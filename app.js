@@ -5847,8 +5847,8 @@ function renderAttendanceVsPassCardMarkup() {
         </div>
         <p class="text-sm font-bold text-[#141F1E]">No Attendance & Pass Data Logged for ${selectedTf.label}</p>
         <p class="text-xs text-[#7A8684] mt-1 max-w-sm">No live attendance records found for ${selectedTf.label.toLowerCase()}. Enroll students or log daily sabaq to generate real-time analytics.</p>
-        <button onclick="openAddStudentModal()" class="mt-4 px-4 py-1.5 rounded-full bg-[#0E4D45] text-white text-xs font-semibold hover:bg-[#14534B] transition-colors shadow-2xs cursor-pointer">
-          + Enroll First Student
+        <button onclick="setNavTab('students')" class="mt-4 px-4 py-1.5 rounded-full bg-[#0E4D45] text-white text-xs font-semibold hover:bg-[#14534B] transition-colors shadow-2xs cursor-pointer flex items-center gap-1.5">
+          <span>View Student Directory →</span>
         </button>
       </div>
     ` : `
@@ -6401,18 +6401,12 @@ function renderAdminFeeMatrixView() {
           </p>
         </div>
 
-        <!-- Action Buttons: 50% width each on mobile, auto-width on desktop -->
+        <!-- Primary Action Button: Receive Fee -->
         <div class="flex items-center gap-2 w-full sm:w-auto">
-          <!-- + Add Student Button -->
-          <button onclick="openAddStudentModal()" class="flex-1 min-w-0 sm:flex-initial px-2.5 sm:px-4 py-2.5 sm:py-2 text-xs font-semibold rounded-full bg-[#FFFFFF] hover:bg-[#F8F6F1] text-[#0E4D45] border border-[#ECEAE4] transition-colors flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer">
-            <svg class="w-4 h-4 text-[#0E4D45] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
-            <span class="truncate">+ Add Student</span>
-          </button>
-          
           <!-- Receive Fee Primary Button -->
-          <button onclick="openReceiveFeeModal()" class="flex-1 min-w-0 sm:flex-initial px-2.5 sm:px-5 py-2.5 sm:py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors shadow-sm flex items-center justify-center gap-1.5 cursor-pointer">
+          <button onclick="openReceiveFeeModal()" class="w-full sm:w-auto px-5 py-2.5 sm:py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors shadow-sm flex items-center justify-center gap-1.5 cursor-pointer">
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-            <span class="truncate">+ Receive Fee</span>
+            <span>+ Receive Fee (FIFO)</span>
           </button>
         </div>
       </div>
@@ -6651,11 +6645,10 @@ function renderAdminFeeMatrixView() {
                         <div class="w-12 h-12 rounded-full bg-[#E8EFEE] text-[#0E4D45] flex items-center justify-center mb-3">
                           <svg class="w-6 h-6 text-[#0E4D45]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"/></svg>
                         </div>
-                        <p class="text-xs font-bold text-[#141F1E]">No active students found. Click '+ Add Student' to begin.</p>
-                        <p class="text-[11px] text-[#7A8684] mt-1">Enroll your first student to activate the 12-month billing matrix & automated FIFO ledger.</p>
-                        <button onclick="openAddStudentModal()" class="mt-4 px-4 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-sm flex items-center gap-1.5 cursor-pointer">
-                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-                          <span>+ Add Student</span>
+                        <p class="text-xs font-bold text-[#141F1E]">No active students found in fee ledger.</p>
+                        <p class="text-[11px] text-[#7A8684] mt-1">Enroll your first student in the directory to activate the 12-month billing matrix & automated FIFO ledger.</p>
+                        <button onclick="setNavTab('students')" class="mt-4 px-4 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-sm flex items-center gap-1.5 cursor-pointer">
+                          <span>Go to Student Directory →</span>
                         </button>
                       </div>
                     </td>
@@ -6784,10 +6777,9 @@ function renderMobileFeeLedgerContent(filtered, isFamilyGrouped) {
           <svg class="w-6 h-6 text-[#0E4D45]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"/></svg>
         </div>
         <p class="text-xs font-bold text-[#141F1E]">No active students found.</p>
-        <p class="text-[11px] text-[#7A8684] mt-1 mb-4">Enroll your first student to activate the fee ledger.</p>
-        <button onclick="openAddStudentModal()" class="w-full py-2.5 text-xs font-bold rounded-xl bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-sm flex items-center justify-center gap-1.5 cursor-pointer">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-          <span>+ Add Student</span>
+        <p class="text-[11px] text-[#7A8684] mt-1 mb-4">Enroll your first student in the student directory to activate the fee ledger.</p>
+        <button onclick="setNavTab('students')" class="w-full py-2.5 text-xs font-bold rounded-xl bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-sm flex items-center justify-center gap-1.5 cursor-pointer">
+          <span>Go to Student Directory →</span>
         </button>
       </div>
     `;
@@ -7903,17 +7895,17 @@ function renderAdminStudentsDirectory() {
           </span>
         </div>
 
-        <div class="flex items-center gap-2.5 flex-wrap">
+        <div class="flex items-center gap-2.5 flex-wrap w-full sm:w-auto">
           <!-- Export Pill Button -->
-          <button onclick="exportStudentsToCSV()" class="px-4 py-2 rounded-full bg-[#F8F6F1] hover:bg-[#E8EFEE] border border-[#ECEAE4] text-xs font-bold text-[#141F1E] transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer" title="Export student directory to CSV">
+          <button onclick="exportStudentsToCSV()" class="flex-1 sm:flex-initial justify-center px-4 py-2 rounded-full bg-[#F8F6F1] hover:bg-[#E8EFEE] border border-[#ECEAE4] text-xs font-bold text-[#141F1E] transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer" title="Export student directory to CSV">
             <svg class="w-3.5 h-3.5 text-[#7A8684]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
             <span>Export</span>
           </button>
 
-          <!-- + Add New Student Button (Consistent with design system) -->
-          <button onclick="openAddStudentModal()" class="px-5 py-2.5 rounded-full bg-[#0E4D45] text-white text-xs font-bold hover:bg-[#14534B] transition-all shadow-sm flex items-center gap-2 whitespace-nowrap cursor-pointer">
+          <!-- + Add Student Primary Action Button (Prominently placed in Student Directory) -->
+          <button onclick="openAddStudentModal()" class="flex-1 sm:flex-initial justify-center px-5 py-2.5 rounded-full bg-[#0E4D45] text-white text-xs font-bold hover:bg-[#14534B] transition-all shadow-sm flex items-center gap-2 whitespace-nowrap cursor-pointer">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
-            <span>+ Add New Student</span>
+            <span>+ Add Student</span>
           </button>
         </div>
       </div>

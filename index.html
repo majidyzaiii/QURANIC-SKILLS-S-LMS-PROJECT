@@ -147,14 +147,8 @@
           <h1 id="hero-user-name" class="text-xl sm:text-[28px] font-bold text-white tracking-tight mt-0.5">Admin Farhan</h1>
         </div>
 
-        <!-- Right Controls: Interactive Month/Year Selector, + Add Student (Full-width touch-friendly on mobile) -->
-        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
-
-          <!-- + Add Student Global Header Button -->
-          <button onclick="openAddStudentModal()" class="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2 sm:py-1.5 text-xs font-semibold rounded-full bg-[#14534B]/90 hover:bg-[#236058] text-white border border-[#236058] transition-all shadow-sm cursor-pointer" title="Enroll New Student">
-            <svg class="w-3.5 h-3.5 text-[#A3C2BE]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
-            <span>+ Add Student</span>
-          </button>
+        <!-- Right Controls: Interactive Month/Year Selector -->
+        <div class="flex items-center gap-2.5 w-full sm:w-auto justify-end">
           
           <!-- Interactive Calendar / Month & Year Selector Popover Trigger -->
           <div class="relative flex items-center justify-between sm:justify-start bg-[#14534B]/90 border border-[#236058] rounded-full p-0.5 shadow-sm w-full sm:w-auto">
@@ -2158,7 +2152,7 @@
         <div class="space-y-1.5">
           <button type="button" onclick="closeMobileDrawer(event); openAddStudentModal()" class="w-full flex items-center justify-center gap-2 py-2 px-3 text-xs font-bold rounded-xl bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-xs cursor-pointer">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
-            <span>+ Enroll Student</span>
+            <span>+ Add Student</span>
           </button>
           <button type="button" onclick="closeMobileDrawer(event); openReceiveFeeModal()" class="w-full flex items-center justify-center gap-2 py-2 px-3 text-xs font-bold rounded-xl bg-white border border-[#0E4D45] text-[#0E4D45] hover:bg-[#F8F6F1] shadow-2xs cursor-pointer">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>

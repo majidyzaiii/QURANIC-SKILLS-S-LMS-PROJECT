@@ -4623,6 +4623,7 @@ function renderNavLinks() {
 function setNavTab(tabId) {
   AppState.activeNav = tabId;
   renderApp();
+  window.scrollTo({ top: 0, behavior: 'instant' });
 }
 
 function handleKpiCardClick(type) {
@@ -4723,8 +4724,8 @@ function renderAdminDashboardView() {
   const collectionPercentage = grandTotal > 0 ? Math.min(100, Math.round(((dynamicPaidCount + dynamicAdvanceCount) / grandTotal) * 100)) : 0;
 
   return `
-    <!-- Overlapping 5 Top KPI Cards sitting -mt-14 halfway over #0E4D45 and #F8F6F1 -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5 w-full -mt-14 mb-8">
+    <!-- 5 Top KPI Cards sitting cleanly below header on #F8F6F1 -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5 w-full mb-8">
       
       <!-- Card 1: Total Enrolled Students (Dynamic) -->
       <div onclick="handleKpiCardClick('students')" class="bg-white rounded-2xl border border-[#ECEAE4] p-6 shadow-sm hover:shadow-md hover:border-[#CBD5E1] transition-all cursor-pointer flex flex-col justify-between" title="Click to view full students directory">
@@ -5998,7 +5999,7 @@ function renderAdminFeeMatrixView() {
   });
 
   return `
-    <div class="ts-card p-6 -mt-14 mb-8">
+    <div class="ts-card p-6 mb-8">
       
       <!-- Top Title & Quick Action Bar -->
       <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-6 pb-6 border-b border-[#ECEAE4]">
@@ -7097,7 +7098,7 @@ function renderAdminStudentsDirectory() {
   ];
 
   return `
-    <div class="ts-card p-6 -mt-14 mb-8">
+    <div class="ts-card p-6 mb-8">
       <!-- 1. Top Control Toolbar: Row 1 (Sub-Header Action Row - Reference Matched) -->
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
         <div class="flex items-center gap-3">
@@ -7216,7 +7217,7 @@ function renderAdminTeacherPayrollView() {
   });
 
   return `
-    <div class="ts-card p-6 -mt-14 mb-8">
+    <div class="ts-card p-6 mb-8">
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-[#ECEAE4]">
         <div>
           <h2 class="text-xl font-bold text-[#141F1E]">Teacher Payroll & Class Accounting</h2>
@@ -7336,7 +7337,7 @@ function renderAdminTrialsAndNoticesView() {
   const enrolledTrialsCount = TRIAL_PIPELINE.filter(t => t.status === 'Enrolled ✓').length;
 
   return `
-    <div class="space-y-6 -mt-14 mb-8">
+    <div class="space-y-6 mb-8">
       
       <!-- Top Title Bar -->
       <div class="p-6 bg-white rounded-2xl border border-[#ECEAE4] shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -7892,7 +7893,7 @@ function renderManagerPortalView() {
   }
 
   return `
-    <div class="space-y-6 -mt-14 mb-8">
+    <div class="space-y-6 mb-8">
       ${headerBanner}
       ${bodyContent}
     </div>
@@ -7909,7 +7910,7 @@ function renderTeacherPortalView() {
 
   if (!currentTeacher) {
     return `
-      <div class="max-w-2xl mx-auto py-16 text-center -mt-14 mb-8 bg-white p-8 rounded-2xl border border-[#ECEAE4] shadow-xs">
+      <div class="max-w-2xl mx-auto py-16 text-center mb-8 bg-white p-8 rounded-2xl border border-[#ECEAE4] shadow-xs">
         <div class="w-14 h-14 rounded-full bg-[#E8EFEE] text-[#0E4D45] flex items-center justify-center mx-auto mb-3">
           <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.26 10.147a60.438 60.438 0 0 0-.491 6.347A48.62 48.62 0 0 1 12 20.904a48.62 48.62 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.636 50.636 0 0 0-2.658-.813A59.906 59.906 0 0 1 12 3.493a59.903 59.903 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0 1 12 13.489a50.702 50.702 0 0 1 7.74-3.342M6.75 15a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 0v-3.675A55.378 55.378 0 0 1 12 8.443m-7.007 11.55A5.981 5.981 0 0 0 6.75 15.75v-1.5"/></svg>
         </div>
@@ -8121,7 +8122,7 @@ function renderTeacherPortalView() {
   }
 
   return `
-    <div class="space-y-6 -mt-14 mb-8">
+    <div class="space-y-6 mb-8">
       ${headerBanner}
       ${bodyContent}
     </div>
@@ -8135,7 +8136,7 @@ function renderTeacherPortalView() {
 function renderStudentParentPortalView() {
   if (!AppState.students || AppState.students.length === 0) {
     return `
-      <div class="max-w-2xl mx-auto py-16 px-6 text-center -mt-8">
+      <div class="max-w-2xl mx-auto py-16 px-6 text-center mb-8">
         <div class="p-8 bg-white rounded-2xl border border-[#ECEAE4] shadow-xs">
           <div class="w-12 h-12 rounded-full bg-[#E8EFEE] text-[#0E4D45] flex items-center justify-center mx-auto mb-3">
             <svg class="w-6 h-6 text-[#0E4D45]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>
@@ -8318,7 +8319,7 @@ function renderStudentParentPortalView() {
   }
 
   return `
-    <div class="space-y-6 -mt-14 mb-8">
+    <div class="space-y-6 mb-8">
       ${headerBanner}
       ${bodyContent}
     </div>

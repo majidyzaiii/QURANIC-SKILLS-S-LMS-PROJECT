@@ -59,7 +59,7 @@
   <!-- ==========================================================================
        TOP DARK FOREST TEAL HEADER & HERO BANNER (#0E4D45) - EXACT TALENTSYNC GEOMETRY
        ========================================================================== -->
-  <header class="bg-[#0E4D45] text-white pt-6 pb-20 w-full transition-colors">
+  <header class="bg-[#0E4D45] text-white pt-6 pb-20 w-full transition-colors overflow-x-hidden">
     <div class="max-w-7xl w-full mx-auto px-3.5 sm:px-6 lg:px-10">
       
       <!-- Row 1: Brand Logo & User Profile Controls -->
@@ -74,12 +74,6 @@
 
         <!-- Right: Utility Icons, Mobile Hamburger & Sleek Profile Dropdown -->
         <div class="flex items-center gap-1.5 sm:gap-3 shrink-0">
-          
-          <!-- Cloud Firestore Sync Status Badge (Hidden on compact mobile to prevent overlap) -->
-          <div id="cloud-sync-status-badge" class="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-[#14534B]/60 hover:bg-[#14534B] border border-[#236058] text-[#A3C2BE] hover:text-white transition-all cursor-pointer shadow-xs" onclick="checkCloudSyncStatus(event)" title="Firebase Cloud Firestore Status">
-            <span id="cloud-sync-dot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
-            <span id="cloud-sync-text" class="text-[11px] tracking-wide font-medium">Firestore Connected</span>
-          </div>
 
           <!-- Notification Bell Dropdown Container -->
           <div class="relative" id="notifications-dropdown-container">

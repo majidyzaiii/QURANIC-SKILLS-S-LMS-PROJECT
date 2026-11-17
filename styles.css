@@ -616,4 +616,12 @@ body.drawer-open-lock {
   flex: 1 1 0% !important;
 }
 
+/* Dual-Metric Attendance vs Pass Chart Tooltip - z-index higher than canvas lines and points */
+#attendance-chart-tooltip {
+  position: absolute !important;
+  z-index: 50 !important;
+  pointer-events: none !important;
+}
+
+
 

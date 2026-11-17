@@ -5450,7 +5450,7 @@ function getDayWithOrdinal(d) {
 
 /**
  * Dynamic calculation engine querying live Firebase Firestore data
- * Stripped of all static dummy arrays and hardcoded formulas.
+ * Stripped of all fake/synthesized data: counts ONLY actual logged classes from Firestore
  */
 function getAttendanceVsPassData(targetTimeframe) {
   const timeframe = targetTimeframe || AppState.attendanceTimeframe || 'month';
@@ -5459,7 +5459,6 @@ function getAttendanceVsPassData(targetTimeframe) {
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth(); // 0-indexed: 0=Jan, 10=Nov
-  const todayDateNum = now.getDate();
   const todayStr = now.toISOString().split('T')[0];
 
   let records = [];
@@ -5475,20 +5474,17 @@ function getAttendanceVsPassData(targetTimeframe) {
     monday.setHours(0, 0, 0, 0);
 
     const weekDayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const weekDayKeys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
     for (let i = 0; i < 7; i++) {
       const dayDate = new Date(monday);
       dayDate.setDate(monday.getDate() + i);
       const dayStr = dayDate.toISOString().split('T')[0];
-      const dayKey = weekDayKeys[i];
-      const isPastOrToday = dayStr <= todayStr;
 
       let attend = 0;
       let passed = 0;
       const accountedStudentIds = new Set();
 
-      // Check live attendance logs recorded in Firebase
+      // Check live attendance logs recorded in Firebase Firestore
       logs.forEach(log => {
         if (log.date === dayStr) {
           accountedStudentIds.add(log.studentId);
@@ -5501,29 +5497,32 @@ function getAttendanceVsPassData(targetTimeframe) {
         }
       });
 
-      // For students without explicit logs on this date:
-      if (isPastOrToday) {
-        students.forEach(st => {
-          if (accountedStudentIds.has(st.id)) return;
-          const hasSchedule = st.weeklySchedule && st.weeklySchedule[dayKey] && st.weeklySchedule[dayKey].active;
-          const hasSabaqToday = st.lastSabaq && st.lastSabaq.date === dayStr;
+      // Check any recorded sabaqs/attendance on student docs in Firebase
+      students.forEach(st => {
+        if (accountedStudentIds.has(st.id)) return;
 
-          if (hasSabaqToday) {
+        // Check student's last recorded sabaq
+        if (st.lastSabaq && st.lastSabaq.date === dayStr) {
+          if (st.lastSabaq.status === 'Present' || st.lastSabaq.status === 'Late' || st.lastSabaq.status === 'Attended') {
+            attend++;
+            if (st.lastSabaq.rating >= 3) passed++;
             accountedStudentIds.add(st.id);
-            if (st.lastSabaq.status === 'Present' || st.lastSabaq.status === 'Late' || !st.lastSabaq.status) {
-              attend++;
-              if (st.lastSabaq.rating >= 3 || (st.progressScore && st.progressScore >= 50) || st.academicStatus === 'Active') {
-                passed++;
+          }
+        }
+
+        // Check student's sabaq history entries
+        if (Array.isArray(st.sabaqHistory)) {
+          st.sabaqHistory.forEach(entry => {
+            if (entry.date === dayStr && !accountedStudentIds.has(st.id)) {
+              if (entry.status === 'Present' || entry.status === 'Late' || entry.status === 'Attended') {
+                attend++;
+                if (entry.rating >= 3 || entry.passed) passed++;
+                accountedStudentIds.add(st.id);
               }
             }
-          } else if (hasSchedule && (st.academicStatus === 'Active' || st.academicStatus === 'On Trial')) {
-            attend++;
-            const isPassing = (typeof st.progressScore === 'number' ? st.progressScore >= 50 : true) &&
-                              (typeof st.sabaqGrade === 'number' ? st.sabaqGrade >= 50 : true);
-            if (isPassing) passed++;
-          }
-        });
-      }
+          });
+        }
+      });
 
       records.push({
         label: weekDayNames[i],
@@ -5539,19 +5538,16 @@ function getAttendanceVsPassData(targetTimeframe) {
   // ========================================================
   else if (timeframe === 'month') {
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-    const weekdayMap = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
     for (let d = 1; d <= daysInMonth; d++) {
       const dayDate = new Date(currentYear, currentMonth, d);
       const dayStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      const dayKey = weekdayMap[dayDate.getDay()];
-      const isPastOrToday = d <= todayDateNum;
 
       let attend = 0;
       let passed = 0;
       const accountedStudentIds = new Set();
 
-      // Check live attendance logs recorded in Firebase
+      // Check live attendance logs recorded in Firebase Firestore
       logs.forEach(log => {
         if (log.date === dayStr) {
           accountedStudentIds.add(log.studentId);
@@ -5564,29 +5560,30 @@ function getAttendanceVsPassData(targetTimeframe) {
         }
       });
 
-      // Calculate scheduled classes for active students who don't have explicit log on this day
-      if (isPastOrToday) {
-        students.forEach(st => {
-          if (accountedStudentIds.has(st.id)) return;
-          const hasSchedule = st.weeklySchedule && st.weeklySchedule[dayKey] && st.weeklySchedule[dayKey].active;
-          const hasSabaqToday = st.lastSabaq && st.lastSabaq.date === dayStr;
+      // Check any recorded sabaqs/attendance on student docs in Firebase
+      students.forEach(st => {
+        if (accountedStudentIds.has(st.id)) return;
 
-          if (hasSabaqToday) {
+        if (st.lastSabaq && st.lastSabaq.date === dayStr) {
+          if (st.lastSabaq.status === 'Present' || st.lastSabaq.status === 'Late' || st.lastSabaq.status === 'Attended') {
+            attend++;
+            if (st.lastSabaq.rating >= 3) passed++;
             accountedStudentIds.add(st.id);
-            if (st.lastSabaq.status === 'Present' || st.lastSabaq.status === 'Late' || !st.lastSabaq.status) {
-              attend++;
-              if (st.lastSabaq.rating >= 3 || (st.progressScore && st.progressScore >= 50) || st.academicStatus === 'Active') {
-                passed++;
+          }
+        }
+
+        if (Array.isArray(st.sabaqHistory)) {
+          st.sabaqHistory.forEach(entry => {
+            if (entry.date === dayStr && !accountedStudentIds.has(st.id)) {
+              if (entry.status === 'Present' || entry.status === 'Late' || entry.status === 'Attended') {
+                attend++;
+                if (entry.rating >= 3 || entry.passed) passed++;
+                accountedStudentIds.add(st.id);
               }
             }
-          } else if (hasSchedule && (st.academicStatus === 'Active' || st.academicStatus === 'On Trial')) {
-            attend++;
-            const isPassing = (typeof st.progressScore === 'number' ? st.progressScore >= 50 : true) &&
-                              (typeof st.sabaqGrade === 'number' ? st.sabaqGrade >= 50 : true);
-            if (isPassing) passed++;
-          }
-        });
-      }
+          });
+        }
+      });
 
       records.push({
         label: getDayWithOrdinal(d),
@@ -5605,48 +5602,63 @@ function getAttendanceVsPassData(targetTimeframe) {
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
     monthNames.forEach((m, mIdx) => {
-      const isPastOrCurrentMonth = mIdx <= currentMonth;
       let attend = 0;
       let passed = 0;
 
-      if (isPastOrCurrentMonth && students.length > 0) {
-        students.forEach(st => {
-          let weeklyDays = 3;
-          if (st.weeklySchedule && typeof st.weeklySchedule === 'object') {
-            const activeDays = Object.values(st.weeklySchedule).filter(d => d && d.active).length;
-            if (activeDays > 0) weeklyDays = activeDays;
-          }
-          const monthlySessions = weeklyDays * 4;
-
-          // Check student's academic/fee status for this month
-          const monthStatus = (st.months && st.months[mIdx]) ? st.months[mIdx].status : 'paid';
-          if (monthStatus !== 'upcoming') {
-            attend += monthlySessions;
-            const progress = (typeof st.progressScore === 'number' && st.progressScore > 0) 
-              ? st.progressScore 
-              : ((typeof st.sabaqGrade === 'number' && st.sabaqGrade > 0) ? st.sabaqGrade : 85);
-            const passPct = Math.min(100, Math.max(0, progress)) / 100;
-            passed += Math.round(monthlySessions * passPct);
-          }
-        });
-
-        // Add any explicit Firebase attendance logs for this month
-        logs.forEach(log => {
-          if (log.date) {
-            const parts = log.date.split('-');
-            const logYear = parseInt(parts[0], 10);
-            const logMonth = parseInt(parts[1], 10) - 1;
-            if (logYear === currentYear && logMonth === mIdx) {
-              if (log.status === 'Present' || log.status === 'Late') {
-                attend++;
-                if (log.passed || (typeof log.rating === 'number' && log.rating >= 3)) {
-                  passed++;
-                }
+      // Add actual logged sessions recorded in Firebase Firestore for this month
+      logs.forEach(log => {
+        if (log.date) {
+          const parts = log.date.split('-');
+          const logYear = parseInt(parts[0], 10);
+          const logMonth = parseInt(parts[1], 10) - 1;
+          if (logYear === currentYear && logMonth === mIdx) {
+            if (log.status === 'Present' || log.status === 'Late' || log.status === 'Attended') {
+              attend++;
+              if (log.passed || (typeof log.rating === 'number' && log.rating >= 3)) {
+                passed++;
               }
             }
           }
-        });
-      }
+        }
+      });
+
+      // Add actual logged sabaq entries recorded on student docs for this month
+      students.forEach(st => {
+        if (st.lastSabaq && st.lastSabaq.date) {
+          const parts = st.lastSabaq.date.split('-');
+          const sYear = parseInt(parts[0], 10);
+          const sMonth = parseInt(parts[1], 10) - 1;
+          if (sYear === currentYear && sMonth === mIdx) {
+            // Check if not already logged in logs
+            const alreadyInLogs = logs.some(l => l.studentId === st.id && l.date === st.lastSabaq.date);
+            if (!alreadyInLogs) {
+              if (st.lastSabaq.status === 'Present' || st.lastSabaq.status === 'Late' || st.lastSabaq.status === 'Attended') {
+                attend++;
+                if (st.lastSabaq.rating >= 3) passed++;
+              }
+            }
+          }
+        }
+
+        if (Array.isArray(st.sabaqHistory)) {
+          st.sabaqHistory.forEach(entry => {
+            if (entry.date) {
+              const parts = entry.date.split('-');
+              const sYear = parseInt(parts[0], 10);
+              const sMonth = parseInt(parts[1], 10) - 1;
+              if (sYear === currentYear && sMonth === mIdx) {
+                const alreadyInLogs = logs.some(l => l.studentId === st.id && l.date === entry.date);
+                if (!alreadyInLogs) {
+                  if (entry.status === 'Present' || entry.status === 'Late' || entry.status === 'Attended') {
+                    attend++;
+                    if (entry.rating >= 3 || entry.passed) passed++;
+                  }
+                }
+              }
+            }
+          });
+        }
+      });
 
       records.push({
         label: m,
@@ -5661,45 +5673,106 @@ function getAttendanceVsPassData(targetTimeframe) {
   const totalAttend = records.reduce((sum, r) => sum + r.attend, 0);
   const totalPassed = records.reduce((sum, r) => sum + r.passed, 0);
   const avgPassingRate = totalAttend > 0 ? Math.round((totalPassed / totalAttend) * 100) : 0;
-  const hasData = (totalAttend > 0 || students.length > 0 || logs.length > 0);
+  const hasData = totalAttend > 0;
+
+  // If no live data has been logged in Firestore, return empty dataset arrays by default
+  if (!hasData) {
+    return {
+      timeframe: timeframe,
+      hasData: false,
+      records: [],
+      labels: [],
+      attendData: [],
+      passedData: [],
+      avgPassingRate: 0,
+      totalAttend: 0,
+      totalPassed: 0
+    };
+  }
 
   return {
     timeframe: timeframe,
-    hasData: hasData,
+    hasData: true,
     records: records,
+    labels: records.map(r => r.label),
+    attendData: records.map(r => r.attend),
+    passedData: records.map(r => r.passed),
     avgPassingRate: avgPassingRate,
     totalAttend: totalAttend,
     totalPassed: totalPassed
   };
 }
 
-function calculateAttendanceYScale(records) {
-  let maxVal = 0;
-  records.forEach(r => {
-    if (r.attend > maxVal) maxVal = r.attend;
-    if (r.passed > maxVal) maxVal = r.passed;
-  });
+function renderAttendanceChartTooltip(context) {
+  const { chart, tooltip } = context;
+  const tooltipEl = document.getElementById('attendance-chart-tooltip');
+  if (!tooltipEl) return;
 
-  let yMax = 25;
-  if (maxVal <= 5) {
-    yMax = 5;
-  } else if (maxVal <= 10) {
-    yMax = 10;
-  } else if (maxVal <= 25) {
-    yMax = 25;
-  } else if (maxVal <= 50) {
-    yMax = 50;
-  } else if (maxVal <= 100) {
-    yMax = 100;
-  } else if (maxVal <= 300) {
-    yMax = 300;
-  } else if (maxVal <= 500) {
-    yMax = 500;
-  } else {
-    yMax = Math.ceil(maxVal / 100) * 100;
+  if (tooltip.opacity === 0) {
+    tooltipEl.style.opacity = '0';
+    tooltipEl.classList.add('hidden');
+    return;
   }
 
-  return { yMax };
+  if (tooltip.body) {
+    const titleLines = tooltip.title || [];
+    const title = titleLines.join(' ');
+
+    const dataPoints = tooltip.dataPoints || [];
+    let attendVal = 0;
+    let passedVal = 0;
+
+    dataPoints.forEach(dp => {
+      if (dp.datasetIndex === 0) attendVal = dp.raw;
+      else if (dp.datasetIndex === 1) passedVal = dp.raw;
+    });
+
+    tooltipEl.innerHTML = `
+      <div class="px-3.5 py-2.5 bg-[#0E4D45] text-white rounded-xl shadow-2xl border border-[#14534B]/80 min-w-[130px] pointer-events-none select-none">
+        <div class="text-[11px] font-semibold text-[#A3C2BE] mb-1.5 pb-1 border-b border-white/10">${title}</div>
+        <div class="flex items-center justify-between gap-4 text-xs py-0.5">
+          <span class="text-[#D1D5DB] font-medium flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-[#D1D5DB] inline-block"></span> Attend:
+          </span>
+          <span class="font-bold text-white font-mono">${attendVal}</span>
+        </div>
+        <div class="flex items-center justify-between gap-4 text-xs py-0.5">
+          <span class="text-[#A3C2BE] font-medium flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-[#34D399] inline-block"></span> Passed:
+          </span>
+          <span class="font-bold text-emerald-300 font-mono">${passedVal}</span>
+        </div>
+      </div>
+    `;
+  }
+
+  const { offsetLeft: positionX, offsetTop: positionY } = chart.canvas;
+  const caretX = tooltip.caretX;
+  const caretY = tooltip.caretY;
+  const chartWidth = chart.width;
+
+  // Horizontal bounds logic to keep tooltip within container
+  let translateX = '-50%';
+  if (caretX < 75) {
+    translateX = '0%';
+  } else if (caretX > chartWidth - 75) {
+    translateX = '-100%';
+  }
+
+  // Vertical bounds logic: place above point by default, below if near top
+  let translateY = '-100%';
+  let offsetY = -10;
+  if (caretY < 60) {
+    translateY = '0%';
+    offsetY = 14;
+  }
+
+  tooltipEl.style.transform = `translate(${translateX}, ${translateY})`;
+  tooltipEl.style.left = (positionX + caretX) + 'px';
+  tooltipEl.style.top = (positionY + caretY + offsetY) + 'px';
+  tooltipEl.style.opacity = '1';
+  tooltipEl.style.zIndex = '50';
+  tooltipEl.classList.remove('hidden');
 }
 
 function renderAttendanceVsPassCardMarkup() {
@@ -5779,8 +5852,10 @@ function renderAttendanceVsPassCardMarkup() {
         </button>
       </div>
     ` : `
-      <div class="relative w-full h-[260px] select-none" id="attendance-chart-wrapper">
-        <canvas id="attendance-vs-pass-canvas" class="w-full h-full"></canvas>
+      <div class="relative w-full h-[260px] select-none overflow-visible" id="attendance-chart-wrapper">
+        <canvas id="attendance-vs-pass-canvas" class="relative z-10 w-full h-full block"></canvas>
+        <!-- Floating Tooltip Container with z-index: 50 (Always over lines, points & bars) -->
+        <div id="attendance-chart-tooltip" class="absolute z-50 pointer-events-none transition-all duration-100 ease-out opacity-0 hidden" style="z-index: 50;"></div>
       </div>
     `}
   `;
@@ -5812,7 +5887,6 @@ function initAttendanceVsPassChart() {
   const labels = records.map(r => r.label);
   const attendData = records.map(r => r.attend);
   const passedData = records.map(r => r.passed);
-  const { yMax } = calculateAttendanceYScale(records);
 
   // Timeframe-specific bar thickness and point radius styling
   let barThickness = 20;
@@ -5883,16 +5957,10 @@ function initAttendanceVsPassChart() {
       plugins: {
         legend: { display: false },
         tooltip: {
-          enabled: true,
-          backgroundColor: '#0E4D45',
-          titleColor: '#A3C2BE',
-          bodyColor: '#FFFFFF',
-          titleFont: { family: 'Inter', size: 11, weight: '600' },
-          bodyFont: { family: 'Inter', size: 12, weight: '700' },
-          cornerRadius: 12,
-          padding: 12,
-          boxPadding: 4,
-          displayColors: false,
+          enabled: false, // Custom HTML Tooltip guarantees z-index: 50 above canvas lines and points
+          external: function(context) {
+            renderAttendanceChartTooltip(context);
+          },
           callbacks: {
             title: (items) => {
               const item = items[0];
@@ -5905,13 +5973,6 @@ function initAttendanceVsPassChart() {
               } else {
                 return `${item.label} ${CURRENT_YEAR}`;
               }
-            },
-            label: (item) => {
-              if (item.datasetIndex === 0) {
-                return `Attend:   ${item.raw}`;
-              } else {
-                return `Passed:   ${item.raw}`;
-              }
             }
           }
         }
@@ -5923,7 +5984,8 @@ function initAttendanceVsPassChart() {
             color: '#9CA3AF',
             font: { family: 'Inter', size: 11, weight: '500' },
             maxRotation: 0,
-            autoSkip: currentTimeframe === 'month' && window.innerWidth < 768
+            autoSkip: true,
+            maxTicksLimit: 10
           }
         },
         y: {
@@ -5936,9 +5998,8 @@ function initAttendanceVsPassChart() {
           ticks: {
             color: '#9CA3AF',
             font: { family: 'Inter', size: 11 },
-            stepSize: Math.max(1, Math.round(yMax / 5))
-          },
-          suggestedMax: yMax
+            precision: 0
+          }
         }
       }
     }
@@ -5965,6 +6026,13 @@ function selectAttendanceTimeframe(timeframeId, event) {
   const chevron = document.getElementById('attendance-timeframe-chevron');
   if (menu) menu.classList.add('hidden');
   if (chevron) chevron.style.transform = 'rotate(0deg)';
+
+  // Hide any open tooltip on switch
+  const tooltipEl = document.getElementById('attendance-chart-tooltip');
+  if (tooltipEl) {
+    tooltipEl.style.opacity = '0';
+    tooltipEl.classList.add('hidden');
+  }
 
   // If chart instance exists and canvas is present, update smoothly!
   const canvas = document.getElementById('attendance-vs-pass-canvas');
@@ -6039,7 +6107,6 @@ function updateAttendanceVsPassChartSmoothly() {
   const labels = records.map(r => r.label);
   const attendData = records.map(r => r.attend);
   const passedData = records.map(r => r.passed);
-  const { yMax } = calculateAttendanceYScale(records);
 
   // Update chart data
   chart.data.labels = labels;
@@ -6067,9 +6134,13 @@ function updateAttendanceVsPassChartSmoothly() {
     chart.data.datasets[1].pointHoverRadius = 6.5;
   }
 
-  // Update Y scale
-  chart.options.scales.y.suggestedMax = yMax;
-  chart.options.scales.y.ticks.stepSize = Math.max(1, Math.round(yMax / 5));
+  // Dynamic axis scaling: clean auto-scaling with autoSkip and maxTicksLimit
+  chart.options.scales.x.ticks.autoSkip = true;
+  chart.options.scales.x.ticks.maxTicksLimit = (timeframe === 'year' ? 12 : 10);
+  chart.options.scales.y.beginAtZero = true;
+  delete chart.options.scales.y.max;
+  delete chart.options.scales.y.suggestedMax;
+  delete chart.options.scales.y.ticks.stepSize;
 
   // Update chart smoothly
   chart.update();

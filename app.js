@@ -9508,23 +9508,23 @@ function openMonthDetailModal(studentId, monthIndex) {
   content.innerHTML = `
     <div class="p-6">
       <!-- Modal Header -->
-      <div class="flex items-start justify-between pb-4 border-b border-[#ECEAE4]">
-        <div class="flex items-center gap-3">
+      <div class="flex items-start justify-between gap-3 pb-4 border-b border-[#ECEAE4]">
+        <div class="flex items-center gap-3 min-w-0 flex-1 pr-2">
           <img 
             src="${student.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop&crop=faces'}" 
             alt="${student.firstName}" 
             class="w-11 h-11 rounded-full object-cover shrink-0 border border-[#ECEAE4] shadow-2xs" 
             onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(student.firstName + ' ' + student.lastName)}&background=0E4D45&color=fff';" 
           />
-          <div>
-            <div class="flex items-center gap-2">
-              <h3 class="text-base font-bold text-[#141F1E]">${student.firstName} ${student.lastName}</h3>
-              <span class="px-2 py-0.5 rounded-full bg-[#E8EFEE] text-[10px] font-bold text-[#0E4D45]">${student.id}</span>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2 flex-wrap">
+              <h3 class="text-base font-bold text-[#141F1E] leading-snug">${student.firstName} ${student.lastName}</h3>
+              <span class="px-2 py-0.5 rounded-full bg-[#E8EFEE] text-[10px] font-bold text-[#0E4D45] shrink-0">${student.id}</span>
             </div>
-            <p class="text-xs text-[#7A8684] mt-0.5">${student.course || 'Quran Studies'} • ${student.country} • Family: <span class="font-semibold text-[#141F1E]">${student.familyId}</span></p>
+            <p class="text-xs text-[#7A8684] mt-0.5 truncate">${student.course || 'Quran Studies'} • ${student.country} • Family: <span class="font-semibold text-[#141F1E]">${student.familyId}</span></p>
           </div>
         </div>
-        <button onclick="closeMonthDetailModal()" class="w-8 h-8 rounded-full flex items-center justify-center text-[#7A8684] hover:text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer" title="Close">
+        <button type="button" onclick="closeMonthDetailModal()" class="w-8 h-8 rounded-xl border border-[#ECEAE4] bg-white flex items-center justify-center text-[#7A8684] hover:text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer shrink-0" title="Close">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
@@ -9618,12 +9618,12 @@ function openMonthDetailModal(studentId, monthIndex) {
       </div>
 
       <!-- Modal Footer -->
-      <div class="pt-4 border-t border-[#ECEAE4] flex items-center justify-between">
-        <button onclick="closeMonthDetailModal()" class="px-4 py-2 text-xs font-semibold rounded-full bg-[#FFFFFF] border border-[#ECEAE4] text-[#7A8684] hover:text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer">
-          Dismiss
-        </button>
-        <button onclick="closeMonthDetailModal(); openReceiveFeeModal('${student.id}');" class="px-5 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors shadow-sm cursor-pointer">
+      <div class="pt-4 border-t border-[#ECEAE4] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+        <button type="button" onclick="closeMonthDetailModal(); openReceiveFeeModal('${student.id}');" class="w-full sm:w-auto order-1 sm:order-2 py-3 px-5 rounded-lg bg-[#0e4f3f] text-white font-medium text-xs sm:text-sm hover:bg-[#0b3e32] transition-colors shadow-sm cursor-pointer text-center">
           Open Full FIFO Modal
+        </button>
+        <button type="button" onclick="closeMonthDetailModal()" class="w-full sm:w-auto order-2 sm:order-1 px-4 py-2.5 text-xs font-semibold rounded-lg bg-[#FFFFFF] border border-[#ECEAE4] text-[#7A8684] hover:text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer text-center">
+          Dismiss
         </button>
       </div>
     </div>

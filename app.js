@@ -4551,6 +4551,13 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// Auto-close mobile drawer when viewport expands to desktop
+window.addEventListener('resize', () => {
+  if (window.innerWidth >= 769) {
+    closeMobileDrawer();
+  }
+});
+
 function renderApp() {
   const container = document.getElementById('main-dynamic-content');
   if (!container) return;
@@ -4777,7 +4784,7 @@ function renderAdminDashboardView() {
 
   return `
     <!-- 5 Top KPI Cards sitting cleanly below header on #F8F6F1 -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4.5 w-full mb-8">
+    <div class="kpi-cards-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 w-full mb-8" style="gap: 16px;">
       
       <!-- Card 1: Total Enrolled Students (Dynamic) -->
       <div onclick="handleKpiCardClick('students')" class="bg-white rounded-2xl border border-[#ECEAE4] p-5 shadow-2xs hover:shadow-xs hover:border-[#CBD5E1] transition-all cursor-pointer flex flex-col justify-between" title="Click to view full students directory">

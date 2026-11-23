@@ -561,99 +561,129 @@ html, body {
 }
 
 /* ==========================================================================
-   MOBILE SIDEBAR DRAWER (High-Performance Hardware-Accelerated)
+   DESKTOP RESPONSIVE HIDING (min-width: 769px)
+   Strictly hide mobile bottom navigation, mobile drawer, and backdrop on desktop
    ========================================================================== */
-#mobile-drawer-backdrop {
-  position: fixed !important;
-  inset: 0 !important;
-  background-color: rgba(14, 31, 28, 0.65) !important;
-  z-index: 9998 !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
-  transition: opacity 0.2s ease-in-out !important;
-  will-change: opacity;
+@media (min-width: 769px) {
+  #mobile-bottom-nav,
+  #mobile-drawer,
+  #mobile-drawer-backdrop {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    opacity: 0 !important;
+    transform: none !important;
+    box-shadow: none !important;
+  }
 }
 
-#mobile-drawer-backdrop.drawer-open {
-  opacity: 1 !important;
-  pointer-events: auto !important;
+/* ==========================================================================
+   KPI SUMMARY CARDS GRID (Exact 16px Breathing Room)
+   ========================================================================== */
+.kpi-cards-grid {
+  display: grid !important;
+  gap: 16px !important;
 }
 
-#mobile-drawer {
-  position: fixed !important;
-  top: 0 !important;
-  bottom: 0 !important;
-  left: 0 !important;
-  width: 290px !important;
-  max-width: 85vw !important;
-  height: 100vh !important;
-  height: 100dvh !important;
-  background-color: #FFFFFF !important;
-  background: #FFFFFF !important;
-  z-index: 9999 !important;
-  box-shadow: 4px 0 28px rgba(0, 0, 0, 0.25) !important;
-  transform: translateX(-100%) !important;
-  -webkit-transform: translateX(-100%) !important;
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
-  will-change: transform;
-  display: flex !important;
-  flex-direction: column !important;
-  overflow: hidden !important;
-}
+/* ==========================================================================
+   MOBILE SIDEBAR DRAWER & BOTTOM NAV (max-width: 768px ONLY)
+   High-Performance Hardware-Accelerated Mobile Navigation
+   ========================================================================== */
+@media (max-width: 768px) {
+  #mobile-drawer-backdrop {
+    position: fixed !important;
+    inset: 0 !important;
+    background-color: rgba(14, 31, 28, 0.65) !important;
+    z-index: 9998 !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transition: opacity 0.2s ease-in-out !important;
+    will-change: opacity;
+  }
 
-#mobile-drawer.drawer-open {
-  transform: translateX(0) !important;
-  -webkit-transform: translateX(0) !important;
-}
+  #mobile-drawer-backdrop.drawer-open {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
 
-#mobile-drawer .drawer-scroll-body {
-  flex: 1 1 auto;
-  overflow-y: auto !important;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
-  background-color: #FFFFFF !important;
-}
+  #mobile-drawer {
+    position: fixed !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: 290px !important;
+    max-width: 85vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    background-color: #FFFFFF !important;
+    background: #FFFFFF !important;
+    z-index: 9999 !important;
+    box-shadow: 4px 0 28px rgba(0, 0, 0, 0.25) !important;
+    transform: translateX(-100%) !important;
+    -webkit-transform: translateX(-100%) !important;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    will-change: transform;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+  }
 
-/* Prevent background scrolling when drawer is open without causing layout jump */
-body.drawer-open-lock {
-  overflow: hidden !important;
-  touch-action: none;
-}
+  #mobile-drawer.drawer-open {
+    transform: translateX(0) !important;
+    -webkit-transform: translateX(0) !important;
+  }
 
-/* Sticky Mobile Bottom Navigation App Bar */
-#mobile-bottom-nav {
-  position: fixed !important;
-  bottom: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  height: 60px !important;
-  min-height: 60px !important;
-  max-height: 60px !important;
-  z-index: 40 !important;
-  width: 100% !important;
-  max-width: 100vw !important;
-  box-sizing: border-box !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-around !important;
-  background-color: rgba(255, 255, 255, 0.98) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
-  border-top: 1px solid #ECEAE4 !important;
-  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.04) !important;
-  padding: 0 4px !important;
-  margin: 0 !important;
-  overflow: hidden !important;
-}
+  #mobile-drawer .drawer-scroll-body {
+    flex: 1 1 auto;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    background-color: #FFFFFF !important;
+  }
 
-#mobile-bottom-nav > button {
-  min-width: 0 !important;
-  flex: 1 1 0% !important;
-  height: 100% !important;
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  justify-content: center !important;
+  /* Prevent background scrolling when drawer is open without causing layout jump */
+  body.drawer-open-lock {
+    overflow: hidden !important;
+    touch-action: none;
+  }
+
+  /* Sticky Mobile Bottom Navigation App Bar */
+  #mobile-bottom-nav {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    height: 60px !important;
+    min-height: 60px !important;
+    max-height: 60px !important;
+    z-index: 40 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-around !important;
+    background-color: rgba(255, 255, 255, 0.98) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border-top: 1px solid #ECEAE4 !important;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.04) !important;
+    padding: 0 4px !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+  }
+
+  #mobile-bottom-nav > button {
+    min-width: 0 !important;
+    flex: 1 1 0% !important;
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
 }
 
 /* Dual-Metric Attendance vs Pass Chart Tooltip - z-index higher than canvas lines and points */

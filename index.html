@@ -464,17 +464,15 @@
       <div class="p-6 space-y-4 text-xs">
         <div>
           <label class="block font-bold text-[#141F1E] mb-1">Original Teacher (Absent / Unavailable)</label>
-          <select class="w-full bg-[#FFFFFF] border border-[#ECEAE4] rounded-xl px-3 py-2 text-[#141F1E] font-medium outline-none">
-            <option>Sheikh Ismail Noor (On Leave - Medical)</option>
-            <option>Qari Abdul Rahman (Emergency)</option>
+          <select id="substitute-original-teacher" class="w-full bg-[#FFFFFF] border border-[#ECEAE4] rounded-xl px-3 py-2 text-[#141F1E] font-medium outline-none">
+            <!-- Dynamically populated by app.js -->
           </select>
         </div>
 
         <div>
           <label class="block font-bold text-[#141F1E] mb-1">Available Substitute Qari / Ustadha</label>
-          <select class="w-full bg-[#FFFFFF] border border-[#ECEAE4] rounded-xl px-3 py-2 text-[#141F1E] font-medium outline-none">
-            <option>Ustadh Huzaifa Amin (Available Now • Canada)</option>
-            <option>Qari Abdul Rahman (Available at 11:30 AM • Egypt)</option>
+          <select id="substitute-target-teacher" class="w-full bg-[#FFFFFF] border border-[#ECEAE4] rounded-xl px-3 py-2 text-[#141F1E] font-medium outline-none">
+            <!-- Dynamically populated by app.js -->
           </select>
         </div>
 
@@ -1744,7 +1742,7 @@
       </div>
 
       <!-- Modal Body (Scrollable) -->
-      <div class="p-6 overflow-y-auto space-y-6 text-xs flex-1 min-h-0">
+      <div class="p-6 pb-12 overflow-y-auto space-y-6 text-xs flex-1 min-h-0">
         
         <!-- SECTION 1: ACADEMY PROFILE & GATEWAY -->
         <div class="bg-[#F8F6F1] p-4 rounded-2xl border border-[#ECEAE4] space-y-3">
@@ -1789,7 +1787,7 @@
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
             <div>
               <label class="block font-semibold text-[#141F1E] mb-1">Monthly Due Day</label>
-              <select id="setting-fee-due-day" class="w-full bg-white border border-[#ECEAE4] rounded-xl px-3 py-2 text-[#141F1E] font-medium outline-none">
+              <select id="setting-fee-due-day" class="w-full bg-white border border-[#ECEAE4] rounded-xl px-2.5 py-2 text-xs text-[#141F1E] font-medium outline-none cursor-pointer">
                 <option value="1">1st of Month</option>
                 <option value="5" selected>5th of Month</option>
                 <option value="10">10th of Month</option>
@@ -1835,7 +1833,6 @@
             <div class="flex items-center justify-between">
               <div>
                 <div class="font-bold text-[#141F1E] flex items-center gap-1.5">
-                  <svg class="w-3.5 h-3.5 text-[#0E4D45] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                   <span>Enforce Admin-Only Student Contact Lock</span>
                   <span class="text-[10px] px-2 py-0.5 rounded-md bg-[#14534B] text-white font-medium">Active Policy</span>
                 </div>
@@ -2104,7 +2101,7 @@
             id="publish-notice-submit-btn" 
             class="px-5 py-2 text-xs font-semibold rounded-lg bg-[#0E4D45] hover:bg-[#14534B] text-white transition-all shadow-xs cursor-pointer flex items-center gap-1.5"
           >
-            <svg class="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+            <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
             <span>Publish Notice</span>
           </button>
         </div>
@@ -2308,7 +2305,7 @@
       <div class="space-y-4 text-xs">
         <!-- 1. Fee Status Filter Pills -->
         <div>
-          <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-2">Payment Status</label>
+          <label class="block text-xs font-semibold text-[#141F1E] mb-2">Payment Status</label>
           <div class="grid grid-cols-3 gap-2" id="bottom-sheet-status-filters">
             <!-- Dynamically populated -->
           </div>
@@ -2333,7 +2330,7 @@
 
         <!-- 3. Currency Filter -->
         <div>
-          <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-2">Currency</label>
+          <label class="block text-xs font-semibold text-[#141F1E] mb-2">Currency</label>
           <div class="grid grid-cols-3 gap-2" id="bottom-sheet-currency-filters">
             <!-- Dynamically populated -->
           </div>
@@ -2341,7 +2338,7 @@
 
         <!-- 4. Month Stepper / Selector -->
         <div>
-          <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-2">Active Ledger Month</label>
+          <label class="block text-xs font-semibold text-[#141F1E] mb-2">Active Ledger Month</label>
           <div class="flex items-center justify-between p-2.5 rounded-xl border border-[#ECEAE4] bg-white shadow-2xs">
             <button type="button" onclick="stepAcademicMonth(-1); updateFeeFilterBottomSheetUI();" class="w-8 h-8 rounded-lg border border-[#ECEAE4] bg-[#F8F6F1] flex items-center justify-center font-bold text-gray-600 hover:text-[#0E4D45] cursor-pointer">‹</button>
             <span id="bottom-sheet-month-label" class="text-xs font-bold text-[#141F1E]"></span>
@@ -2351,7 +2348,7 @@
 
         <!-- 5. Legend Guide -->
         <div class="p-3 rounded-xl bg-gray-50 border border-gray-200">
-          <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-2">Legend Reference</span>
+          <span class="text-xs font-semibold text-[#7A8684] block mb-2">Legend Reference</span>
           <div class="flex flex-wrap items-center gap-3 text-[11px]">
             <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span><span class="font-medium text-gray-700">Paid</span></div>
             <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span><span class="font-medium text-gray-700">Partial</span></div>
@@ -2404,7 +2401,7 @@
 
       <!-- Primary Navigation Links for Mobile (Statically rendered for instant consistency) -->
       <div>
-        <span class="text-[10px] font-bold uppercase tracking-wider text-[#7A8684] block mb-2 px-1">Academy Navigation</span>
+        <span class="text-xs font-semibold text-[#7A8684] block mb-2 px-1">Academy Navigation</span>
         <div id="mobile-drawer-nav-links" class="space-y-1.5">
           <button type="button" onclick="setNavTab('dashboard'); closeMobileDrawer(event)" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer bg-[#0E4D45] text-white font-bold shadow-xs">
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 3h7v7H3V3zm11 0h7v7h-7V3zm0 11h7v7h-7v-7zM3 14h7v7H3v-7z"></path></svg>
@@ -2429,24 +2426,9 @@
         </div>
       </div>
 
-      <!-- Quick Actions for Mobile -->
-      <div class="pt-2 border-t border-[#ECEAE4]">
-        <span class="text-[10px] font-bold uppercase tracking-wider text-[#7A8684] block mb-2 px-1">Quick Actions</span>
-        <div class="space-y-1.5">
-          <button type="button" onclick="closeMobileDrawer(event); openAddStudentModal()" class="w-full flex items-center justify-center gap-2 py-2 px-3 text-xs font-bold rounded-xl bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-xs cursor-pointer">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
-            <span>+ Add Student</span>
-          </button>
-          <button type="button" onclick="closeMobileDrawer(event); openReceiveFeeModal()" class="w-full flex items-center justify-center gap-2 py-2 px-3 text-xs font-bold rounded-xl bg-white border border-[#0E4D45] text-[#0E4D45] hover:bg-[#F8F6F1] shadow-2xs cursor-pointer">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-            <span>Receive Fee</span>
-          </button>
-        </div>
-      </div>
-
       <!-- Switch Role Grid -->
       <div class="pt-2 border-t border-[#ECEAE4]">
-        <span class="text-[10px] font-bold uppercase tracking-wider text-[#7A8684] block mb-2 px-1">Switch Role Portal</span>
+        <span class="text-xs font-semibold text-[#7A8684] block mb-2 px-1">Switch Role Portal</span>
         <div class="grid grid-cols-2 gap-1.5 text-xs font-semibold">
           <button type="button" onclick="switchRole('admin'); closeMobileDrawer(event)" class="p-2 rounded-xl text-left bg-[#F8F6F1] hover:bg-[#E8EFEE] text-[#0E4D45] border border-[#ECEAE4] cursor-pointer flex items-center justify-between">
             <span>Admin</span>

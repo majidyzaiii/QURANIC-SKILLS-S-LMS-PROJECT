@@ -1451,7 +1451,12 @@ function openViewWeeklyScheduleModal(studentId) {
   if (!student) return;
 
   currentViewingStudentId = student.id;
-  const teacher = AppState.teachers.find(t => t.id === student.teacherId) || AppState.teachers[0] || { id: 'T-UNASSIGNED', name: 'Unassigned Faculty', specialization: 'General Quran', country: 'Global', avatar: '' };
+  const teacher = (AppState.teachers || []).find(t => 
+    t.id === student.teacherId || 
+    (t.id && student.teacherId && t.id.toLowerCase() === student.teacherId.toLowerCase()) ||
+    t.name === student.teacherName ||
+    t.name === student.assignedTeacher
+  ) || { id: '', name: 'Unassigned', specialization: 'None', country: 'Global', avatar: '' };
   const sched = getStudentWeeklySchedule(student);
   const metrics = calculateWeeklyMetrics(sched);
   const tzDiff = getTimezoneDiffLabel(student.timezone);
@@ -1624,7 +1629,12 @@ function openEditScheduleFromView() {
 function copyWeeklyScheduleToClipboard() {
   const student = AppState.students.find(s => s.id === currentViewingStudentId);
   if (!student) return;
-  const teacher = AppState.teachers.find(t => t.id === student.teacherId) || AppState.teachers[0] || { id: 'T-UNASSIGNED', name: 'Unassigned Faculty', specialization: 'General Quran', country: 'Global', avatar: '' };
+  const teacher = (AppState.teachers || []).find(t => 
+    t.id === student.teacherId || 
+    (t.id && student.teacherId && t.id.toLowerCase() === student.teacherId.toLowerCase()) ||
+    t.name === student.teacherName ||
+    t.name === student.assignedTeacher
+  ) || { id: '', name: 'Unassigned', specialization: 'None', country: 'Global', avatar: '' };
   const sched = getStudentWeeklySchedule(student);
 
   let text = `==============================\n`;
@@ -3149,24 +3159,39 @@ function openEditScheduleModal(studentId) {
   // Populate teachers dropdown
   const teacherSelect = document.getElementById('edit-schedule-teacher');
   if (teacherSelect) {
-    teacherSelect.innerHTML = (AppState.teachers && AppState.teachers.length > 0)
-      ? AppState.teachers.map(t => {
-        const isMatch = (student.teacherId && (String(t.id).trim().toLowerCase() === String(student.teacherId).trim().toLowerCase() || String(t.name).trim().toLowerCase() === String(student.teacherId).trim().toLowerCase())) ||
-                        (student.teacherName && (String(t.name).trim().toLowerCase() === String(student.teacherName).trim().toLowerCase() || String(t.id).trim().toLowerCase() === String(student.teacherName).trim().toLowerCase())) ||
-                        (student.assignedTeacher && (String(t.name).trim().toLowerCase() === String(student.assignedTeacher).trim().toLowerCase() || String(t.id).trim().toLowerCase() === String(student.assignedTeacher).trim().toLowerCase()));
+    const rawTid = String(student.teacherId || '').trim();
+    const rawTname = String(student.teacherName || '').trim();
+    const rawAssigned = String(student.assignedTeacher || '').trim();
+    const isUnassignedRecord = !rawTid || rawTid.toLowerCase() === 'unassigned' || rawTid.toLowerCase() === 't-unassigned' ||
+                               rawTname.toLowerCase() === 'unassigned' || rawAssigned.toLowerCase() === 'unassigned' || rawAssigned.toLowerCase() === 'teacher unassigned';
+
+    const matchedTeacher = !isUnassignedRecord ? (AppState.teachers || []).find(t => {
+      const tid = String(t.id).trim().toLowerCase();
+      const tname = String(t.name).trim().toLowerCase();
+      return (rawTid && (tid === rawTid.toLowerCase() || tname === rawTid.toLowerCase())) ||
+             (rawTname && (tname === rawTname.toLowerCase() || tid === rawTname.toLowerCase())) ||
+             (rawAssigned && (tname === rawAssigned.toLowerCase() || tid === rawAssigned.toLowerCase()));
+    }) : null;
+
+    const isUnassigned = !matchedTeacher;
+    let optionsHtml = `<option value="" ${isUnassigned ? 'selected' : ''}>Unassigned</option>`;
+    if (AppState.teachers && AppState.teachers.length > 0) {
+      optionsHtml += AppState.teachers.map(t => {
+        const isMatch = matchedTeacher && (matchedTeacher.id === t.id);
         return `
           <option value="${t.id}" ${isMatch ? 'selected' : ''}>
             ${t.name} (${t.specialization || 'General Quran'})
           </option>
         `;
-      }).join('')
-      : `<option value="">No faculty added yet</option>`;
+      }).join('');
+    }
+    teacherSelect.innerHTML = optionsHtml;
   }
 
   // Set course
   const courseSelect = document.getElementById('edit-schedule-course');
   if (courseSelect) {
-    const targetCourse = student.course === 'Islamic Studies & Daily Duaa' ? 'Islamic Studies & Daily Duas' : (student.course || 'Hifz-ul-Quran (Memorization)');
+    const targetCourse = (student.course === 'Islamic Studies & Daily Duaa' || student.course === 'Islamic Studies & Duaa') ? 'Islamic Studies & Daily Duas' : (student.course || 'Hifz-ul-Quran (Memorization)');
     courseSelect.value = targetCourse;
   }
 
@@ -4319,7 +4344,7 @@ function openPublishNoticeModal(editNoticeId = null) {
   } else {
     if (idInput) idInput.value = '';
     if (modalTitle) modalTitle.textContent = 'Post Academy Notice';
-    if (submitBtn) submitBtn.innerHTML = '<svg class="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg><span>Publish Notice</span>';
+    if (submitBtn) submitBtn.innerHTML = '<svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg><span>Publish Notice</span>';
     if (titleInput) titleInput.value = '';
     if (audienceSelect) audienceSelect.value = 'All Students & Parents';
     if (authorInput) authorInput.value = 'Admin Farhan';
@@ -4966,7 +4991,7 @@ function seedInitialActivityNotifications() {
     { id: 'TEST-001', name: 'TEST Student One', course: 'Nazra Quran with Tajweed ($50/month)' },
     { id: 'STU-101', name: 'Ahmed Khan', course: 'Hifz-ul-Quran ($60/month)' },
     { id: 'STU-102', name: 'Ayesha Siddiqui', course: 'Noorani Qaida & Nazra ($50/month)' },
-    { id: 'STU-103', name: 'Umar Farooq', course: 'Islamic Studies & Duaa ($40/month)' }
+    { id: 'STU-103', name: 'Umar Farooq', course: 'Islamic Studies & Dua ($40/month)' }
   ];
   requiredStudents.forEach((st, idx) => {
     const hasS = SYSTEM_NOTIFICATIONS.some(n => n.title === 'Student Enrolled' && n.desc && (n.desc.includes(st.id) || n.desc.includes(st.name)));
@@ -5822,7 +5847,7 @@ function renderAdminDashboardView() {
         <div class="flex items-center justify-between mb-4">
           <div>
             <h3 class="text-base font-bold text-[#141F1E]">Active Classes</h3>
-            <p class="text-xs text-[#7A8684] font-medium"><span class="font-bold text-[#141F1E] mr-1.5">${ACTIVE_CLASSES.length}</span>Classes Live &amp; Scheduled</p>
+            <p class="text-xs text-[#7A8684] font-medium"><span class="font-bold text-[#141F1E] mr-1.5">${ACTIVE_CLASSES.length}</span> Classes Live &amp; Scheduled</p>
           </div>
           ${ACTIVE_CLASSES.length > 0 ? `
           <div class="flex items-center gap-1.5">
@@ -5865,7 +5890,7 @@ function renderAdminDashboardView() {
         <div class="flex items-center justify-between mb-4">
           <div>
             <h3 class="text-base font-bold text-[#141F1E]">Upcoming Sessions</h3>
-            <p class="text-xs text-[#7A8684] font-medium"><span class="font-bold text-[#141F1E] mr-1.5">${UPCOMING_SESSIONS.length}</span>Scheduled Today</p>
+            <p class="text-xs text-[#7A8684] font-medium"><span class="font-bold text-[#141F1E] mr-1.5">${UPCOMING_SESSIONS.length}</span> Scheduled Today</p>
           </div>
           ${UPCOMING_SESSIONS.length > 0 ? `
           <div class="flex items-center gap-1.5">
@@ -5926,7 +5951,7 @@ function renderAdminDashboardView() {
         </div>
 
         <!-- Segmented horizontal progress bar (TalentSync Exact Aesthetic) -->
-        ${grandTotal > 0 ? `
+        ${grandTotal > 0 && (dynamicPaidCount + dynamicAdvanceCount + dynamicPartialCount + dynamicDefaulterCount) > 0 ? `
         <div class="segmented-bar mb-5 h-2.5 rounded-full overflow-hidden flex bg-[#ECEAE4]">
           <div class="h-full bg-[#0E4D45] transition-all" style="width: ${paidPct}%;" title="Paid (Clear): ${dynamicPaidCount} (${paidPct}%)"></div>
           <div class="h-full bg-[#3B7A72] transition-all border-l border-white" style="width: ${advPct}%;" title="Advance Paid: ${dynamicAdvanceCount} (${advPct}%)"></div>
@@ -8245,7 +8270,7 @@ function renderAdminFeeMatrixView() {
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
           <!-- Status Filter Pills -->
           <div>
-            <span class="text-[10px] font-bold uppercase tracking-wider text-[#7A8684] block mb-1.5">Payment Status</span>
+            <span class="text-xs font-semibold text-[#141F1E] block mb-1.5">Payment Status</span>
             <div class="grid grid-cols-3 gap-1.5">
               ${[
                 { id: 'all', label: `All (${AppState.students ? AppState.students.length : 0})` },
@@ -8289,7 +8314,7 @@ function renderAdminFeeMatrixView() {
 
           <!-- Currency Filter -->
           <div>
-            <span class="text-[10px] font-bold uppercase tracking-wider text-[#7A8684] block mb-1.5">Currency</span>
+            <span class="text-xs font-semibold text-[#141F1E] block mb-1.5">Currency</span>
             <select 
               onchange="setCurrencyFilter(this.value)" 
               class="h-9 w-full text-xs bg-white border border-[#ECEAE4] rounded-xl px-2.5 text-[#141F1E] font-medium outline-none focus:border-[#0E4D45] cursor-pointer shadow-2xs"
@@ -8308,7 +8333,7 @@ function renderAdminFeeMatrixView() {
       <!-- PART 2: DESKTOP EMBEDDED LEGEND & STATS ROW (Requirement 3) -->
       <div class="hidden md:flex items-center justify-between gap-4 text-xs mb-4 text-[#7A8684] flex-wrap">
         <div class="flex items-center gap-3">
-          <span class="text-[10px] font-bold uppercase tracking-wider text-[#9CA3AF]">LEGEND:</span>
+          <span class="text-xs font-semibold text-[#7A8684]">Legend:</span>
           <div class="flex items-center gap-1.5 font-medium text-[#141F1E]"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><span>Paid</span></div>
           <div class="flex items-center gap-1.5 font-medium text-[#141F1E]"><span class="w-2 h-2 rounded-full bg-amber-500"></span><span>Partial</span></div>
           <div class="flex items-center gap-1.5 font-medium text-[#141F1E]"><span class="w-2 h-2 rounded-full bg-teal-500"></span><span>Advance</span></div>
@@ -9122,18 +9147,23 @@ function renderStudentDirectoryRows(students) {
   }
 
   return students.map(s => {
-    let teacher = (AppState.teachers || []).find(t => 
-      t.id === s.teacherId || 
-      (t.id && s.teacherId && t.id.toLowerCase() === s.teacherId.toLowerCase()) ||
-      t.name === s.teacherName || 
-      t.name === s.assignedTeacher ||
-      (t.name && s.teacherName && t.name.toLowerCase() === s.teacherName.toLowerCase()) ||
-      (t.name && s.assignedTeacher && t.name.toLowerCase() === s.assignedTeacher.toLowerCase())
-    );
-    if (!teacher && AppState.teachers && AppState.teachers.length === 1 && (s.teacherId || s.teacherName || s.assignedTeacher)) {
-      teacher = AppState.teachers[0];
+    let teacher = null;
+    const rawTid = String(s.teacherId || '').trim();
+    const rawTname = String(s.teacherName || '').trim();
+    const rawAssigned = String(s.assignedTeacher || '').trim();
+    const isUnassignedRecord = !rawTid || rawTid.toLowerCase() === 'unassigned' || rawTid.toLowerCase() === 't-unassigned' ||
+                               rawTname.toLowerCase() === 'unassigned' || rawAssigned.toLowerCase() === 'unassigned' || rawAssigned.toLowerCase() === 'teacher unassigned';
+
+    if (!isUnassignedRecord) {
+      teacher = (AppState.teachers || []).find(t => {
+        const tid = String(t.id).trim().toLowerCase();
+        const tname = String(t.name).trim().toLowerCase();
+        return (rawTid && (tid === rawTid.toLowerCase() || tname === rawTid.toLowerCase())) ||
+               (rawTname && (tname === rawTname.toLowerCase() || tid === rawTname.toLowerCase())) ||
+               (rawAssigned && (tname === rawAssigned.toLowerCase() || tid === rawAssigned.toLowerCase()));
+      });
     }
-    const teacherDisplayName = teacher ? teacher.name : (s.teacherName || s.assignedTeacher || 'Unassigned');
+    const teacherDisplayName = teacher ? teacher.name : 'Unassigned';
     const currentMonthObj = Array.isArray(s.months) ? s.months[CURRENT_MONTH_INDEX] : null;
     const isDefaulter = (currentMonthObj && currentMonthObj.status === 'defaulter') || 
                         (Array.isArray(s.months) && s.months.some(m => m.status === 'defaulter'));
@@ -9640,12 +9670,15 @@ function deleteStudent(studentId, event) {
 window.deleteStudent = deleteStudent;
 
 function exportStudentsToCSV() {
-  if (!AppState.students || AppState.students.length === 0) {
+  const studentsToExport = (typeof getFilteredStudentsForDirectory === 'function') 
+    ? getFilteredStudentsForDirectory() 
+    : (AppState.students || []);
+  if (!studentsToExport || studentsToExport.length === 0) {
     showToastNotification('No students found to export.');
     return;
   }
   const headers = ['Student ID', 'First Name', 'Last Name', 'Status', 'Course', 'Teacher', 'Guardian Name', 'Phone', 'WhatsApp', 'Email', 'Country', 'Timezone', 'Monthly Fee', 'Currency'];
-  const rows = AppState.students.map(s => {
+  const rows = studentsToExport.map(s => {
     const teacher = AppState.teachers.find(t => t.id === s.teacherId);
     return [
       s.id,
@@ -9751,7 +9784,7 @@ function renderAdminStudentsDirectory() {
       <!-- 1. Top Control Toolbar: Row 1 (Sub-Header Action Row - Reference Matched) -->
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
         <div class="flex items-center gap-3">
-          <h2 class="text-xl font-bold text-[#141F1E]">Student Master Directory</h2>
+          <h2 class="text-xl font-bold text-[#141F1E]">Student Directory</h2>
           <span id="student-directory-count-pill" class="px-3 py-1 rounded-full bg-[#F1EFEA] text-xs font-bold text-[#0E4D45]">
             ${filteredStudents.length} Total Students
           </span>
@@ -9803,10 +9836,10 @@ function renderAdminStudentsDirectory() {
           </span>
           <input 
             type="text" 
-            id="student-directory-search-input"
+            id="student-directory-search-input" 
             value="${AppState.studentDirectorySearchQuery || ''}" 
-            oninput="handleStudentDirectorySearch(this.value)"
-            placeholder="Search student, ID, phone, or teacher..." 
+            oninput="handleStudentDirectorySearch(this.value)" 
+            placeholder="Search students, IDs, or teachers..." 
             class="w-full pl-10 pr-8 py-2 text-xs rounded-full border border-[#ECEAE4] bg-white text-[#141F1E] placeholder-[#94A3B8] focus:outline-none focus:border-[#0E4D45] focus:ring-1 focus:ring-[#0E4D45] transition-all shadow-2xs"
           />
           ${AppState.studentDirectorySearchQuery ? `
@@ -9869,12 +9902,12 @@ function renderAdminTeacherPayrollView() {
     <div class="ts-card p-3.5 sm:p-6 mb-8 overflow-hidden">
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-[#ECEAE4]">
         <div>
-          <h2 class="text-xl font-bold text-[#141F1E]">Teacher Payroll & Class Accounting</h2>
+          <h2 class="text-xl font-bold text-[#141F1E]">Teacher Payroll</h2>
           <p class="text-xs text-[#7A8684] mt-1">Calculated monthly honorarium based on verified logged student hours.</p>
         </div>
         <button onclick="openAddTeacherModal()" class="px-5 py-2.5 rounded-full bg-[#0E4D45] text-white text-xs font-bold hover:bg-[#14534B] transition-all shadow-sm flex items-center gap-2 whitespace-nowrap cursor-pointer">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
-          <span>+ Add New Teacher</span>
+          <span>+ Add Teacher</span>
         </button>
       </div>
 
@@ -9922,7 +9955,7 @@ function renderAdminTeacherPayrollView() {
                       <svg class="w-6 h-6 text-[#0E4D45]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.26 10.147a60.438 60.438 0 0 0-.491 6.347A48.62 48.62 0 0 1 12 20.904a48.62 48.62 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.636 50.636 0 0 0-2.658-.813A59.906 59.906 0 0 1 12 3.493a59.903 59.903 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0 1 12 13.489a50.702 50.702 0 0 1 7.74-3.342M6.75 15a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 0v-3.675A55.378 55.378 0 0 1 12 8.443m-7.007 11.55A5.981 5.981 0 0 0 6.75 15.75v-1.5"/></svg>
                     </div>
                     <p class="text-xs font-bold text-[#141F1E]">No faculty members found.</p>
-                    <p class="text-[11px] text-[#7A8684] mt-1">Use the "+ Add New Teacher" button above to begin onboarding faculty members.</p>
+                    <p class="text-[11px] text-[#7A8684] mt-1">Use the "+ Add Teacher" button above to begin onboarding faculty members.</p>
                   </div>
                 </td>
               </tr>
@@ -9995,7 +10028,7 @@ function renderAdminTrialsAndNoticesView() {
       <div class="p-6 bg-white rounded-2xl border border-[#ECEAE4] shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <div class="flex items-center gap-3">
-            <h2 class="text-xl font-bold text-[#141F1E]">Trials & Academy Notices Hub</h2>
+            <h2 class="text-xl font-bold text-[#141F1E]">Trials & Notices</h2>
             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#E8EFEE] text-[#0E4D45] border border-[#CBD5E1]">Admin Workspace</span>
           </div>
           <p class="text-xs text-[#7A8684] mt-1">
@@ -11795,7 +11828,17 @@ function handleSaveSabaq() {
  */
 function openSubstituteModal() {
   const modal = document.getElementById('substitute-modal');
-  if (modal) modal.classList.add('active');
+  if (modal) {
+    const origSelect = document.getElementById('substitute-original-teacher');
+    const targetSelect = document.getElementById('substitute-target-teacher');
+    if (origSelect && AppState.teachers && AppState.teachers.length > 0) {
+      origSelect.innerHTML = AppState.teachers.map(t => `<option value="${t.id}">${t.name} (${t.specialization || 'Faculty'})</option>`).join('');
+    }
+    if (targetSelect && AppState.teachers && AppState.teachers.length > 0) {
+      targetSelect.innerHTML = AppState.teachers.map(t => `<option value="${t.id}">${t.name} (${t.status || 'Available'})</option>`).join('');
+    }
+    modal.classList.add('active');
+  }
 }
 
 function closeSubstituteModal() {
@@ -12274,10 +12317,10 @@ function seedRequiredAcademyData() {
       timezone: 'America/Toronto',
       familyId: 'FAM-103',
       familyTag: 'FAM-103',
-      teacherId: 'TCH-103',
-      teacherName: 'Qari Saad Ahmed',
-      assignedTeacher: 'Qari Saad Ahmed',
-      course: 'Islamic Studies & Duaa',
+      teacherId: 'TCH-102',
+      teacherName: 'Ustadha Maryam Khan',
+      assignedTeacher: 'Ustadha Maryam Khan',
+      course: 'Islamic Studies & Dua',
       currency: '$',
       currencyCode: 'USD',
       monthlyFee: 40,
@@ -12305,9 +12348,37 @@ function seedRequiredAcademyData() {
       dbSaveStudent(existing);
     } else {
       if (!existing.enrollmentDate) existing.enrollmentDate = ds.enrollmentDate;
-      if (existing.id === 'STU-101' && existing.monthlyFee !== 60) existing.monthlyFee = 60;
-      if (existing.id === 'STU-102' && existing.monthlyFee !== 50) existing.monthlyFee = 50;
-      if (existing.id === 'STU-103' && existing.monthlyFee !== 40) existing.monthlyFee = 40;
+      if (existing.id === 'STU-101') {
+        if (existing.monthlyFee !== 60) existing.monthlyFee = 60;
+        existing.teacherId = 'TCH-101';
+        existing.teacherName = 'Qari Abdul Basit';
+        existing.assignedTeacher = 'Qari Abdul Basit';
+      }
+      if (existing.id === 'STU-102') {
+        if (existing.monthlyFee !== 50) existing.monthlyFee = 50;
+        existing.teacherId = 'TCH-102';
+        existing.teacherName = 'Ustadha Maryam Khan';
+        existing.assignedTeacher = 'Ustadha Maryam Khan';
+      }
+      if (existing.id === 'STU-103') {
+        if (existing.monthlyFee !== 40) existing.monthlyFee = 40;
+        existing.teacherId = 'TCH-102';
+        existing.teacherName = 'Ustadha Maryam Khan';
+        existing.assignedTeacher = 'Ustadha Maryam Khan';
+        existing.course = 'Islamic Studies & Dua';
+      }
+      if (existing.id === 'TEST-001') {
+        // Fix Part 1: Ensure saved teacher in TEST-001 is consistent between record and directory
+        if (existing.teacherId === 'TCH-101' || existing.teacherName === 'Qari Abdul Basit' || existing.assignedTeacher === 'Qari Abdul Basit') {
+          existing.teacherId = 'TCH-101';
+          existing.teacherName = 'Qari Abdul Basit';
+          existing.assignedTeacher = 'Qari Abdul Basit';
+        } else if (!existing.teacherId || existing.teacherId === 'Unassigned' || existing.teacherId === 'T-UNASSIGNED' || existing.assignedTeacher === 'Teacher Unassigned') {
+          existing.teacherId = '';
+          existing.teacherName = 'Unassigned';
+          existing.assignedTeacher = 'Unassigned';
+        }
+      }
     }
     if (!existing.avatar || existing.avatar.includes('ui-avatars.com')) {
       existing.avatar = getAvatarUrl(`${existing.firstName} ${existing.lastName || ''}`);

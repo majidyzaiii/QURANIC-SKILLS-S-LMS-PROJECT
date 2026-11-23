@@ -309,7 +309,8 @@ body {
   transform: translateY(0);
 }
 
-#edit-schedule-modal .modal-content {
+#edit-schedule-modal .modal-content,
+#settings-modal .modal-content {
   overflow: hidden;
   display: flex;
   flex-direction: column;

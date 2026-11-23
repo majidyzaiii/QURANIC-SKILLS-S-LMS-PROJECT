@@ -1145,7 +1145,7 @@ function openViewWeeklyScheduleModal(studentId) {
 
       <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2">
         <div class="p-2.5 rounded-xl bg-[#F8F6F1] border border-[#ECEAE4] text-right">
-          <span class="text-[10px] text-[#7A8684] block font-bold uppercase">Assigned Qari / Faculty</span>
+          <span class="text-[10px] text-[#7A8684] block font-semibold">Assigned Qari / Faculty</span>
           <span class="font-bold text-xs text-[#0E4D45]">${teacher.name}</span>
           <span class="text-[10px] text-[#7A8684] block font-medium">Pakistan (PKT GMT+5)</span>
         </div>
@@ -1155,12 +1155,12 @@ function openViewWeeklyScheduleModal(studentId) {
     <!-- Guardian PII & Residential Contact Details Card -->
     <div class="p-3.5 bg-[#F8F6F1] rounded-2xl border border-[#ECEAE4] grid grid-cols-1 sm:grid-cols-3 gap-3">
       <div>
-        <span class="text-[10px] text-[#7A8684] block font-bold uppercase">Guardian / Sponsor</span>
+        <span class="text-[10px] text-[#7A8684] block font-semibold">Guardian / Sponsor</span>
         <span class="font-bold text-xs text-[#141F1E]">${student.guardianName || '—'}</span>
         <span class="text-[11px] text-[#7A8684] block truncate">${student.email || '—'}</span>
       </div>
       <div>
-        <span class="text-[10px] text-[#7A8684] block font-bold uppercase">Phone & WhatsApp</span>
+        <span class="text-[10px] text-[#7A8684] block font-semibold">Phone & WhatsApp</span>
         <div class="flex items-center gap-1.5 font-bold text-xs text-[#141F1E] mt-0.5">
           <span>${student.phone}</span>
           <a href="https://wa.me/${student.whatsapp || student.phone.replace(/[^0-9]/g, '')}" target="_blank" class="text-[11px] text-[#0E4D45] hover:underline font-bold" title="Open WhatsApp">
@@ -1169,7 +1169,7 @@ function openViewWeeklyScheduleModal(studentId) {
         </div>
       </div>
       <div>
-        <span class="text-[10px] text-[#7A8684] block font-bold uppercase">Residential Street Address</span>
+        <span class="text-[10px] text-[#7A8684] block font-semibold">Residential Street Address</span>
         <span class="text-xs text-[#141F1E] font-medium block truncate" title="${student.address || ''}">${student.address || 'Address on record'}</span>
       </div>
     </div>
@@ -2814,7 +2814,10 @@ function openEditScheduleModal(studentId) {
 
   // Set course
   const courseSelect = document.getElementById('edit-schedule-course');
-  if (courseSelect) courseSelect.value = student.course || 'Hifz-ul-Quran (Memorization)';
+  if (courseSelect) {
+    const targetCourse = student.course === 'Islamic Studies & Daily Duaa' ? 'Islamic Studies & Daily Duas' : (student.course || 'Hifz-ul-Quran (Memorization)');
+    courseSelect.value = targetCourse;
+  }
 
   // Tuition Fee & Currency
   const currencySelect = document.getElementById('edit-schedule-currency');
@@ -7322,12 +7325,8 @@ function renderStudentDirectoryRows(students) {
             <div class="w-12 h-12 rounded-full bg-[#E8EFEE] text-[#0E4D45] flex items-center justify-center mb-3">
               <svg class="w-6 h-6 text-[#0E4D45]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"/></svg>
             </div>
-            <p class="text-xs font-bold text-[#141F1E]">No active students found. Click '+ Add Student' to begin.</p>
-            <p class="text-[11px] text-[#7A8684] mt-1">Enroll your first student into the academy directory with 1-click registration.</p>
-            <button onclick="openAddStudentModal()" class="mt-4 px-4 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-sm flex items-center gap-1.5 cursor-pointer">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-              <span>+ Add Student</span>
-            </button>
+            <p class="text-xs font-bold text-[#141F1E]">No active students found.</p>
+            <p class="text-[11px] text-[#7A8684] mt-1">Use the "+ Add Student" button above to enroll your first student into the directory.</p>
           </div>
         </td>
       </tr>
@@ -8118,12 +8117,8 @@ function renderAdminTeacherPayrollView() {
                     <div class="w-12 h-12 rounded-full bg-[#E8EFEE] text-[#0E4D45] flex items-center justify-center mb-3">
                       <svg class="w-6 h-6 text-[#0E4D45]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.26 10.147a60.438 60.438 0 0 0-.491 6.347A48.62 48.62 0 0 1 12 20.904a48.62 48.62 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.636 50.636 0 0 0-2.658-.813A59.906 59.906 0 0 1 12 3.493a59.903 59.903 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0 1 12 13.489a50.702 50.702 0 0 1 7.74-3.342M6.75 15a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 0v-3.675A55.378 55.378 0 0 1 12 8.443m-7.007 11.55A5.981 5.981 0 0 0 6.75 15.75v-1.5"/></svg>
                     </div>
-                    <p class="text-xs font-bold text-[#141F1E]">No faculty members found. Click '+ Add Teacher' to begin onboarding.</p>
-                    <p class="text-[11px] text-[#7A8684] mt-1">Certified teachers and their calculated monthly honorarium will appear here.</p>
-                    <button onclick="openAddTeacherModal()" class="mt-4 px-4 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-sm flex items-center gap-1.5 cursor-pointer">
-                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-                      <span>+ Add Teacher</span>
-                    </button>
+                    <p class="text-xs font-bold text-[#141F1E]">No faculty members found.</p>
+                    <p class="text-[11px] text-[#7A8684] mt-1">Use the "+ Add New Teacher" button above to begin onboarding faculty members.</p>
                   </div>
                 </td>
               </tr>
@@ -8196,11 +8191,6 @@ function renderAdminTrialsAndNoticesView() {
             Evaluate incoming trial candidates, assign certified teachers, and broadcast academy notices.
           </p>
         </div>
-
-        <button onclick="openPublishNoticeModal()" class="px-5 py-2.5 rounded-full bg-[#0E4D45] hover:bg-[#14534B] text-white text-xs font-bold transition-all shadow-xs flex items-center gap-2 whitespace-nowrap cursor-pointer">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-          <span>+ Post Academy Notice</span>
-        </button>
       </div>
 
       <!-- Quick Metrics Grid -->
@@ -8377,7 +8367,7 @@ function renderAdminTrialsAndNoticesView() {
           </div>
 
           <button onclick="openPublishNoticeModal()" class="px-4 py-2 rounded-full bg-[#0E4D45] hover:bg-[#14534B] text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer self-start sm:self-auto">
-            <span>+</span>
+            <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
             <span>Post Academy Notice</span>
           </button>
         </div>

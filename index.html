@@ -278,16 +278,24 @@
           </select>
         </div>
 
-        <!-- Payment Amount & Payment Method -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <!-- Payment Amount, Target Month & Payment Method -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
           <div>
-            <label class="block text-xs font-bold text-[#141F1E] mb-1">Payment Amount Received</label>
+            <label class="block text-xs font-bold text-[#141F1E] mb-1">Payment Amount Received *</label>
             <div class="relative">
               <input type="number" id="modal-fee-amount-input" oninput="updateFIFOPreview()" value="50" min="1" step="any"
                 class="w-full text-sm font-bold bg-[#FFFFFF] border border-[#ECEAE4] rounded-xl pl-8 pr-3 py-2 text-[#0E4D45] outline-none focus:border-[#0E4D45]">
               <span class="absolute left-3 top-2 text-xs font-bold text-[#7A8684]">$</span>
             </div>
-            <span class="text-[11px] text-[#7A8684] mt-1 block">Allocates chronologically across oldest unpaid months to newest.</span>
+            <span class="text-[10px] text-[#7A8684] mt-1 block">Amount to apply</span>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-[#141F1E] mb-1">Target Academic Month *</label>
+            <select id="modal-fee-month-select" onchange="updateFIFOPreview()" class="w-full text-xs bg-[#FFFFFF] border border-[#ECEAE4] rounded-xl px-3 py-2.5 text-[#141F1E] font-semibold outline-none focus:border-[#0E4D45] cursor-pointer">
+              <!-- Dynamically populated, defaults to current month -->
+            </select>
+            <span class="text-[10px] text-[#7A8684] mt-1 block">Allocates to this month first</span>
           </div>
 
           <div>
@@ -298,13 +306,14 @@
               <option value="PayPal Gateway">PayPal Gateway</option>
               <option value="Cash / Manual QSA Receipt">Cash / Manual Academy Office</option>
             </select>
+            <span class="text-[10px] text-[#7A8684] mt-1 block">Payment channel</span>
           </div>
         </div>
 
         <!-- Quick Settlement Amount Presets -->
         <div class="flex items-center justify-between text-xs pt-1">
           <span class="text-[11px] font-semibold text-[#7A8684]">Quick Presets:</span>
-          <div class="flex items-center gap-1.5">
+          <div class="flex items-center gap-1.5" id="modal-fee-presets-container">
             <button type="button" onclick="setModalAmount(50)" class="px-2.5 py-1 rounded-full bg-[#F8F6F1] hover:bg-[#E8EFEE] text-[#0E4D45] text-[11px] font-bold border border-[#ECEAE4] transition-colors cursor-pointer shadow-2xs">
               1 Month ($50)
             </button>
@@ -640,6 +649,17 @@
               type="text" 
               id="add-student-timezone" 
               placeholder="" 
+              class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#141F1E] outline-none focus:border-[#0E4D45] focus:bg-white transition-all"
+            >
+          </div>
+
+          <!-- Residential Street Address -->
+          <div class="col-span-2">
+            <label class="block text-xs font-semibold text-[#141F1E] mb-1">Residential Street Address</label>
+            <input 
+              type="text" 
+              id="add-student-address" 
+              placeholder="e.g. 14 Crescent Road, London" 
               class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#141F1E] outline-none focus:border-[#0E4D45] focus:bg-white transition-all"
             >
           </div>
@@ -1629,6 +1649,25 @@
             >
           </div>
 
+          <!-- Country -->
+          <div>
+            <label class="block text-xs font-semibold text-[#141F1E] mb-1">Country *</label>
+            <select 
+              id="add-teacher-country" 
+              class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#141F1E] font-medium outline-none focus:border-[#0E4D45] focus:bg-white transition-all cursor-pointer"
+            >
+              <option value="Pakistan" selected>Pakistan</option>
+              <option value="United Kingdom">United Kingdom</option>
+              <option value="United States">United States</option>
+              <option value="Canada">Canada</option>
+              <option value="Australia">Australia</option>
+              <option value="United Arab Emirates">United Arab Emirates</option>
+              <option value="Saudi Arabia">Saudi Arabia</option>
+              <option value="Egypt">Egypt</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
           <!-- Specialization -->
           <div>
             <label class="block text-xs font-semibold text-[#141F1E] mb-1">Specialization *</label>
@@ -1640,6 +1679,7 @@
               <option value="Hifz & Tajweed Specialist">Hifz & Tajweed Specialist</option>
               <option value="Noorani Qaida & Nazra">Noorani Qaida & Nazra</option>
               <option value="Female & Kids Tajweed">Female & Kids Tajweed</option>
+              <option value="Advanced Tajweed & Makharij">Advanced Tajweed & Makharij</option>
               <option value="Advanced Qiraat & Ijazah">Advanced Qiraat & Ijazah</option>
               <option value="Quran Translation & Arabic">Quran Translation & Arabic</option>
               <option value="Ten Qiraat Certification">Ten Qiraat Certification</option>

@@ -81,8 +81,8 @@ function updateCloudSyncUI(status, label) {
 // Interactive status inspector for Admin
 function checkCloudSyncStatus(event) {
   if (event) event.stopPropagation();
-  let statusText = isFirestoreConnected ? '🟢 Connected & Live' : (firestoreSyncStatus === 'api_inactive' ? '⚠️ API Pending Activation in Google Cloud' : '🟡 Local Cache Active');
-  let msg = `🔥 Firebase Cloud Firestore Status:\n\n` +
+  let statusText = isFirestoreConnected ? 'Connected & Live' : (firestoreSyncStatus === 'api_inactive' ? 'API Pending Activation in Google Cloud' : 'Local Cache Active');
+  let msg = `Firebase Cloud Firestore Status:\n\n` +
     `• Status: ${statusText}\n` +
     `• Project ID: ${firebaseConfig.projectId}\n` +
     `• Synced Collections: students, teachers, payment_ledger, notices, trial_pipeline\n\n`;
@@ -1147,7 +1147,7 @@ function openViewWeeklyScheduleModal(studentId) {
         <div class="p-2.5 rounded-xl bg-[#F8F6F1] border border-[#ECEAE4] text-right">
           <span class="text-[10px] text-[#7A8684] block font-bold uppercase">Assigned Qari / Faculty</span>
           <span class="font-bold text-xs text-[#0E4D45]">${teacher.name}</span>
-          <span class="text-[10px] text-[#7A8684] block">🇵🇰 Pakistan (PKT GMT+5)</span>
+          <span class="text-[10px] text-[#7A8684] block font-medium">Pakistan (PKT GMT+5)</span>
         </div>
       </div>
     </div>
@@ -1233,8 +1233,8 @@ function openViewWeeklyScheduleModal(studentId) {
                 </td>
                 <td class="py-3 px-3" data-label="Pakistan Time">
                   ${day.active ? `
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#E8EFEE] text-[#0E4D45] font-bold text-[11px] border border-[#CBD5E1]">
-                      <span>🇵🇰</span>
+                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#E8EFEE] text-[#0E4D45] font-semibold text-[11px] border border-[#CBD5E1]">
+                      <span class="text-[10px] text-[#7A8684]">PKT</span>
                       <span>${pktTime}</span>
                     </span>
                   ` : `<span class="text-[#94A3B8]">—</span>`}
@@ -1303,7 +1303,7 @@ function copyWeeklyScheduleToClipboard() {
     const label = WEEK_DAY_LABELS[dayKey].full;
     if (day && day.active) {
       const pkt = convertStudentTimeToPkt(day.time, student.timezone);
-      text += `• ${label}: ${day.time} ${student.timezone.split(' ')[0]} ⇄ 🇵🇰 ${pkt}\n`;
+      text += `• ${label}: ${day.time} ${student.timezone.split(' ')[0]} ⇄ PKT: ${pkt}\n`;
     } else {
       text += `• ${label}: Off Day\n`;
     }
@@ -1544,34 +1544,34 @@ const CARTOON_BG_TONES = [
 ];
 
 const CARTOON_HEADWEAR_LIST = [
-  { id: 'kufi_cap', label: '👳 Kufi Cap' },
-  { id: 'hijab_classic', label: '🧕 Classic Hijab' },
-  { id: 'keffiyeh', label: '🧣 Keffiyeh Scarf' },
-  { id: 'neat', label: '✂️ Short Classic' },
-  { id: 'curly', label: '🌀 Curly Fade' },
-  { id: 'spiky', label: '⚡ Modern Spiky' },
-  { id: 'ponytail', label: '🎀 Ponytail' }
+  { id: 'kufi_cap', label: 'Kufi Cap' },
+  { id: 'hijab_classic', label: 'Classic Hijab' },
+  { id: 'keffiyeh', label: 'Keffiyeh Scarf' },
+  { id: 'neat', label: 'Short Classic' },
+  { id: 'curly', label: 'Curly Fade' },
+  { id: 'spiky', label: 'Modern Spiky' },
+  { id: 'ponytail', label: 'Ponytail' }
 ];
 
 const CARTOON_EXPRESSIONS = [
-  { id: 'happy', label: '😊 Smile' },
-  { id: 'grin', label: '😄 Big Grin' },
-  { id: 'wink', label: '😉 Friendly Wink' },
-  { id: 'studious', label: '🤓 Studious' }
+  { id: 'happy', label: 'Smile' },
+  { id: 'grin', label: 'Big Grin' },
+  { id: 'wink', label: 'Friendly Wink' },
+  { id: 'studious', label: 'Studious' }
 ];
 
 const CARTOON_GLASSES_LIST = [
   { id: 'none', label: 'None' },
-  { id: 'round', label: '👓 Round Scholar' },
-  { id: 'rect', label: '🕶️ Sleek Rect' },
-  { id: 'sun', label: '🕶️ Cool Shades' }
+  { id: 'round', label: 'Round Scholar' },
+  { id: 'rect', label: 'Sleek Rect' },
+  { id: 'sun', label: 'Cool Shades' }
 ];
 
 const CARTOON_OUTFITS_LIST = [
-  { id: 'thobe', label: '🕌 White Thobe' },
-  { id: 'teal_uniform', label: '🎓 Academy Dark Teal' },
-  { id: 'emerald', label: '🌿 Emerald Uniform' },
-  { id: 'hoodie', label: '🧥 Casual Hoodie' }
+  { id: 'thobe', label: 'White Thobe' },
+  { id: 'teal_uniform', label: 'Academy Dark Teal' },
+  { id: 'emerald', label: 'Emerald Uniform' },
+  { id: 'hoodie', label: 'Casual Hoodie' }
 ];
 
 const CartoonAvatarStudioState = {
@@ -3820,7 +3820,7 @@ function openPublishNoticeModal(editNoticeId = null) {
   } else {
     if (idInput) idInput.value = '';
     if (modalTitle) modalTitle.textContent = 'Post Academy Notice';
-    if (submitBtn) submitBtn.innerHTML = '<span>📢</span><span>Publish Notice</span>';
+    if (submitBtn) submitBtn.innerHTML = '<svg class="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg><span>Publish Notice</span>';
     if (titleInput) titleInput.value = '';
     if (audienceSelect) audienceSelect.value = 'All Students & Parents';
     if (authorInput) authorInput.value = 'Admin Farhan';
@@ -3850,12 +3850,12 @@ function handleSaveNotice() {
   const content = contentInput ? contentInput.value.trim() : '';
 
   if (!title) {
-    showToastNotification('⚠️ Please enter notice title.');
+    showToastNotification('Please enter a notice title.');
     if (titleInput) titleInput.focus();
     return;
   }
   if (!content) {
-    showToastNotification('⚠️ Please write announcement message body.');
+    showToastNotification('Please write an announcement message body.');
     if (contentInput) contentInput.focus();
     return;
   }
@@ -4345,8 +4345,8 @@ function renderNotificationsDropdownContent() {
 
   container.innerHTML = SYSTEM_NOTIFICATIONS.map(n => `
     <div class="p-3 rounded-xl ${n.unread ? 'bg-[#F8F6F1] border border-[#ECEAE4]' : 'bg-white border border-transparent hover:bg-[#F8F6F1]'} transition-colors flex items-start gap-2.5">
-      <div class="w-7 h-7 rounded-lg ${n.type === 'success' ? 'bg-[#E0F2F1] text-[#0E4D45]' : 'bg-blue-50 text-blue-700'} flex items-center justify-center flex-shrink-0 font-bold text-xs">
-        ${n.type === 'success' ? '✓' : '📢'}
+      <div class="w-7 h-7 rounded-lg ${n.type === 'success' ? 'bg-[#E0F2F1] text-[#0E4D45]' : 'bg-blue-50 text-blue-700'} flex items-center justify-center flex-shrink-0 text-xs">
+        ${n.type === 'success' ? '<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>' : '<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>'}
       </div>
       <div class="flex-1 min-w-0">
         <div class="flex items-center justify-between gap-1">
@@ -4628,7 +4628,7 @@ function renderNavLinks() {
         ? 'bg-[#236058] text-white shadow-sm font-semibold' 
         : 'text-[#A3C2BE] hover:text-white hover:bg-[#14534B]/60 font-medium';
       return `
-        <button type="button" onclick="setNavTab('${link.id}')" class="flex items-center gap-2 px-4 py-2 rounded-full text-xs whitespace-nowrap flex-shrink-0 cursor-pointer transition-all ${activeClasses}">
+        <button type="button" onclick="setNavTab('${link.id}')" class="flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs whitespace-nowrap flex-shrink-0 cursor-pointer transition-all ${activeClasses}">
           <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="${link.icon}"></path></svg>
           <span>${link.label}</span>
         </button>
@@ -4777,73 +4777,73 @@ function renderAdminDashboardView() {
 
   return `
     <!-- 5 Top KPI Cards sitting cleanly below header on #F8F6F1 -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5 w-full mb-8">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4.5 w-full mb-8">
       
       <!-- Card 1: Total Enrolled Students (Dynamic) -->
-      <div onclick="handleKpiCardClick('students')" class="bg-white rounded-2xl border border-[#ECEAE4] p-6 shadow-sm hover:shadow-md hover:border-[#CBD5E1] transition-all cursor-pointer flex flex-col justify-between" title="Click to view full students directory">
-        <div class="mb-4 text-[#0E4D45]">
+      <div onclick="handleKpiCardClick('students')" class="bg-white rounded-2xl border border-[#ECEAE4] p-5 shadow-2xs hover:shadow-xs hover:border-[#CBD5E1] transition-all cursor-pointer flex flex-col justify-between" title="Click to view full students directory">
+        <div class="mb-3 text-[#0E4D45]">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/></svg>
         </div>
         <div>
           <div class="flex items-baseline gap-2 mb-1">
-            <span class="text-3xl font-bold tracking-tight text-[#141F1E]">${dynamicTotalStudents}</span>
-            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#E0F2F1] text-[#0E4D45]">${dynamicTotalStudents > 0 ? '+' + ((dynamicTotalStudents / 300) * 3.5).toFixed(2) + '%' : '0 Active'}</span>
+            <span class="text-2xl sm:text-3xl font-semibold tracking-tight text-[#141F1E] tabular-nums">${dynamicTotalStudents}</span>
+            <span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium bg-[#E0F2F1] text-[#0E4D45] tabular-nums">${dynamicTotalStudents > 0 ? '+' + ((dynamicTotalStudents / 300) * 3.5).toFixed(2) + '%' : '0 Active'}</span>
           </div>
           <p class="text-xs font-medium text-[#7A8684]">Total Active Students</p>
         </div>
       </div>
 
       <!-- Card 2: Fee Cleared (Dynamic Month & Ledger Sum) -->
-      <div onclick="handleKpiCardClick('fee-collected')" class="bg-white rounded-2xl border border-[#ECEAE4] p-6 shadow-sm hover:shadow-md hover:border-[#CBD5E1] transition-all cursor-pointer flex flex-col justify-between" title="Click to view paid fee ledger">
-        <div class="mb-4 text-[#0E4D45]">
+      <div onclick="handleKpiCardClick('fee-collected')" class="bg-white rounded-2xl border border-[#ECEAE4] p-5 shadow-2xs hover:shadow-xs hover:border-[#CBD5E1] transition-all cursor-pointer flex flex-col justify-between" title="Click to view paid fee ledger">
+        <div class="mb-3 text-[#0E4D45]">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
         </div>
         <div>
           <div class="flex items-baseline gap-2 mb-1">
-            <span class="text-3xl font-bold tracking-tight text-[#141F1E]">$${dynamicFeeCollected.toLocaleString()}</span>
-            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#E0F2F1] text-[#0E4D45]">${collectionPercentage}%</span>
+            <span class="text-2xl sm:text-3xl font-semibold tracking-tight text-[#141F1E] tabular-nums">$${dynamicFeeCollected.toLocaleString()}</span>
+            <span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium bg-[#E0F2F1] text-[#0E4D45] tabular-nums">${collectionPercentage}%</span>
           </div>
           <p class="text-xs font-medium text-[#7A8684]">Fee Collected (${MONTHS_LIST[CURRENT_MONTH_INDEX]})</p>
         </div>
       </div>
 
       <!-- Card 3: Pending Balances & Partial (Dynamic) -->
-      <div onclick="handleKpiCardClick('partial-due')" class="bg-white rounded-2xl border border-[#ECEAE4] p-6 shadow-sm hover:shadow-md hover:border-[#CBD5E1] transition-all cursor-pointer flex flex-col justify-between" title="Click to view partial & pending balances">
-        <div class="mb-4 text-[#0E4D45]">
+      <div onclick="handleKpiCardClick('partial-due')" class="bg-white rounded-2xl border border-[#ECEAE4] p-5 shadow-2xs hover:shadow-xs hover:border-[#CBD5E1] transition-all cursor-pointer flex flex-col justify-between" title="Click to view partial & pending balances">
+        <div class="mb-3 text-[#0E4D45]">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
         </div>
         <div>
           <div class="flex items-baseline gap-2 mb-1">
-            <span class="text-3xl font-bold tracking-tight text-[#141F1E]">$${dynamicBalanceDue.toLocaleString()}</span>
-            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]">${dynamicPartialCount} Due</span>
+            <span class="text-2xl sm:text-3xl font-semibold tracking-tight text-[#141F1E] tabular-nums">$${dynamicBalanceDue.toLocaleString()}</span>
+            <span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A] tabular-nums">${dynamicPartialCount} Due</span>
           </div>
           <p class="text-xs font-medium text-[#7A8684]">Partial / Balance Due</p>
         </div>
       </div>
 
       <!-- Card 4: Overdue Defaulters (Dynamic) -->
-      <div onclick="handleKpiCardClick('defaulters')" class="bg-white rounded-2xl border border-[#ECEAE4] border-t-2 border-t-[#EF4444] p-6 shadow-sm hover:shadow-md hover:border-[#CBD5E1] hover:border-t-[#EF4444] transition-all cursor-pointer flex flex-col justify-between" title="Click to view overdue defaulters">
-        <div class="mb-4 text-[#B91C1C]">
+      <div onclick="handleKpiCardClick('defaulters')" class="bg-white rounded-2xl border border-[#ECEAE4] p-5 shadow-2xs hover:shadow-xs hover:border-[#CBD5E1] transition-all cursor-pointer flex flex-col justify-between" title="Click to view overdue defaulters">
+        <div class="mb-3 text-[#DC2626]">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
         </div>
         <div>
           <div class="flex items-baseline gap-2 mb-1">
-            <span class="text-3xl font-bold tracking-tight text-[#991B1B]">${dynamicDefaulterCount}</span>
-            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#FEE2E2] text-[#991B1B] border border-[#FECACA]">${grandTotal > 0 ? ((dynamicDefaulterCount / grandTotal) * 100).toFixed(1) + '%' : '0%'}</span>
+            <span class="text-2xl sm:text-3xl font-semibold tracking-tight text-[#141F1E] tabular-nums">${dynamicDefaulterCount}</span>
+            <span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium bg-[#FEE2E2] text-[#991B1B] border border-[#FECACA] tabular-nums">${grandTotal > 0 ? ((dynamicDefaulterCount / grandTotal) * 100).toFixed(1) + '%' : '0%'}</span>
           </div>
           <p class="text-xs font-medium text-[#7A8684]">Overdue Defaulters</p>
         </div>
       </div>
 
       <!-- Card 5: Class Attendance Rate (TalentSync 5th KPI Card) -->
-      <div onclick="handleKpiCardClick('attendance')" class="bg-white rounded-2xl border border-[#ECEAE4] p-6 shadow-sm hover:shadow-md hover:border-[#CBD5E1] transition-all cursor-pointer flex flex-col justify-between" title="Click to view attendance matrix">
-        <div class="mb-4 text-[#0E4D45]">
+      <div onclick="handleKpiCardClick('attendance')" class="bg-white rounded-2xl border border-[#ECEAE4] p-5 shadow-2xs hover:shadow-xs hover:border-[#CBD5E1] transition-all cursor-pointer flex flex-col justify-between" title="Click to view attendance matrix">
+        <div class="mb-3 text-[#0E4D45]">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"/></svg>
         </div>
         <div>
           <div class="flex items-baseline gap-2 mb-1">
-            <span class="text-3xl font-bold tracking-tight text-[#141F1E]">${totalStudents > 0 ? '96.8%' : '—'}</span>
-            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${totalStudents > 0 ? 'bg-[#E0F2F1] text-[#0E4D45]' : 'bg-[#F8F6F1] text-[#7A8684]'}">${totalStudents > 0 ? '+1.5%' : 'Pending'}</span>
+            <span class="text-2xl sm:text-3xl font-semibold tracking-tight text-[#141F1E] tabular-nums">${totalStudents > 0 ? '96.8%' : '—'}</span>
+            <span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium ${totalStudents > 0 ? 'bg-[#E0F2F1] text-[#0E4D45]' : 'bg-[#F8F6F1] text-[#7A8684]'} tabular-nums">${totalStudents > 0 ? '+1.5%' : 'Pending'}</span>
           </div>
           <p class="text-xs font-medium text-[#7A8684]">Class Attendance Rate</p>
         </div>
@@ -4886,8 +4886,8 @@ function renderAdminDashboardView() {
                 <h4 class="text-xs font-bold text-[#141F1E] truncate">${cls.title}</h4>
                 <p class="text-[11px] text-[#7A8684] truncate mt-0.5">${cls.teacher} • ${cls.duration} • ${cls.room}</p>
               </div>
-              <button type="button" onclick="showToast('Connecting to Live Session: ${cls.title}...', 'info')" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-[#E0F2F1] text-[#0E4D45] hover:bg-[#C8ECE9] border border-[#B2DFDB]/60 transition-all cursor-pointer shadow-2xs shrink-0" title="Join Live Class">
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <button type="button" onclick="showToast('Connecting to Live Session: ${cls.title}...', 'info')" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-[#E0F2F1] text-[#0E4D45] hover:bg-[#C8ECE9] border border-[#B2DFDB]/60 transition-all cursor-pointer shadow-2xs shrink-0" title="Join Live Class">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
                 <span>Live • Join</span>
               </button>
             </div>
@@ -4958,11 +4958,11 @@ function renderAdminDashboardView() {
         </div>
         <div class="flex items-baseline justify-between mb-4">
           <span class="text-xs text-[#7A8684]">Total Enrolled Students</span>
-          <span class="text-xl font-extrabold text-[#141F1E]">${dynamicTotalStudents}</span>
+          <span class="text-xl font-semibold text-[#141F1E] tabular-nums">${dynamicTotalStudents}</span>
         </div>
 
         <!-- Segmented horizontal progress bar (TalentSync Exact Aesthetic) -->
-        <div class="segmented-bar mb-5 h-3 rounded-full overflow-hidden flex bg-[#ECEAE4]">
+        <div class="segmented-bar mb-5 h-2.5 rounded-full overflow-hidden flex bg-[#ECEAE4]">
           <div class="h-full bg-[#0E4D45] transition-all" style="width: ${paidPct}%;" title="Paid (Clear): ${dynamicPaidCount} (${paidPct}%)"></div>
           <div class="h-full bg-[#3B7A72] transition-all border-l border-white" style="width: ${advPct}%;" title="Advance Paid: ${dynamicAdvanceCount} (${advPct}%)"></div>
           <div class="h-full bg-[#F59E0B] transition-all border-l border-white" style="width: ${partPct}%;" title="Partial Paid: ${dynamicPartialCount} (${partPct}%)"></div>
@@ -4974,45 +4974,45 @@ function renderAdminDashboardView() {
         <div class="space-y-2.5 text-xs">
           <div class="flex items-center justify-between py-1 border-b border-[#F4F2EB]">
             <div class="flex items-center gap-2.5 text-[#141F1E]">
-              <span class="w-2.5 h-2.5 rounded-full bg-[#0E4D45] ring-2 ring-[#0E4D45]/20"></span>
+              <span class="w-2.5 h-2.5 rounded-full bg-[#0E4D45]"></span>
               <span class="font-medium">Full Paid (Clear)</span>
             </div>
             <div class="flex items-center gap-2">
-              <span class="text-[11px] text-[#7A8684]">${paidPct}%</span>
-              <span class="font-bold text-[#141F1E]">${dynamicPaidCount}</span>
+              <span class="text-[11px] text-[#7A8684] tabular-nums">${paidPct}%</span>
+              <span class="font-semibold text-[#141F1E] tabular-nums">${dynamicPaidCount}</span>
             </div>
           </div>
 
           <div class="flex items-center justify-between py-1 border-b border-[#F4F2EB]">
             <div class="flex items-center gap-2.5 text-[#141F1E]">
-              <span class="w-2.5 h-2.5 rounded-full bg-[#3B7A72] ring-2 ring-[#3B7A72]/20"></span>
+              <span class="w-2.5 h-2.5 rounded-full bg-[#3B7A72]"></span>
               <span class="font-medium">Advance Paid (Next Months)</span>
             </div>
             <div class="flex items-center gap-2">
-              <span class="text-[11px] text-[#7A8684]">${advPct}%</span>
-              <span class="font-bold text-[#141F1E]">${dynamicAdvanceCount}</span>
+              <span class="text-[11px] text-[#7A8684] tabular-nums">${advPct}%</span>
+              <span class="font-semibold text-[#141F1E] tabular-nums">${dynamicAdvanceCount}</span>
             </div>
           </div>
 
           <div class="flex items-center justify-between py-1 border-b border-[#F4F2EB]">
             <div class="flex items-center gap-2.5 text-[#141F1E]">
-              <span class="w-2.5 h-2.5 rounded-full bg-[#F59E0B] ring-2 ring-[#F59E0B]/20"></span>
+              <span class="w-2.5 h-2.5 rounded-full bg-[#F59E0B]"></span>
               <span class="font-medium">Partial Paid (Balance Due)</span>
             </div>
             <div class="flex items-center gap-2">
-              <span class="text-[11px] text-[#7A8684]">${partPct}%</span>
-              <span class="font-bold text-[#141F1E]">${dynamicPartialCount}</span>
+              <span class="text-[11px] text-[#7A8684] tabular-nums">${partPct}%</span>
+              <span class="font-semibold text-[#141F1E] tabular-nums">${dynamicPartialCount}</span>
             </div>
           </div>
 
           <div class="flex items-center justify-between py-1 border-b border-[#F4F2EB]">
             <div class="flex items-center gap-2.5 text-[#141F1E]">
-              <span class="w-2.5 h-2.5 rounded-full bg-[#EF4444] ring-2 ring-[#EF4444]/20"></span>
+              <span class="w-2.5 h-2.5 rounded-full bg-[#EF4444]"></span>
               <span class="font-medium">Overdue Defaulters (1-3 Mo)</span>
             </div>
             <div class="flex items-center gap-2">
-              <span class="text-[11px] text-[#7A8684]">${defPct}%</span>
-              <span class="font-bold text-[#991B1B]">${dynamicDefaulterCount}</span>
+              <span class="text-[11px] text-[#7A8684] tabular-nums">${defPct}%</span>
+              <span class="font-semibold text-[#991B1B] tabular-nums">${dynamicDefaulterCount}</span>
             </div>
           </div>
 
@@ -5022,8 +5022,8 @@ function renderAdminDashboardView() {
               <span class="font-medium text-[#7A8684]">Trial Students</span>
             </div>
             <div class="flex items-center gap-2">
-              <span class="text-[11px] text-[#7A8684]">${trialPct}%</span>
-              <span class="font-bold text-[#7A8684]">${trialsCount}</span>
+              <span class="text-[11px] text-[#7A8684] tabular-nums">${trialPct}%</span>
+              <span class="font-semibold text-[#7A8684] tabular-nums">${trialsCount}</span>
             </div>
           </div>
         </div>
@@ -5054,7 +5054,7 @@ function renderAdminDashboardView() {
           <p class="text-xs text-[#7A8684]">Audited transactions with automatic FIFO allocation distribution</p>
         </div>
         <div class="flex items-center gap-2">
-          <button onclick="setNavTab('fee-matrix')" class="px-4 py-2 text-xs font-semibold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors">
+          <button onclick="setNavTab('fee-matrix')" class="px-4 py-2 text-xs font-semibold rounded-lg bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors cursor-pointer">
             Open 12-Month Matrix →
           </button>
         </div>
@@ -5063,13 +5063,13 @@ function renderAdminDashboardView() {
       <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse responsive-table-cards">
           <thead>
-            <tr class="border-b border-[#ECEAE4] text-[11px] font-bold text-[#7A8684] uppercase tracking-wider">
+            <tr class="border-b border-[#ECEAE4] text-[11px] font-semibold text-[#7A8684]">
               <th class="pb-3">Txn ID</th>
               <th class="pb-3">Date</th>
-              <th class="pb-3">Student / Family</th>
-              <th class="pb-3">Payment Type</th>
+              <th class="pb-3">Student &amp; family</th>
+              <th class="pb-3">Payment type</th>
               <th class="pb-3">Amount</th>
-              <th class="pb-3">Waterfall Allocation</th>
+              <th class="pb-3">Waterfall allocation</th>
               <th class="pb-3">Method</th>
               <th class="pb-3 text-right">Receipt</th>
             </tr>
@@ -5101,7 +5101,7 @@ function renderAdminDashboardView() {
               return `
                 <tr class="hover:bg-[#F8F6F1]/60 transition-colors">
                   <td class="py-3" data-label="Txn ID">
-                    <span class="font-mono text-[11px] text-[#7A8684] bg-[#F8F6F1] px-1.5 py-0.5 rounded border border-[#ECEAE4] select-all">${txn.id}</span>
+                    <span class="font-mono text-[11px] text-[#7A8684] bg-[#F8F6F1] px-1.5 py-0.5 rounded border border-[#ECEAE4] select-all tabular-nums">${txn.id}</span>
                   </td>
                   <td class="py-3 text-[#7A8684] whitespace-nowrap" data-label="Date">${txn.date}</td>
                   <td class="py-3 font-medium text-[#141F1E]" data-label="Student / Family">
@@ -5111,9 +5111,9 @@ function renderAdminDashboardView() {
                     </div>
                   </td>
                   <td class="py-3" data-label="Payment Type">
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${typeBadgeClass}">${txn.type}</span>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium border ${typeBadgeClass}">${txn.type}</span>
                   </td>
-                  <td class="py-3 font-bold text-[#141F1E] whitespace-nowrap" data-label="Amount">${txn.currency}${txn.amount}</td>
+                  <td class="py-3 font-semibold text-[#141F1E] whitespace-nowrap tabular-nums" data-label="Amount">${txn.currency}${txn.amount}</td>
                   <td class="py-3 text-[#334E4B]" data-label="Allocation">${txn.allocatedTo}</td>
                   <td class="py-3 text-[#7A8684] whitespace-nowrap" data-label="Method">${txn.method}</td>
                   <td class="py-3 text-right whitespace-nowrap" data-label="Receipt">
@@ -5310,13 +5310,13 @@ function renderAtRiskStudentsWidgetMarkup() {
       </div>
 
       <!-- Header Counter Badge -->
-      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
+      <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-semibold ${
         alertCount > 0 
           ? 'bg-[#FEE2E2] text-[#991B1B] border border-[#FECACA]' 
           : 'bg-[#E0F2F1] text-[#0E4D45] border border-[#B2DFDB]/60'
       }">
         ${alertCount > 0 ? `
-          <span class="w-1.5 h-1.5 rounded-full bg-[#EF4444] animate-pulse"></span>
+          <span class="w-1.5 h-1.5 rounded-full bg-[#EF4444]"></span>
           <span>${alertCount} Action Required</span>
         ` : `
           <span>0 Alerts</span>
@@ -5338,7 +5338,7 @@ function renderAtRiskStudentsWidgetMarkup() {
             <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/>
           </svg>
         </div>
-        <p class="text-sm font-bold text-[#141F1E]">All students are performing well. No critical alerts.</p>
+        <p class="text-sm font-semibold text-[#141F1E]">All students are performing well. No critical alerts.</p>
         <p class="text-xs text-[#7A8684] mt-1 max-w-sm">Zero attendance flags, failing progress scores, or overdue fee balances detected across the academy.</p>
       </div>
     ` : `
@@ -5361,12 +5361,12 @@ function renderAtRiskStudentsWidgetMarkup() {
                 ${avatarUrl ? `
                   <img src="${avatarUrl}" alt="${studentName}" class="w-9 h-9 rounded-full object-cover border border-[#ECEAE4] shrink-0" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(studentName)}&background=0E4D45&color=fff';">
                 ` : `
-                  <div class="w-9 h-9 rounded-full bg-[#E8EFEE] text-[#0E4D45] flex items-center justify-center font-bold text-xs shrink-0 border border-[#ECEAE4]">
+                  <div class="w-9 h-9 rounded-full bg-[#E8EFEE] text-[#0E4D45] flex items-center justify-center font-semibold text-xs shrink-0 border border-[#ECEAE4]">
                     ${studentName.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
                   </div>
                 `}
                 <div class="min-w-0">
-                  <h4 class="text-xs sm:text-sm font-bold text-[#141F1E] truncate">${studentName}</h4>
+                  <h4 class="text-xs sm:text-sm font-semibold text-[#141F1E] truncate">${studentName}</h4>
                   <p class="text-[11px] text-[#7A8684] truncate">${courseName}</p>
                 </div>
               </div>
@@ -5374,12 +5374,12 @@ function renderAtRiskStudentsWidgetMarkup() {
               <!-- Right Side: Warning Badge & Action Button -->
               <div class="flex items-center gap-2.5 shrink-0 self-end sm:self-center">
                 <!-- Warning Badge -->
-                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold ${badgeClass} whitespace-nowrap shadow-2xs" title="${item.description}">
+                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${badgeClass} whitespace-nowrap shadow-2xs" title="${item.description}">
                   ${badge}
                 </span>
 
                 <!-- Minimalist Ghost Action Button: Contact Guardian -->
-                <button type="button" onclick="contactStudentGuardian('${s.id}', event)" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#ECEAE4] bg-white hover:bg-[#F8F6F1] hover:border-[#CBD5E1] text-[#141F1E] text-xs font-semibold transition-all shadow-2xs cursor-pointer" title="Contact Guardian on WhatsApp (${s.guardianName || 'Guardian'})">
+                <button type="button" onclick="contactStudentGuardian('${s.id}', event)" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#ECEAE4] bg-white hover:bg-[#F8F6F1] hover:border-[#CBD5E1] text-[#141F1E] text-xs font-medium transition-all shadow-2xs cursor-pointer" title="Contact Guardian on WhatsApp (${s.guardianName || 'Guardian'})">
                   <svg class="w-3.5 h-3.5 text-[#25D366]" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
                   </svg>
@@ -5819,9 +5819,9 @@ function renderAttendanceVsPassCardMarkup() {
     <!-- Subheader: AVG Passing Rate & Custom Legend -->
     <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
       <div class="flex items-baseline gap-2">
-        <span class="text-xs sm:text-sm font-semibold text-[#7A8684]">AVG Passing Rate</span>
-        <span class="text-xl sm:text-2xl font-black text-[#141F1E] tracking-tight" id="attendance-avg-pass-rate">${hasData ? avgPassingRate + '%' : '—'}</span>
-        ${!hasData ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#F8F6F1] text-[#7A8684] border border-[#ECEAE4]">Pending</span>` : ''}
+        <span class="text-xs sm:text-sm font-medium text-[#7A8684]">AVG Passing Rate</span>
+        <span class="text-xl sm:text-2xl font-semibold text-[#141F1E] tabular-nums" id="attendance-avg-pass-rate">${hasData ? avgPassingRate + '%' : '—'}</span>
+        ${!hasData ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium bg-[#F8F6F1] text-[#7A8684] border border-[#ECEAE4]">Pending</span>` : ''}
       </div>
 
       <!-- Custom Legend matching Reference Image -->
@@ -5845,9 +5845,9 @@ function renderAttendanceVsPassCardMarkup() {
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/>
           </svg>
         </div>
-        <p class="text-sm font-bold text-[#141F1E]">No Attendance & Pass Data Logged for ${selectedTf.label}</p>
+        <p class="text-sm font-semibold text-[#141F1E]">No Attendance &amp; Pass Data Logged for ${selectedTf.label}</p>
         <p class="text-xs text-[#7A8684] mt-1 max-w-sm">No live attendance records found for ${selectedTf.label.toLowerCase()}. Enroll students or log daily sabaq to generate real-time analytics.</p>
-        <button onclick="setNavTab('students')" class="mt-4 px-4 py-1.5 rounded-full bg-[#0E4D45] text-white text-xs font-semibold hover:bg-[#14534B] transition-colors shadow-2xs cursor-pointer flex items-center gap-1.5">
+        <button onclick="setNavTab('students')" class="mt-4 px-4 py-1.5 rounded-lg bg-[#0E4D45] text-white text-xs font-semibold hover:bg-[#14534B] transition-colors shadow-2xs cursor-pointer flex items-center gap-1.5">
           <span>View Student Directory →</span>
         </button>
       </div>
@@ -7325,10 +7325,12 @@ function renderStudentDirectoryRows(students) {
       <tr>
         <td colspan="8" class="py-12 text-center text-[#7A8684]">
           <div class="flex flex-col items-center justify-center">
-            <span class="text-3xl mb-2">🔍</span>
+            <div class="w-10 h-10 rounded-full bg-[#E8EFEE] text-[#0E4D45] flex items-center justify-center mb-2.5">
+              <svg class="w-5 h-5 text-[#0E4D45]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            </div>
             <p class="font-semibold text-sm text-[#141F1E]">No students match your filter criteria</p>
             <p class="text-xs text-[#7A8684] mt-1">Try resetting the status filter or clearing your search query.</p>
-            <button onclick="resetStudentDirectoryFilters()" class="mt-3 px-4 py-1.5 rounded-full bg-[#0E4D45] text-white text-xs font-semibold hover:bg-[#14534B] transition-colors cursor-pointer">
+            <button onclick="resetStudentDirectoryFilters()" class="mt-3 px-4 py-1.5 rounded-lg bg-[#0E4D45] text-white text-xs font-semibold hover:bg-[#14534B] transition-colors cursor-pointer">
               Reset All Filters
             </button>
           </div>
@@ -7491,14 +7493,14 @@ function renderStudentDirectoryRows(students) {
           <div class="relative inline-block student-schedule-popover-container">
             <button 
               onclick="toggleStudentSchedulePopover('${s.id}', event)" 
-              class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer shadow-2xs ${
+              class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer shadow-2xs ${
                 isSchedOpen 
                   ? 'bg-[#0E4D45] text-white shadow-xs' 
                   : 'bg-[#F8F6F1] hover:bg-[#E8EFEE] text-[#0E4D45] border border-[#ECEAE4]'
               }"
               title="Click to view ${s.firstName}'s day-by-day timetable"
             >
-              <span>📅</span>
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
               <span>${scheduleSlots.length} Days/wk ▾</span>
             </button>
 
@@ -8129,18 +8131,18 @@ function renderAdminTeacherPayrollView() {
                   </td>
                   <td class="py-3.5 text-[#334E4B]" data-label="Specialization">${t.specialization}</td>
                   <td class="py-3.5 text-[#7A8684]" data-label="Country">${t.country}</td>
-                  <td class="py-3.5 font-semibold text-[#0E4D45]" data-label="Active Students">${dynamicActiveCount} Students</td>
-                  <td class="py-3.5 text-[#141F1E] font-medium" data-label="Hourly Rate">$${rate}/hr</td>
-                  <td class="py-3.5 text-[#7A8684]" data-label="Hours Logged">${hours} hrs</td>
-                  <td class="py-3.5 font-bold text-[#0E4D45]" data-label="Honorarium">$${totalPay.toLocaleString()}</td>
+                  <td class="py-3.5 font-semibold text-[#0E4D45] tabular-nums" data-label="Active Students">${dynamicActiveCount} Students</td>
+                  <td class="py-3.5 text-[#141F1E] font-medium tabular-nums" data-label="Hourly Rate">$${rate}/hr</td>
+                  <td class="py-3.5 text-[#7A8684] tabular-nums" data-label="Hours Logged">${hours} hrs</td>
+                  <td class="py-3.5 font-semibold text-[#0E4D45] tabular-nums" data-label="Honorarium">$${totalPay.toLocaleString()}</td>
                   <td class="py-3.5 text-center" data-label="Status">
                     <span class="ts-badge ${isPaid ? 'ts-badge-paid' : 'ts-badge-partial'}">
-                      ${isPaid ? 'Paid ✓' : 'Pending ⏱'}
+                      ${isPaid ? 'Paid' : 'Pending'}
                     </span>
                   </td>
                   <td class="py-3.5 text-right pl-2" data-label="Action">
                     <button onclick="toggleTeacherSalaryStatus('${t.id}')"
-                      class="px-3 py-1 text-[11px] font-bold rounded-full ${isPaid ? 'bg-[#E8EFEE] text-[#0E4D45] hover:bg-[#FEE2E2] hover:text-[#991B1B]' : 'bg-[#0E4D45] text-white hover:bg-[#14534B]'} transition-colors whitespace-nowrap shadow-sm cursor-pointer">
+                      class="px-3 py-1 text-[11px] font-semibold rounded-lg ${isPaid ? 'bg-[#E8EFEE] text-[#0E4D45] hover:bg-[#FEE2E2] hover:text-[#991B1B]' : 'bg-[#0E4D45] text-white hover:bg-[#14534B]'} transition-colors whitespace-nowrap shadow-2xs cursor-pointer">
                       ${isPaid ? 'Mark Pending' : 'Pay Salary'}
                     </button>
                   </td>
@@ -8381,7 +8383,7 @@ function renderAdminTrialsAndNoticesView() {
             } else if (notice.audience.includes('Parents')) {
               audiencePill = 'bg-amber-50 text-amber-800 border border-amber-200/60';
             } else if (notice.audience.includes('Qiraat') || notice.audience.includes('Hifz')) {
-              audiencePill = 'bg-purple-50 text-purple-800 border border-purple-200/60';
+              audiencePill = 'bg-slate-100 text-slate-700 border border-slate-200';
             }
 
             return `
@@ -8390,7 +8392,7 @@ function renderAdminTrialsAndNoticesView() {
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2.5">
                   <div class="flex items-center gap-2.5 flex-wrap">
                     <h4 class="text-[15px] font-bold text-[#141F1E] tracking-tight">${notice.title}</h4>
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${audiencePill}">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium ${audiencePill}">
                       ${notice.audience}
                     </span>
                   </div>
@@ -8407,13 +8409,13 @@ function renderAdminTrialsAndNoticesView() {
                       <button onclick="openPublishNoticeModal('${notice.id}')" 
                         class="px-2.5 py-1 rounded-lg bg-white hover:bg-[#E8EFEE] text-[#0E4D45] border border-[#CBD5E1] text-[11px] font-semibold transition-all shadow-2xs flex items-center gap-1 cursor-pointer"
                         title="Edit Notice">
-                        <span>✏️</span>
+                        <svg class="w-3 h-3 text-[#0E4D45]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                         <span class="hidden sm:inline">Edit</span>
                       </button>
                       <button onclick="deleteNotice('${notice.id}')" 
                         class="px-2.5 py-1 rounded-lg bg-white hover:bg-red-50 text-[#DC2626] border border-[#CBD5E1] text-[11px] font-semibold transition-all shadow-2xs flex items-center gap-1 cursor-pointer"
                         title="Delete Notice">
-                        <span>🗑️</span>
+                        <svg class="w-3 h-3 text-[#DC2626]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                         <span class="hidden sm:inline">Delete</span>
                       </button>
                     </div>
@@ -8429,11 +8431,11 @@ function renderAdminTrialsAndNoticesView() {
                       ${isMenuOpen ? `
                         <div class="absolute right-0 top-8 rounded-2xl shadow-xl border border-[#ECEAE4] p-1.5 w-44 bg-white z-50 text-left animate-in fade-in zoom-in-95 duration-150">
                           <button onclick="closeNoticeActionMenu(); openPublishNoticeModal('${notice.id}')" class="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer whitespace-nowrap">
-                            <span>✏️</span>
+                            <svg class="w-3.5 h-3.5 text-[#0E4D45]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                             <span>Edit Notice</span>
                           </button>
                           <button onclick="closeNoticeActionMenu(); deleteNotice('${notice.id}')" class="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-[#DC2626] hover:bg-red-50 transition-colors cursor-pointer whitespace-nowrap">
-                            <span>🗑️</span>
+                            <svg class="w-3.5 h-3.5 text-[#DC2626]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                             <span>Delete Notice</span>
                           </button>
                         </div>
@@ -8887,22 +8889,23 @@ function renderTeacherPortalView() {
                 <h4 class="text-xs font-bold text-[#141F1E]">QA-1042 • Ahmed Raza (UK)</h4>
                 <div class="flex items-center gap-2 mt-0.5">
                   <span class="text-[11px] text-[#7A8684]">Advanced Tajweed</span>
-                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#E8EFEE] text-[#0E4D45] text-[10px] font-bold border border-[#CBD5E1]">
-                    🇬🇧 10:00 AM BST ⇄ 🇵🇰 02:00 PM PKT
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#E8EFEE] text-[#0E4D45] text-[10px] font-medium border border-[#CBD5E1]">
+                    10:00 AM BST ⇄ PKT 02:00 PM
                   </span>
                 </div>
                 <p class="text-[10px] text-[#065F46] font-semibold mt-0.5">Last Lesson: Surah Maryam Ayah 1-22 (Cleared)</p>
               </div>
             </div>
             <div class="flex items-center gap-2">
-              <button onclick="openViewWeeklyScheduleModal('QA-1042')" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-full bg-white border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#E8EFEE] transition-colors cursor-pointer shadow-2xs">
-                <span>🗓️ Timetable</span>
+              <button onclick="openViewWeeklyScheduleModal('QA-1042')" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#E8EFEE] transition-colors cursor-pointer shadow-2xs">
+                <svg class="w-3.5 h-3.5 text-[#0E4D45]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+                <span>Timetable</span>
               </button>
-              <button onclick="simulateJoinRoom('C-201')" class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors shadow-sm cursor-pointer">
+              <button onclick="simulateJoinRoom('C-201')" class="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold rounded-lg bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors shadow-2xs cursor-pointer">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
                 <span>Start Class</span>
               </button>
-              <button onclick="openSabaqLoggerModal('QA-1042')" class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-full bg-[#FFFFFF] border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#F8F6F1] transition-colors cursor-pointer">
+              <button onclick="openSabaqLoggerModal('QA-1042')" class="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold rounded-lg bg-[#FFFFFF] border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#F8F6F1] transition-colors cursor-pointer">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                 <span>Log Sabaq</span>
               </button>
@@ -8921,22 +8924,23 @@ function renderTeacherPortalView() {
                 <h4 class="text-xs font-bold text-[#141F1E]">QA-1008 • Tariq Mansoor (USA)</h4>
                 <div class="flex items-center gap-2 mt-0.5">
                   <span class="text-[11px] text-[#7A8684]">Hifz Juz 3</span>
-                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#E8EFEE] text-[#0E4D45] text-[10px] font-bold border border-[#CBD5E1]">
-                    🇺🇸 11:00 AM CST ⇄ 🇵🇰 09:00 PM PKT
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#E8EFEE] text-[#0E4D45] text-[10px] font-medium border border-[#CBD5E1]">
+                    11:00 AM CST ⇄ PKT 09:00 PM
                   </span>
                 </div>
                 <p class="text-[10px] text-[#92400E] font-semibold mt-0.5">Last Lesson: Al-Baqarah 255-260 (Needs Revision)</p>
               </div>
             </div>
             <div class="flex items-center gap-2">
-              <button onclick="openViewWeeklyScheduleModal('QA-1008')" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-full bg-white border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#E8EFEE] transition-colors cursor-pointer shadow-2xs">
-                <span>🗓️ Timetable</span>
+              <button onclick="openViewWeeklyScheduleModal('QA-1008')" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#E8EFEE] transition-colors cursor-pointer shadow-2xs">
+                <svg class="w-3.5 h-3.5 text-[#0E4D45]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+                <span>Timetable</span>
               </button>
-              <button onclick="simulateJoinRoom('C-202')" class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors shadow-sm cursor-pointer">
+              <button onclick="simulateJoinRoom('C-202')" class="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold rounded-lg bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors shadow-2xs cursor-pointer">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
                 <span>Start Class</span>
               </button>
-              <button onclick="openSabaqLoggerModal('QA-1008')" class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-full bg-[#FFFFFF] border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#F8F6F1] transition-colors cursor-pointer">
+              <button onclick="openSabaqLoggerModal('QA-1008')" class="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold rounded-lg bg-[#FFFFFF] border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#F8F6F1] transition-colors cursor-pointer">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                 <span>Log Sabaq</span>
               </button>
@@ -9533,7 +9537,9 @@ function openMonthDetailModal(studentId, monthIndex) {
       <div class="py-4">
         <div class="flex items-center justify-between p-3 bg-[#F8F6F1] rounded-2xl border border-[#ECEAE4] mb-4">
           <div class="flex items-center gap-2">
-            <span class="w-7 h-7 rounded-lg bg-white border border-[#ECEAE4] flex items-center justify-center text-xs font-bold text-[#0E4D45]">🗓️</span>
+            <span class="w-7 h-7 rounded-lg bg-white border border-[#ECEAE4] flex items-center justify-center text-[#0E4D45]">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+            </span>
             <div>
               <span class="text-xs font-bold text-[#141F1E] block">${monthName} ${CURRENT_YEAR} Fee Record</span>
               <span class="text-[11px] text-[#7A8684]">Target Academic Month</span>

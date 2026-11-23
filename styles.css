@@ -13,28 +13,28 @@
   --color-teal-subtle: #3B7A72;
   --color-teal-text-muted: #A3C2BE;
   
-  --color-bg-cream: #F8F6F1;
+  --color-bg-cream: #F9F8F5;
   --color-card-white: #FFFFFF;
-  --color-card-border: #ECEAE4;
-  --color-card-shadow: 0 4px 20px -2px rgba(14, 77, 69, 0.05);
+  --color-card-border: #E8E6DF;
+  --color-card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.03), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
 
   --color-text-charcoal: #141F1E;
   --color-text-muted: #7A8684;
 
-  --color-badge-paid-bg: #14534B;
-  --color-badge-paid-text: #FFFFFF;
+  --color-badge-paid-bg: #E8EFEE;
+  --color-badge-paid-text: #0E4D45;
   
-  --color-badge-partial-bg: #FDE68A;
-  --color-badge-partial-text: #78350F;
+  --color-badge-partial-bg: #FEF3C7;
+  --color-badge-partial-text: #92400E;
   
   --color-badge-defaulter-bg: #FEE2E2;
   --color-badge-defaulter-text: #991B1B;
   
-  --color-badge-advance-bg: #D1FAE5;
-  --color-badge-advance-text: #065F46;
+  --color-badge-advance-bg: #E0F2FE;
+  --color-badge-advance-text: #075985;
 
-  --color-badge-sage-bg: #E8EFEE;
-  --color-badge-sage-text: #334E4B;
+  --color-badge-sage-bg: #F4F2EB;
+  --color-badge-sage-text: #5E554A;
 }
 
 * {
@@ -51,60 +51,67 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
 /* Custom Scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
   background: #F1EFEA;
 }
 ::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
-  border-radius: 9999px;
+  background: #D1CEC7;
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94A3B8;
+  background: #A8A49C;
 }
 
-/* Base Card Styling matching TalentSync */
+/* Base Card Styling - Unslop Proportional Geometry */
 .ts-card {
   background: var(--color-card-white);
   border: 1px solid var(--color-card-border);
   box-shadow: var(--color-card-shadow);
-  border-radius: 20px;
-  transition: border-color 150ms ease, box-shadow 150ms ease;
+  border-radius: 16px;
+  transition: border-color 150ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 150ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .ts-card:hover {
-  border-color: #DFDBD0;
-  box-shadow: 0 6px 24px -2px rgba(14, 77, 69, 0.08);
+  border-color: #DCD8CF;
+  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.05);
 }
 
-/* Pill Badges */
+/* Status Badges - Clean Nested Radii & Tabular Alignment */
 .ts-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  font-size: 11.5px;
-  font-weight: 600;
-  padding: 3px 10px;
-  border-radius: 9999px;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 6px;
   white-space: nowrap;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
   transition: opacity 150ms ease;
 }
 
 .ts-badge-paid {
   background-color: var(--color-badge-paid-bg);
   color: var(--color-badge-paid-text);
+  border: 1px solid #C8ECE9;
 }
 
 .ts-badge-partial {
   background-color: var(--color-badge-partial-bg);
   color: var(--color-badge-partial-text);
-  border: 1px solid #FCD34D;
+  border: 1px solid #FDE68A;
 }
 
 .ts-badge-defaulter {
@@ -116,12 +123,13 @@ body {
 .ts-badge-advance {
   background-color: var(--color-badge-advance-bg);
   color: var(--color-badge-advance-text);
-  border: 1px solid #A7F3D0;
+  border: 1px solid #BAE6FD;
 }
 
 .ts-badge-sage {
   background-color: var(--color-badge-sage-bg);
   color: var(--color-badge-sage-text);
+  border: 1px solid #E8E6DF;
 }
 
 /* Month Matrix Visual Cells - Minimalist Stripe / Linear SaaS Aesthetic */
@@ -309,15 +317,15 @@ body {
 
 /* Zero Typing Quick Logger Pills */
 .pill-choice {
-  padding: 7px 14px;
-  border-radius: 9999px;
+  padding: 6px 12px;
+  border-radius: 8px;
   border: 1px solid #ECEAE4;
   background: #FFFFFF;
   color: #334E4B;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 150ms ease;
+  transition: border-color 150ms ease, background-color 150ms ease;
 }
 .pill-choice:hover {
   border-color: #0E4D45;
@@ -331,14 +339,14 @@ body {
 
 /* Sub-nav Pill Filter */
 .tab-filter-pill {
-  padding: 6px 14px;
-  border-radius: 9999px;
-  font-size: 13px;
-  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
   color: #7A8684;
   cursor: pointer;
   background: transparent;
-  transition: all 150ms ease;
+  transition: color 150ms ease, background-color 150ms ease;
 }
 .tab-filter-pill:hover {
   color: #141F1E;
@@ -431,18 +439,18 @@ html, body {
     display: flex !important;
     flex-direction: column !important;
     background: #FFFFFF !important;
-    border: 1px solid #ECEAE4 !important;
-    border-radius: 18px !important;
+    border: 1px solid #E8E6DF !important;
+    border-radius: 14px !important;
     padding: 14px 16px !important;
-    box-shadow: 0 2px 10px -2px rgba(14, 77, 69, 0.05) !important;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.03) !important;
     width: 100% !important;
     margin-bottom: 0 !important;
     transition: box-shadow 150ms ease, border-color 150ms ease;
   }
 
   .responsive-table-cards tbody tr:hover {
-    border-color: #DFDBD0 !important;
-    box-shadow: 0 4px 14px -2px rgba(14, 77, 69, 0.08) !important;
+    border-color: #DCD8CF !important;
+    box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.05) !important;
   }
 
   .responsive-table-cards tbody td {

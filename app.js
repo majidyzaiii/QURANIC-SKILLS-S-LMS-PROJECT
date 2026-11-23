@@ -396,9 +396,14 @@ function setupFirestoreRealtimeListeners() {
     updateCloudSyncUI('connected', 'Firestore Live');
     if (!snapshot.empty) {
       const liveList = [];
-      snapshot.forEach(doc => liveList.push(doc.data()));
+      snapshot.forEach(doc => {
+        const item = doc.data();
+        if (!item.id) item.id = doc.id;
+        liveList.push(item);
+      });
       AppState.students = liveList;
       saveCache('lms_students', liveList);
+      reconcileStudentsWithPaymentLedger();
       renderApp();
       if (typeof updateAttendanceVsPassChartSmoothly === 'function') {
         updateAttendanceVsPassChartSmoothly();
@@ -427,7 +432,11 @@ function setupFirestoreRealtimeListeners() {
   db.collection('teachers').onSnapshot((snapshot) => {
     if (!snapshot.empty) {
       const liveList = [];
-      snapshot.forEach(doc => liveList.push(doc.data()));
+      snapshot.forEach(doc => {
+        const item = doc.data();
+        if (!item.id) item.id = doc.id;
+        liveList.push(item);
+      });
       AppState.teachers = liveList;
       saveCache('lms_teachers', liveList);
       renderApp();
@@ -447,9 +456,15 @@ function setupFirestoreRealtimeListeners() {
   db.collection('payment_ledger').onSnapshot((snapshot) => {
     if (!snapshot.empty) {
       PAYMENT_LEDGER.length = 0;
-      snapshot.forEach(doc => PAYMENT_LEDGER.push(doc.data()));
+      snapshot.forEach(doc => {
+        const item = doc.data();
+        if (!item.id) item.id = doc.id;
+        PAYMENT_LEDGER.push(item);
+      });
       saveCache('lms_payment_ledger', PAYMENT_LEDGER);
+      reconcileStudentsWithPaymentLedger();
       if (AppState.activeNav === 'fee-matrix') renderFeeMatrixTab();
+      else if (AppState.activeNav === 'dashboard') renderApp();
     }
   }, (err) => {
     console.warn('[Firestore] Ledger listener warning:', err.code, err.message);
@@ -459,7 +474,11 @@ function setupFirestoreRealtimeListeners() {
   db.collection('notices').onSnapshot((snapshot) => {
     if (!snapshot.empty) {
       ACADEMY_NOTICES.length = 0;
-      snapshot.forEach(doc => ACADEMY_NOTICES.push(doc.data()));
+      snapshot.forEach(doc => {
+        const item = doc.data();
+        if (!item.id) item.id = doc.id;
+        ACADEMY_NOTICES.push(item);
+      });
       saveCache('lms_notices', ACADEMY_NOTICES);
       if (AppState.activeNav === 'trials-notices') renderTrialsNoticesTab();
     }
@@ -471,7 +490,11 @@ function setupFirestoreRealtimeListeners() {
   db.collection('trial_pipeline').onSnapshot((snapshot) => {
     if (!snapshot.empty) {
       TRIAL_PIPELINE.length = 0;
-      snapshot.forEach(doc => TRIAL_PIPELINE.push(doc.data()));
+      snapshot.forEach(doc => {
+        const item = doc.data();
+        if (!item.id) item.id = doc.id;
+        TRIAL_PIPELINE.push(item);
+      });
       saveCache('lms_trial_pipeline', TRIAL_PIPELINE);
       if (AppState.activeNav === 'trials-notices') renderTrialsNoticesTab();
     }
@@ -550,6 +573,141 @@ function getTodayYMD() {
   return `${year}-${month}-${day}`;
 }
 window.getTodayYMD = getTodayYMD;
+
+/**
+ * Checks if target ID represents a family group rather than a single individual student
+ */
+function isFamilyTarget(targetId) {
+  if (!targetId || typeof targetId !== 'string') return false;
+  const isDirectStudent = (AppState.students || []).some(s => s.id === targetId);
+  if (isDirectStudent) return false;
+  return (AppState.students || []).some(s => s.familyId === targetId || s.familyTag === targetId) || targetId.startsWith('FAM-');
+}
+window.isFamilyTarget = isFamilyTarget;
+
+/**
+ * Reconciles each student's 12-month billing records with actual ledger payments.
+ * A month is ONLY marked as 'paid' or 'partial' if a verified payment transaction exists in PAYMENT_LEDGER.
+ * Unpaid past/current months are marked 'defaulter' with balance due; future months remain 'upcoming'.
+ */
+function reconcileStudentsWithPaymentLedger() {
+  if (!AppState || !Array.isArray(AppState.students)) return;
+
+  AppState.students.forEach(student => {
+    // Reconcile faculty assignment if teacherId exists but teacherName missing
+    if (student.teacherId && (!student.teacherName || student.teacherName === 'Unassigned')) {
+      const matchT = (AppState.teachers || []).find(t => 
+        t.id === student.teacherId || 
+        (t.id && t.id.toLowerCase() === student.teacherId.toLowerCase()) ||
+        t.name === student.teacherId
+      );
+      if (matchT) {
+        student.teacherName = matchT.name;
+        student.assignedTeacher = matchT.name;
+      }
+    }
+
+    if (!Array.isArray(student.months) || student.months.length !== 12) {
+      student.months = MONTHS_LIST.map((m, idx) => ({
+        month: m,
+        status: idx > CURRENT_MONTH_INDEX ? 'upcoming' : 'defaulter',
+        feeDue: Number(student.monthlyFee) || 50,
+        amountPaid: 0,
+        remainingDue: Number(student.monthlyFee) || 50
+      }));
+    }
+
+    const studentPayments = (PAYMENT_LEDGER || []).filter(p => {
+      if (!p) return false;
+      const sId = String(student.id || '').trim().toLowerCase();
+      const pId = String(p.studentId || '').trim().toLowerCase();
+      if (pId === sId) return true;
+      if (student.familyId && String(p.studentId || '').trim().toLowerCase() === String(student.familyId).trim().toLowerCase()) return true;
+      const fullName = `${student.firstName} ${student.lastName || ''}`.trim().toLowerCase();
+      const pName = String(p.studentName || '').trim().toLowerCase();
+      return pName.includes(fullName) || pName.includes(student.firstName.toLowerCase());
+    });
+
+    student.months.forEach((m, idx) => {
+      const shortM = MONTHS_LIST[idx];
+      const fullM = FULL_MONTHS_LIST[idx];
+      const monthlyFee = Number(m.feeDue || student.monthlyFee || 50);
+
+      let totalPaidForMonth = 0;
+      studentPayments.forEach(p => {
+        if (Array.isArray(p.allocations) && p.allocations.length > 0) {
+          p.allocations.forEach(a => {
+            if (a.monthIndex === idx || a.month === shortM || a.month === fullM) {
+              if (!a.studentId || a.studentId === student.id || a.studentName?.includes(student.firstName)) {
+                totalPaidForMonth += Number(a.allocatedAmount || 0);
+              }
+            }
+          });
+        } else if (p.allocatedTo && (p.allocatedTo.includes(shortM) || p.allocatedTo.includes(fullM))) {
+          totalPaidForMonth += Number(p.amount || 0);
+        } else if (p.date) {
+          const d = new Date(p.date);
+          if (!isNaN(d.getTime()) && d.getMonth() === idx) {
+            totalPaidForMonth += Number(p.amount || 0);
+          }
+        }
+      });
+
+      if (totalPaidForMonth >= monthlyFee && monthlyFee > 0) {
+        m.status = idx > CURRENT_MONTH_INDEX ? 'advance' : 'paid';
+        m.amountPaid = monthlyFee;
+        m.remainingDue = 0;
+      } else if (totalPaidForMonth > 0) {
+        m.status = 'partial';
+        m.amountPaid = totalPaidForMonth;
+        m.remainingDue = Math.max(0, monthlyFee - totalPaidForMonth);
+      } else {
+        m.status = idx > CURRENT_MONTH_INDEX ? 'upcoming' : 'defaulter';
+        m.amountPaid = 0;
+        m.remainingDue = monthlyFee;
+      }
+    });
+  });
+}
+window.reconcileStudentsWithPaymentLedger = reconcileStudentsWithPaymentLedger;
+
+/**
+ * Calculates fee collected for a specific academic month and year from real payments.
+ */
+function getMonthFeeCollected(monthIndex, year) {
+  const shortM = MONTHS_LIST[monthIndex];
+  const fullM = FULL_MONTHS_LIST[monthIndex];
+  let sum = 0;
+
+  if (Array.isArray(PAYMENT_LEDGER) && PAYMENT_LEDGER.length > 0) {
+    PAYMENT_LEDGER.forEach(p => {
+      if (!p) return;
+      if (Array.isArray(p.allocations) && p.allocations.length > 0) {
+        p.allocations.forEach(a => {
+          if (a.monthIndex === monthIndex || a.month === shortM || a.month === fullM) {
+            sum += Number(a.allocatedAmount || 0);
+          }
+        });
+      } else if (p.allocatedTo && (p.allocatedTo.includes(shortM) || p.allocatedTo.includes(fullM))) {
+        sum += Number(p.amount || 0);
+      } else if (p.date) {
+        const d = new Date(p.date);
+        if (!isNaN(d.getTime()) && d.getMonth() === monthIndex && (!year || d.getFullYear() === year)) {
+          sum += Number(p.amount || 0);
+        }
+      }
+    });
+    return sum;
+  }
+
+  (AppState.students || []).forEach(s => {
+    if (Array.isArray(s.months) && s.months[monthIndex]) {
+      sum += Number(s.months[monthIndex].amountPaid || 0);
+    }
+  });
+  return sum;
+}
+window.getMonthFeeCollected = getMonthFeeCollected;
 
 // App State
 const AppState = {
@@ -2897,11 +3055,16 @@ function openEditScheduleModal(studentId) {
   const teacherSelect = document.getElementById('edit-schedule-teacher');
   if (teacherSelect) {
     teacherSelect.innerHTML = (AppState.teachers && AppState.teachers.length > 0)
-      ? AppState.teachers.map(t => `
-        <option value="${t.id}" ${t.id === student.teacherId ? 'selected' : ''}>
-          ${t.name} (${t.specialization})
-        </option>
-      `).join('')
+      ? AppState.teachers.map(t => {
+        const isMatch = (student.teacherId && (String(t.id).trim().toLowerCase() === String(student.teacherId).trim().toLowerCase() || String(t.name).trim().toLowerCase() === String(student.teacherId).trim().toLowerCase())) ||
+                        (student.teacherName && (String(t.name).trim().toLowerCase() === String(student.teacherName).trim().toLowerCase() || String(t.id).trim().toLowerCase() === String(student.teacherName).trim().toLowerCase())) ||
+                        (student.assignedTeacher && (String(t.name).trim().toLowerCase() === String(student.assignedTeacher).trim().toLowerCase() || String(t.id).trim().toLowerCase() === String(student.assignedTeacher).trim().toLowerCase()));
+        return `
+          <option value="${t.id}" ${isMatch ? 'selected' : ''}>
+            ${t.name} (${t.specialization || 'General Quran'})
+          </option>
+        `;
+      }).join('')
       : `<option value="">No faculty added yet</option>`;
   }
 
@@ -3022,17 +3185,42 @@ function handleSaveEditSchedule() {
     }
   }
 
-  // Update Teacher counts if teacher changed
-  if (student.teacherId !== newTeacherId) {
-    const oldTeacher = AppState.teachers.find(t => t.id === student.teacherId);
-    const newTeacher = AppState.teachers.find(t => t.id === newTeacherId);
+  // Update Teacher counts & faculty assignment
+  const selectedTeacherId = newTeacherId;
+  const matchedTeacher = (AppState.teachers || []).find(t => 
+    t.id === selectedTeacherId || 
+    (t.id && selectedTeacherId && t.id.toLowerCase() === selectedTeacherId.toLowerCase()) ||
+    t.name === selectedTeacherId ||
+    (t.name && selectedTeacherId && t.name.toLowerCase() === selectedTeacherId.toLowerCase())
+  );
+
+  const prevTeacherId = student.teacherId || '';
+  const currentAssignedId = matchedTeacher ? matchedTeacher.id : (selectedTeacherId || '');
+
+  if (prevTeacherId !== currentAssignedId) {
+    const oldTeacher = (AppState.teachers || []).find(t => t.id === prevTeacherId || t.name === student.teacherName);
     if (oldTeacher && oldTeacher.activeStudents > 0) {
       oldTeacher.activeStudents--;
+      dbSaveTeacher(oldTeacher);
     }
-    if (newTeacher) {
-      newTeacher.activeStudents = (newTeacher.activeStudents || 0) + 1;
+    if (matchedTeacher) {
+      matchedTeacher.activeStudents = (matchedTeacher.activeStudents || 0) + 1;
+      dbSaveTeacher(matchedTeacher);
     }
-    student.teacherId = newTeacherId;
+  }
+
+  if (matchedTeacher) {
+    student.teacherId = matchedTeacher.id;
+    student.teacherName = matchedTeacher.name;
+    student.assignedTeacher = matchedTeacher.name;
+  } else if (!selectedTeacherId || selectedTeacherId === 'Unassigned') {
+    student.teacherId = '';
+    student.teacherName = 'Unassigned';
+    student.assignedTeacher = 'Unassigned';
+  } else {
+    student.teacherId = selectedTeacherId;
+    student.teacherName = selectedTeacherId;
+    student.assignedTeacher = selectedTeacherId;
   }
 
   // Update Fee & Currency
@@ -3376,6 +3564,13 @@ function openAddStudentModal() {
   const courseSelect = document.getElementById('add-student-course');
   if (courseSelect) courseSelect.value = '';
 
+  // Assigned Faculty / Teacher - populate dropdown
+  const teacherSelect = document.getElementById('add-student-teacher');
+  if (teacherSelect) {
+    teacherSelect.innerHTML = `<option value="" disabled selected>Select Faculty / Teacher</option>` +
+      (AppState.teachers || []).map(t => `<option value="${t.id}">${t.name} (${t.specialization || 'General Quran'})</option>`).join('');
+  }
+
   // Currency - neutral blank selection
   const currencySelect = document.getElementById('add-student-currency');
   if (currencySelect) currencySelect.value = '';
@@ -3584,20 +3779,24 @@ function handleSaveNewStudent() {
   };
   const classSchedule = getSchedulePillSummary({ weeklySchedule: defaultWeeklySchedule, timezone });
 
-  const months = MONTHS_LIST.map((m, idx) => {
-    if (idx < CURRENT_MONTH_INDEX) {
-      return { month: m, status: 'paid', feeDue: monthlyFee, amountPaid: monthlyFee, remainingDue: 0 };
-    } else if (idx === CURRENT_MONTH_INDEX) {
-      return { month: m, status: 'defaulter', feeDue: monthlyFee, amountPaid: 0, remainingDue: monthlyFee };
-    } else {
-      return { month: m, status: 'upcoming', feeDue: monthlyFee, amountPaid: 0, remainingDue: monthlyFee };
-    }
-  });
+  const months = MONTHS_LIST.map((m, idx) => ({
+    month: m,
+    status: idx > CURRENT_MONTH_INDEX ? 'upcoming' : 'defaulter',
+    feeDue: monthlyFee,
+    amountPaid: 0,
+    remainingDue: monthlyFee
+  }));
 
   const customAvatar = document.getElementById('add-student-avatar')?.value?.trim();
   const avatar = customAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=0E4D45&color=fff`;
 
-  const teacherId = (AppState.teachers && AppState.teachers.length > 0) ? AppState.teachers[0].id : 'T-UNASSIGNED';
+  const selectedTeacherId = document.getElementById('add-student-teacher')?.value;
+  const teacherId = selectedTeacherId || ((AppState.teachers && AppState.teachers.length > 0) ? AppState.teachers[0].id : 'T-UNASSIGNED');
+  const teacherObj = (AppState.teachers || []).find(t => 
+    String(t.id).trim().toLowerCase() === String(teacherId).trim().toLowerCase() ||
+    String(t.name).trim().toLowerCase() === String(teacherId).trim().toLowerCase()
+  );
+  const teacherName = teacherObj ? teacherObj.name : 'Unassigned';
 
   const newStudent = {
     id: studentId,
@@ -3614,7 +3813,9 @@ function handleSaveNewStudent() {
     timezone: timezone,
     familyId: familyId,
     familyTag: familyId,
-    teacherId: teacherId,
+    teacherId: teacherObj ? teacherObj.id : teacherId,
+    teacherName: teacherName,
+    assignedTeacher: teacherName,
     course: course,
     weeklySchedule: defaultWeeklySchedule,
     classSchedule: classSchedule,
@@ -3636,7 +3837,6 @@ function handleSaveNewStudent() {
 
   AppState.students.unshift(newStudent);
 
-  const teacherObj = AppState.teachers.find(t => t.id === teacherId);
   if (teacherObj) {
     teacherObj.activeStudents = (teacherObj.activeStudents || 0) + 1;
   }
@@ -3645,6 +3845,12 @@ function handleSaveNewStudent() {
   saveToStorage('lms_teachers', AppState.teachers);
   dbSaveStudent(newStudent);
   if (teacherObj) dbSaveTeacher(teacherObj);
+
+  addSystemNotification({
+    title: 'Student Enrolled',
+    desc: `Enrolled ${firstName} ${lastName} (${studentId}) in ${course} with faculty ${teacherName} (${currency}${monthlyFee}/mo).`,
+    type: 'student'
+  });
 
   closeAddStudentModal();
   renderApp();
@@ -3786,6 +3992,12 @@ function handleSaveNewTeacher() {
   saveToStorage('lms_teachers', AppState.teachers);
   dbSaveTeacher(newTeacher);
 
+  addSystemNotification({
+    title: 'Faculty Onboarded',
+    desc: `Added faculty member ${name} (${teacherId}) - ${spec} at $${hourlyRate}/hr.`,
+    type: 'teacher'
+  });
+
   closeAddTeacherModal();
   renderApp();
   showToastNotification(`✓ Teacher ${name} (${teacherId}) successfully added to Academy faculty!`);
@@ -3794,6 +4006,27 @@ function handleSaveNewTeacher() {
 // ==========================================
 // TEACHER PAYROLL & SALARY ACTIONS
 // ==========================================
+
+function deleteTeacher(teacherId, event) {
+  if (event) event.stopPropagation();
+  const teacher = (AppState.teachers || []).find(t => String(t.id).trim().toLowerCase() === String(teacherId).trim().toLowerCase());
+  if (!teacher) return;
+  if (confirm(`Are you sure you want to delete teacher "${teacher.name}" (${teacher.id})? This will remove them from the faculty roster.`)) {
+    AppState.teachers = AppState.teachers.filter(t => String(t.id).trim().toLowerCase() !== String(teacherId).trim().toLowerCase());
+    saveToStorage('lms_teachers', AppState.teachers);
+    if (db) {
+      db.collection('teachers').doc(String(teacher.id)).delete().catch(e => console.warn(e));
+    }
+    addSystemNotification({
+      title: 'Faculty Member Removed',
+      desc: `Deleted faculty record "${teacher.name}" (${teacher.id}).`,
+      type: 'delete'
+    });
+    renderApp();
+    showToastNotification(`✓ Teacher "${teacher.name}" deleted successfully.`);
+  }
+}
+window.deleteTeacher = deleteTeacher;
 
 function toggleTeacherSalaryStatus(teacherId) {
   const teacher = AppState.teachers.find(t => t.id === teacherId);
@@ -3857,6 +4090,8 @@ function approveTrialToStudent(trialId) {
     timezone: trial.preferredTime.includes('CST') ? 'GMT-5 (CST)' : (trial.preferredTime.includes('BST') ? 'GMT+1 (BST)' : 'GMT+10 (AEST)'),
     familyId: 'FAM-' + (125 + AppState.students.length),
     teacherId: AppState.teachers.find(t => t.name === trial.assignedTeacher)?.id || AppState.teachers[0]?.id || 'T-UNASSIGNED',
+    teacherName: trial.assignedTeacher || AppState.teachers[0]?.name || 'Unassigned',
+    assignedTeacher: trial.assignedTeacher || AppState.teachers[0]?.name || 'Unassigned',
     course: 'Noorani Qaida & Tajweed Track',
     currency: '$',
     currencyCode: 'USD',
@@ -3864,10 +4099,10 @@ function approveTrialToStudent(trialId) {
     enrollmentDate: new Date().toISOString().split('T')[0],
     months: MONTHS_LIST.map((m, idx) => ({
       month: m,
-      status: idx < CURRENT_MONTH_INDEX ? 'paid' : (idx === CURRENT_MONTH_INDEX ? 'defaulter' : 'upcoming'),
+      status: idx > CURRENT_MONTH_INDEX ? 'upcoming' : 'defaulter',
       feeDue: 50,
-      amountPaid: idx < CURRENT_MONTH_INDEX ? 50 : 0,
-      remainingDue: idx === CURRENT_MONTH_INDEX ? 50 : 0
+      amountPaid: 0,
+      remainingDue: 50
     })),
     lastSabaq: {
       date: new Date().toISOString().split('T')[0],
@@ -3963,6 +4198,11 @@ function handleSaveNotice() {
       ACADEMY_NOTICES[index].audience = audience;
       ACADEMY_NOTICES[index].author = author;
       ACADEMY_NOTICES[index].content = content;
+      addSystemNotification({
+        title: 'Notice Updated',
+        desc: `Updated academy notice "${title}".`,
+        type: 'notice'
+      });
       showToastNotification(`✓ Notice "${title}" updated successfully!`);
     }
   } else {
@@ -3976,6 +4216,11 @@ function handleSaveNotice() {
     };
     ACADEMY_NOTICES.unshift(newNotice);
     dbSaveNotice(newNotice);
+    addSystemNotification({
+      title: 'Academy Notice Published',
+      desc: `Published notice "${title}" for ${audience}.`,
+      type: 'notice'
+    });
     showToastNotification(`✓ New Notice "${title}" published across Academy!`);
   }
 
@@ -3985,21 +4230,94 @@ function handleSaveNotice() {
   renderApp();
 }
 
-function deleteNotice(noticeId) {
-  const notice = ACADEMY_NOTICES.find(n => n.id === noticeId);
+function deleteNotice(noticeId, event) {
+  if (event) event.stopPropagation();
+  const notice = (ACADEMY_NOTICES || []).find(n => String(n.id).trim().toLowerCase() === String(noticeId).trim().toLowerCase());
   if (!notice) return;
   if (confirm(`Are you sure you want to delete notice "${notice.title}"?`)) {
-    const index = ACADEMY_NOTICES.findIndex(n => n.id === noticeId);
+    const index = ACADEMY_NOTICES.findIndex(n => String(n.id).trim().toLowerCase() === String(noticeId).trim().toLowerCase());
     if (index !== -1) {
       ACADEMY_NOTICES.splice(index, 1);
       saveToStorage('lms_notices', ACADEMY_NOTICES);
-      dbDeleteNotice(noticeId);
-      showToastNotification(`✓ Notice "${notice.title}" deleted.`);
+      dbDeleteNotice(notice.id);
+      addSystemNotification({
+        title: 'Notice Deleted',
+        desc: `Removed academy notice "${notice.title}".`,
+        type: 'delete'
+      });
       AppState.activeNoticeActionMenuId = null;
       renderApp();
+      showToastNotification(`✓ Notice "${notice.title}" deleted.`);
     }
   }
 }
+window.deleteNotice = deleteNotice;
+
+function openAddTrialModal() {
+  const modal = document.getElementById('add-trial-modal');
+  if (!modal) return;
+  const nameInput = document.getElementById('add-trial-name');
+  if (nameInput) nameInput.value = '';
+  const countryInput = document.getElementById('add-trial-country');
+  if (countryInput) countryInput.value = 'UK (London)';
+  const dateInput = document.getElementById('add-trial-datetime');
+  if (dateInput) {
+    const today = new Date().toISOString().split('T')[0];
+    dateInput.value = `${today} 04:30 PM (PKT)`;
+  }
+  const teacherSelect = document.getElementById('add-trial-teacher');
+  if (teacherSelect) {
+    teacherSelect.innerHTML = `<option value="Unassigned">Assign Faculty Later...</option>` +
+      (AppState.teachers || []).map(t => `<option value="${t.name}">${t.name} (${t.specialization})</option>`).join('');
+  }
+  modal.classList.add('active');
+}
+window.openAddTrialModal = openAddTrialModal;
+
+function closeAddTrialModal() {
+  const modal = document.getElementById('add-trial-modal');
+  if (modal) modal.classList.remove('active');
+}
+window.closeAddTrialModal = closeAddTrialModal;
+
+function handleSaveNewTrial() {
+  const name = document.getElementById('add-trial-name')?.value?.trim();
+  const course = document.getElementById('add-trial-course')?.value || 'Nazra Quran with Tajweed';
+  const teacherName = document.getElementById('add-trial-teacher')?.value || 'Unassigned';
+  const dateTime = document.getElementById('add-trial-datetime')?.value?.trim() || `${new Date().toISOString().split('T')[0]} 04:30 PM (PKT)`;
+  const country = document.getElementById('add-trial-country')?.value?.trim() || 'Global';
+
+  if (!name) {
+    alert('Please enter candidate student name.');
+    return;
+  }
+
+  const trialId = 'TRL-' + Math.floor(100 + Math.random() * 900);
+  const newTrial = {
+    id: trialId,
+    studentName: name,
+    course: course,
+    assignedTeacher: teacherName,
+    country: country,
+    preferredTime: dateTime,
+    status: 'Trial Booked',
+    date: new Date().toISOString().split('T')[0],
+    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0E4D45&color=fff`
+  };
+
+  TRIAL_PIPELINE.unshift(newTrial);
+  saveToStorage('lms_trial_pipeline', TRIAL_PIPELINE);
+  dbSaveTrial(newTrial);
+  addSystemNotification({
+    title: 'Trial Assessment Scheduled',
+    desc: `New trial booked for ${name} (${course}) with faculty ${teacherName}.`,
+    type: 'trial'
+  });
+  closeAddTrialModal();
+  renderApp();
+  showToastNotification(`✓ Trial scheduled for "${name}" successfully!`);
+}
+window.handleSaveNewTrial = handleSaveNewTrial;
 
 function toggleNoticeActionMenu(noticeId, event) {
   if (event) event.stopPropagation();
@@ -4039,17 +4357,19 @@ function calculateFIFOWaterfall(studentOrTarget, paymentAmount) {
   let familyId = null;
   let studentsInvolved = [];
 
-  if (typeof studentOrTarget === 'string' && studentOrTarget.startsWith('FAM-')) {
-    isFamily = true;
-    familyId = studentOrTarget;
-    studentsInvolved = AppState.students.filter(s => s.familyId === familyId);
-  } else if (studentOrTarget && studentOrTarget.familyId && studentOrTarget.isFamily) {
+  if (typeof studentOrTarget === 'string') {
+    if (isFamilyTarget(studentOrTarget)) {
+      isFamily = true;
+      familyId = studentOrTarget;
+      studentsInvolved = (AppState.students || []).filter(s => s.familyId === familyId || s.familyTag === familyId);
+    } else {
+      const s = (AppState.students || []).find(st => st.id === studentOrTarget);
+      if (s) studentsInvolved = [s];
+    }
+  } else if (studentOrTarget && (studentOrTarget.isFamily || studentOrTarget.familyId)) {
     isFamily = true;
     familyId = studentOrTarget.familyId;
-    studentsInvolved = AppState.students.filter(s => s.familyId === familyId);
-  } else if (typeof studentOrTarget === 'string') {
-    const s = AppState.students.find(st => st.id === studentOrTarget);
-    if (s) studentsInvolved = [s];
+    studentsInvolved = (AppState.students || []).filter(s => s.familyId === familyId || s.familyTag === familyId);
   } else if (studentOrTarget) {
     studentsInvolved = [studentOrTarget];
   }
@@ -4175,6 +4495,7 @@ function commitFIFOPayment(targetId, amount, paymentMethod = 'Online Portal') {
     const student = AppState.students.find(s => s.id === sim.studentId);
     if (student) {
       student.months = sim.months;
+      dbSaveStudent(student);
     }
   });
 
@@ -4204,6 +4525,7 @@ function commitFIFOPayment(targetId, amount, paymentMethod = 'Online Portal') {
     currency: currency,
     type: isFamily ? 'Family Combined Invoice' : (result.allocations.some(a => a.isAdvance) ? 'Advance / Combined Fee' : 'Tuition Settlement'),
     allocatedTo: allocationSummary,
+    allocations: result.allocations,
     method: paymentMethod,
     status: 'Completed'
   };
@@ -4212,6 +4534,15 @@ function commitFIFOPayment(targetId, amount, paymentMethod = 'Online Portal') {
 
   saveToStorage('lms_students', AppState.students);
   saveToStorage('lms_payment_ledger', PAYMENT_LEDGER);
+
+  addSystemNotification({
+    title: 'Tuition Fee Received',
+    desc: `Recorded fee payment of ${currency}${amount} for ${studentName}. Receipt #${txnId}. Allocation: ${allocationSummary}`,
+    type: 'fee',
+    amount: `${currency}${amount}`,
+    receiptNo: txnId,
+    date: paymentTxn.date
+  });
 
   return {
     txnId,
@@ -4369,8 +4700,92 @@ const PORTAL_ROLES = {
   }
 };
 
-// System Notifications Data & Controller (Starts with 0 records)
-const SYSTEM_NOTIFICATIONS = [];
+// System Notifications Data & Controller
+let SYSTEM_NOTIFICATIONS = loadFromStorage('lms_notifications', []);
+
+function seedInitialActivityNotifications() {
+  if (!Array.isArray(SYSTEM_NOTIFICATIONS)) {
+    SYSTEM_NOTIFICATIONS = [];
+  }
+  let modified = false;
+  const hasPayment = SYSTEM_NOTIFICATIONS.some(n => n.receiptNo === 'TXN-5683');
+  if (!hasPayment) {
+    SYSTEM_NOTIFICATIONS.push({
+      id: 'NOTIF-INIT-1',
+      title: 'Tuition Fee Received',
+      desc: 'Tuition fee settled for TEST Student One (TEST-001) for November 2026. Allocation: Nov 2026: $50.',
+      type: 'fee',
+      amount: '$50',
+      receiptNo: 'TXN-5683',
+      time: 'Nov 24, 2026',
+      unread: false,
+      timestamp: Date.now() - 3600000
+    });
+    modified = true;
+  }
+  const hasStudent = SYSTEM_NOTIFICATIONS.some(n => n.title === 'Student Enrolled');
+  if (!hasStudent) {
+    SYSTEM_NOTIFICATIONS.push({
+      id: 'NOTIF-INIT-2',
+      title: 'Student Enrolled',
+      desc: 'Enrolled TEST Student One (TEST-001) in Nazra Quran with Tajweed ($50/month).',
+      type: 'student',
+      time: 'Nov 24, 2026',
+      unread: false,
+      timestamp: Date.now() - 7200000
+    });
+    modified = true;
+  }
+  const hasTeacher = SYSTEM_NOTIFICATIONS.some(n => n.title === 'Faculty Onboarded');
+  if (!hasTeacher) {
+    SYSTEM_NOTIFICATIONS.push({
+      id: 'NOTIF-INIT-3',
+      title: 'Faculty Onboarded',
+      desc: 'Faculty member TEST Teacher One (TEST-T-001) registered to faculty roster.',
+      type: 'teacher',
+      time: 'Nov 24, 2026',
+      unread: false,
+      timestamp: Date.now() - 10800000
+    });
+    modified = true;
+  }
+  const hasNotice = SYSTEM_NOTIFICATIONS.some(n => n.title === 'Academy Notice Published');
+  if (!hasNotice) {
+    SYSTEM_NOTIFICATIONS.push({
+      id: 'NOTIF-INIT-4',
+      title: 'Academy Notice Published',
+      desc: 'Broadcast notice "TEST Notice - Please Ignore" published across Academy community.',
+      type: 'notice',
+      time: 'Nov 24, 2026',
+      unread: false,
+      timestamp: Date.now() - 14400000
+    });
+    modified = true;
+  }
+  if (modified) {
+    saveToStorage('lms_notifications', SYSTEM_NOTIFICATIONS);
+  }
+}
+
+function addSystemNotification(item) {
+  if (!Array.isArray(SYSTEM_NOTIFICATIONS)) SYSTEM_NOTIFICATIONS = [];
+  const notif = {
+    id: 'NOTIF-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+    title: item.title,
+    desc: item.desc,
+    type: item.type || 'info',
+    amount: item.amount,
+    receiptNo: item.receiptNo,
+    time: item.date || new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+    unread: true,
+    timestamp: Date.now()
+  };
+  SYSTEM_NOTIFICATIONS.unshift(notif);
+  if (SYSTEM_NOTIFICATIONS.length > 60) SYSTEM_NOTIFICATIONS.length = 60;
+  saveToStorage('lms_notifications', SYSTEM_NOTIFICATIONS);
+  renderNotificationsDropdownContent();
+}
+window.addSystemNotification = addSystemNotification;
 
 function toggleNotificationsDropdown(event) {
   if (event) event.stopPropagation();
@@ -4839,16 +5254,31 @@ function renderAdminDashboardView() {
   let totalCurrentMonthDue = 0;
 
   AppState.students.forEach(s => {
-    const status = getStudentFeeStatus(s);
-    if (status.code === 'paid') paidCount++;
-    else if (status.code === 'partial') {
-      partialCount++;
-      totalCurrentMonthDue += getStudentBalanceDue(s);
-    } else if (status.code === 'defaulter') {
-      defaulterCount++;
-      totalCurrentMonthDue += getStudentBalanceDue(s);
-    } else if (status.code === 'advance') {
-      advanceCount++;
+    const m = (Array.isArray(s.months) && s.months[CURRENT_MONTH_INDEX]) || null;
+    if (m) {
+      if (m.status === 'paid') {
+        paidCount++;
+      } else if (m.status === 'advance') {
+        advanceCount++;
+      } else if (m.status === 'partial') {
+        partialCount++;
+        totalCurrentMonthDue += (m.remainingDue || 0);
+      } else if (m.status === 'defaulter') {
+        defaulterCount++;
+        totalCurrentMonthDue += (m.remainingDue || 0);
+      }
+    } else {
+      const status = getStudentFeeStatus(s);
+      if (status.code === 'paid') paidCount++;
+      else if (status.code === 'partial') {
+        partialCount++;
+        totalCurrentMonthDue += getStudentBalanceDue(s);
+      } else if (status.code === 'defaulter') {
+        defaulterCount++;
+        totalCurrentMonthDue += getStudentBalanceDue(s);
+      } else if (status.code === 'advance') {
+        advanceCount++;
+      }
     }
   });
 
@@ -4858,9 +5288,9 @@ function renderAdminDashboardView() {
     ledgerSum += (Number(p.amount) || 0);
   });
 
-  // Real dynamic totals from state
+  // Real dynamic totals from state (strictly month-specific)
   const dynamicTotalStudents = totalStudents;
-  const dynamicFeeCollected = ledgerSum;
+  const dynamicFeeCollected = getMonthFeeCollected(CURRENT_MONTH_INDEX, CURRENT_YEAR);
   const dynamicBalanceDue = totalCurrentMonthDue;
 
   // Segmented progress bar metrics
@@ -8186,13 +8616,20 @@ function getFilteredStudentsForDirectory() {
   if (AppState.studentDirectorySearchQuery && AppState.studentDirectorySearchQuery.trim() !== '') {
     const q = AppState.studentDirectorySearchQuery.trim().toLowerCase();
     list = list.filter(s => {
-      const teacher = AppState.teachers.find(t => t.id === s.teacherId);
+      const teacher = (AppState.teachers || []).find(t => 
+        t.id === s.teacherId || 
+        (t.id && s.teacherId && t.id.toLowerCase() === s.teacherId.toLowerCase()) ||
+        t.name === s.teacherName ||
+        t.name === s.assignedTeacher ||
+        (t.name && s.teacherName && t.name.toLowerCase() === s.teacherName.toLowerCase()) ||
+        (t.name && s.assignedTeacher && t.name.toLowerCase() === s.assignedTeacher.toLowerCase())
+      );
       const fullName = `${s.firstName} ${s.lastName || ''}`.toLowerCase();
       const id = (s.id || '').toLowerCase();
       const family = (s.familyId || s.familyTag || '').toLowerCase();
       const phone = (s.phone || '').toLowerCase();
       const course = (s.course || '').toLowerCase();
-      const teacherName = (teacher ? teacher.name : '').toLowerCase();
+      const teacherName = (teacher ? teacher.name : (s.teacherName || s.assignedTeacher || '')).toLowerCase();
       const guardian = (s.guardianName || '').toLowerCase();
       const country = (s.country || '').toLowerCase();
       return fullName.includes(q) || id.includes(q) || family.includes(q) || phone.includes(q) || course.includes(q) || teacherName.includes(q) || guardian.includes(q) || country.includes(q);
@@ -8239,7 +8676,18 @@ function renderStudentDirectoryRows(students) {
   }
 
   return students.map(s => {
-    const teacher = AppState.teachers.find(t => t.id === s.teacherId);
+    let teacher = (AppState.teachers || []).find(t => 
+      t.id === s.teacherId || 
+      (t.id && s.teacherId && t.id.toLowerCase() === s.teacherId.toLowerCase()) ||
+      t.name === s.teacherName || 
+      t.name === s.assignedTeacher ||
+      (t.name && s.teacherName && t.name.toLowerCase() === s.teacherName.toLowerCase()) ||
+      (t.name && s.assignedTeacher && t.name.toLowerCase() === s.assignedTeacher.toLowerCase())
+    );
+    if (!teacher && AppState.teachers && AppState.teachers.length === 1 && (s.teacherId || s.teacherName || s.assignedTeacher)) {
+      teacher = AppState.teachers[0];
+    }
+    const teacherDisplayName = teacher ? teacher.name : (s.teacherName || s.assignedTeacher || 'Unassigned');
     const currentMonthObj = Array.isArray(s.months) ? s.months[CURRENT_MONTH_INDEX] : null;
     const isDefaulter = (currentMonthObj && currentMonthObj.status === 'defaulter') || 
                         (Array.isArray(s.months) && s.months.some(m => m.status === 'defaulter'));
@@ -8281,11 +8729,11 @@ function renderStudentDirectoryRows(students) {
           <div class="flex items-center gap-2 whitespace-nowrap">
             <img 
               src="${teacher?.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=faces'}" 
-              alt="${teacher?.name || 'Teacher'}" 
+              alt="${teacherDisplayName}" 
               class="w-7 h-7 rounded-full object-cover shrink-0 ring-1 ring-[#ECEAE4]" 
-              onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(teacher ? teacher.name : 'Teacher')}&background=0E4D45&color=fff';" 
+              onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(teacherDisplayName)}&background=0E4D45&color=fff';" 
             />
-            <span class="text-xs font-semibold text-[#141F1E]">${teacher ? teacher.name : 'Unassigned'}</span>
+            <span class="text-xs font-semibold text-[#141F1E]">${teacherDisplayName}</span>
           </div>
         </td>
 
@@ -8701,25 +9149,41 @@ function toggleStudentStatus(studentId, event) {
 
 function deleteStudent(studentId, event) {
   if (event) event.stopPropagation();
-  const student = AppState.students.find(s => s.id === studentId);
+  const student = (AppState.students || []).find(s => 
+    s.id === studentId || 
+    String(s.id).trim().toLowerCase() === String(studentId).trim().toLowerCase()
+  );
   if (!student) return;
 
   if (confirm(`Are you sure you want to delete student "${student.firstName} ${student.lastName}" (${student.id})? This will remove all their records.`)) {
-    AppState.students = AppState.students.filter(s => s.id !== studentId);
+    AppState.students = AppState.students.filter(s => 
+      s.id !== student.id && 
+      String(s.id).trim().toLowerCase() !== String(student.id).trim().toLowerCase()
+    );
     if (student.teacherId) {
-      const teacher = AppState.teachers.find(t => t.id === student.teacherId);
+      const teacher = (AppState.teachers || []).find(t => 
+        t.id === student.teacherId || 
+        String(t.id).trim().toLowerCase() === String(student.teacherId).trim().toLowerCase()
+      );
       if (teacher && teacher.activeStudents > 0) {
         teacher.activeStudents--;
+        dbSaveTeacher(teacher);
       }
     }
     saveToStorage('lms_students', AppState.students);
     saveToStorage('lms_teachers', AppState.teachers);
-    dbDeleteStudent(studentId);
+    dbDeleteStudent(student.id);
+    addSystemNotification({
+      title: 'Student Record Removed',
+      desc: `Deleted student record for ${student.firstName} ${student.lastName} (${student.id}).`,
+      type: 'student'
+    });
     AppState.activeStudentActionMenuId = null;
     renderApp();
     showToastNotification(`✓ Student "${student.firstName} ${student.lastName}" deleted.`);
   }
 }
+window.deleteStudent = deleteStudent;
 
 function exportStudentsToCSV() {
   if (!AppState.students || AppState.students.length === 0) {
@@ -9040,10 +9504,17 @@ function renderAdminTeacherPayrollView() {
                     </span>
                   </td>
                   <td class="py-3.5 text-right pl-2" data-label="Action">
-                    <button onclick="toggleTeacherSalaryStatus('${t.id}')"
-                      class="px-3 py-1 text-[11px] font-semibold rounded-lg ${isPaid ? 'bg-[#E8EFEE] text-[#0E4D45] hover:bg-[#FEE2E2] hover:text-[#991B1B]' : 'bg-[#0E4D45] text-white hover:bg-[#14534B]'} transition-colors whitespace-nowrap shadow-2xs cursor-pointer">
-                      ${isPaid ? 'Mark Pending' : 'Pay Salary'}
-                    </button>
+                    <div class="flex items-center justify-end gap-1.5 whitespace-nowrap">
+                      <button onclick="toggleTeacherSalaryStatus('${t.id}')"
+                        class="px-3 py-1 text-[11px] font-semibold rounded-lg ${isPaid ? 'bg-[#E8EFEE] text-[#0E4D45] hover:bg-[#FEE2E2] hover:text-[#991B1B]' : 'bg-[#0E4D45] text-white hover:bg-[#14534B]'} transition-colors whitespace-nowrap shadow-2xs cursor-pointer">
+                        ${isPaid ? 'Mark Pending' : 'Pay Salary'}
+                      </button>
+                      <button onclick="deleteTeacher('${t.id}', event)"
+                        class="p-1.5 rounded-lg text-[#DC2626] hover:bg-red-50 hover:text-red-700 transition-colors cursor-pointer border border-transparent hover:border-red-200"
+                        title="Delete Faculty Member">
+                        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               `;
@@ -9107,10 +9578,16 @@ function renderAdminTrialsAndNoticesView() {
             </div>
             <p class="text-xs text-[#7A8684] mt-0.5">Active trial candidates awaiting evaluation and enrollment.</p>
           </div>
-          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#F8F6F1] text-[#0E4D45] border border-[#ECEAE4]">
-            <span class="w-1.5 h-1.5 rounded-full ${pendingTrialsCount > 0 ? 'bg-amber-500' : 'bg-emerald-500'}"></span>
-            ${pendingTrialsCount} Pending Review
-          </span>
+          <div class="flex items-center gap-2">
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#F8F6F1] text-[#0E4D45] border border-[#ECEAE4]">
+              <span class="w-1.5 h-1.5 rounded-full ${pendingTrialsCount > 0 ? 'bg-amber-500' : 'bg-emerald-500'}"></span>
+              ${pendingTrialsCount} Pending Review
+            </span>
+            <button onclick="openAddTrialModal()" class="px-3.5 py-1.5 rounded-full bg-[#0E4D45] text-white text-xs font-bold hover:bg-[#14534B] transition-all shadow-xs flex items-center gap-1.5 cursor-pointer">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+              <span>+ Add Trial</span>
+            </button>
+          </div>
         </div>
 
         <div class="overflow-x-auto">
@@ -9306,7 +9783,7 @@ function renderAdminTrialsAndNoticesView() {
                         <svg class="w-3 h-3 text-[#0E4D45]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                         <span class="hidden sm:inline">Edit</span>
                       </button>
-                      <button onclick="deleteNotice('${notice.id}')" 
+                      <button onclick="deleteNotice('${notice.id}', event)" 
                         class="px-2.5 py-1 rounded-lg bg-white hover:bg-red-50 text-[#DC2626] border border-[#CBD5E1] text-[11px] font-semibold transition-all shadow-2xs flex items-center gap-1 cursor-pointer"
                         title="Delete Notice">
                         <svg class="w-3 h-3 text-[#DC2626]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
@@ -9328,7 +9805,7 @@ function renderAdminTrialsAndNoticesView() {
                             <svg class="w-3.5 h-3.5 text-[#0E4D45]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                             <span>Edit Notice</span>
                           </button>
-                          <button onclick="closeNoticeActionMenu(); deleteNotice('${notice.id}')" class="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-[#DC2626] hover:bg-red-50 transition-colors cursor-pointer whitespace-nowrap">
+                          <button onclick="deleteNotice('${notice.id}', event)" class="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-[#DC2626] hover:bg-red-50 transition-colors cursor-pointer whitespace-nowrap">
                             <svg class="w-3.5 h-3.5 text-[#DC2626]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                             <span>Delete Notice</span>
                           </button>
@@ -10128,18 +10605,18 @@ function openReceiveFeeModal(preselectedTarget = null) {
   // Set default amount intelligently based on selection
   const amountInput = document.getElementById('modal-fee-amount-input');
   if (amountInput) {
-    if (preselectedTarget && preselectedTarget.startsWith('FAM-')) {
-      const fam = familiesMap[preselectedTarget];
-      amountInput.value = (fam && fam.totalDue > 0 ? fam.totalDue : (fam ? fam.totalMonthlyFee : 90)).toString();
+    if (preselectedTarget && isFamilyTarget(preselectedTarget)) {
+      const fam = familiesMap[preselectedTarget] || Object.values(familiesMap).find(f => f.familyId === preselectedTarget);
+      amountInput.value = (fam && fam.totalDue > 0 ? fam.totalDue : (fam ? fam.totalMonthlyFee : 50)).toString();
     } else if (preselectedTarget) {
       const student = AppState.students.find(s => s.id === preselectedTarget);
       const balance = student ? getStudentBalanceDue(student) : 0;
       amountInput.value = (balance > 0 ? balance : (student ? student.monthlyFee : 50)).toString();
     } else {
       const firstTarget = selectEl ? selectEl.value : null;
-      if (firstTarget && firstTarget.startsWith('FAM-')) {
-        const fam = familiesMap[firstTarget];
-        amountInput.value = (fam && fam.totalDue > 0 ? fam.totalDue : (fam ? fam.totalMonthlyFee : 90)).toString();
+      if (firstTarget && isFamilyTarget(firstTarget)) {
+        const fam = familiesMap[firstTarget] || Object.values(familiesMap).find(f => f.familyId === firstTarget);
+        amountInput.value = (fam && fam.totalDue > 0 ? fam.totalDue : (fam ? fam.totalMonthlyFee : 50)).toString();
       } else {
         amountInput.value = '50';
       }
@@ -10160,17 +10637,17 @@ function handleFeeTargetChange() {
   const amountInput = document.getElementById('modal-fee-amount-input');
   if (selectEl && amountInput) {
     const val = selectEl.value;
-    if (val && val.startsWith('FAM-')) {
-      const famStudents = AppState.students.filter(s => s.familyId === val || s.familyTag === val);
+    if (val && isFamilyTarget(val)) {
+      const famStudents = (AppState.students || []).filter(s => s.familyId === val || s.familyTag === val);
       let totalDue = 0;
       let totalMonthly = 0;
       famStudents.forEach(st => {
         totalDue += getStudentBalanceDue(st);
         totalMonthly += st.monthlyFee || 0;
       });
-      amountInput.value = (totalDue > 0 ? totalDue : (totalMonthly || 100)).toString();
+      amountInput.value = (totalDue > 0 ? totalDue : (totalMonthly || 50)).toString();
     } else if (val) {
-      const student = AppState.students.find(s => s.id === val);
+      const student = (AppState.students || []).find(s => s.id === val);
       if (student) {
         const bal = getStudentBalanceDue(student);
         amountInput.value = (bal > 0 ? bal : student.monthlyFee).toString();
@@ -10187,17 +10664,17 @@ function setModalAmount(amt) {
 
   if (amt === 'full') {
     const val = selectEl ? selectEl.value : null;
-    if (val && val.startsWith('FAM-')) {
-      const famStudents = AppState.students.filter(s => s.familyId === val || s.familyTag === val);
+    if (val && isFamilyTarget(val)) {
+      const famStudents = (AppState.students || []).filter(s => s.familyId === val || s.familyTag === val);
       let totalDue = 0;
       let totalMonthly = 0;
       famStudents.forEach(st => {
         totalDue += getStudentBalanceDue(st);
         totalMonthly += st.monthlyFee || 0;
       });
-      amountInput.value = (totalDue > 0 ? totalDue : totalMonthly).toString();
+      amountInput.value = (totalDue > 0 ? totalDue : (totalMonthly || 50)).toString();
     } else if (val) {
-      const student = AppState.students.find(s => s.id === val);
+      const student = (AppState.students || []).find(s => s.id === val);
       if (student) {
         const bal = getStudentBalanceDue(student);
         amountInput.value = (bal > 0 ? bal : student.monthlyFee).toString();
@@ -10870,12 +11347,43 @@ function saveAcademySettings() {
   showToastNotification(`\u2713 Settings Saved: ${academyName} (${timezone}, Due: ${dueDay}th)`);
 }
 
+function getNotificationIconHtml(type) {
+  if (type === 'fee') {
+    return `<div class="w-8 h-8 rounded-lg bg-[#E0F2F1] text-[#0E4D45] flex items-center justify-center flex-shrink-0">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+    </div>`;
+  }
+  if (type === 'student') {
+    return `<div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center flex-shrink-0">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>
+    </div>`;
+  }
+  if (type === 'teacher') {
+    return `<div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center flex-shrink-0">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.26 10.147a60.438 60.438 0 0 0-.491 6.347A48.62 48.62 0 0 1 12 20.904a48.62 48.62 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.636 50.636 0 0 0-2.658-.813A59.906 59.906 0 0 1 12 3.493a59.903 59.903 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0 1 12 13.489a50.702 50.702 0 0 1 7.74-3.342M6.75 15a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 0v-3.675A55.378 55.378 0 0 1 12 8.443m-7.007 11.55A5.981 5.981 0 0 0 6.75 15.75v-1.5"/></svg>
+    </div>`;
+  }
+  if (type === 'notice') {
+    return `<div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center flex-shrink-0">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"/></svg>
+    </div>`;
+  }
+  if (type === 'trial') {
+    return `<div class="w-8 h-8 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center flex-shrink-0">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"/></svg>
+    </div>`;
+  }
+  return `<div class="w-8 h-8 rounded-lg bg-[#E0F2F1] text-[#0E4D45] flex items-center justify-center flex-shrink-0">
+    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+  </div>`;
+}
+
 function openNotificationsModal() {
   const modal = document.getElementById('notifications-modal');
   if (modal) {
     const list = document.getElementById('notifications-modal-list');
     if (list) {
-      if (SYSTEM_NOTIFICATIONS.length === 0) {
+      if (!Array.isArray(SYSTEM_NOTIFICATIONS) || SYSTEM_NOTIFICATIONS.length === 0) {
         list.innerHTML = `
           <div class="py-10 text-center flex flex-col items-center justify-center">
             <div class="w-10 h-10 rounded-full bg-[#E8EFEE] text-[#0E4D45] flex items-center justify-center mb-2.5">
@@ -10887,16 +11395,20 @@ function openNotificationsModal() {
         `;
       } else {
         list.innerHTML = SYSTEM_NOTIFICATIONS.map(n => `
-          <div class="p-3 rounded-xl ${n.unread ? 'bg-[#F8F6F1] border border-[#ECEAE4]' : 'bg-white border border-[#ECEAE4]'} flex items-start gap-3">
-            <div class="w-8 h-8 rounded-lg ${n.type === 'success' ? 'bg-[#E0F2F1] text-[#0E4D45]' : 'bg-blue-50 text-blue-700'} flex items-center justify-center flex-shrink-0">
-              ${n.type === 'success' ? '<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>' : '<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>'}
-            </div>
+          <div class="p-3.5 rounded-xl ${n.unread ? 'bg-[#F8F6F1] border border-[#ECEAE4]' : 'bg-white border border-[#ECEAE4]'} flex items-start gap-3">
+            ${getNotificationIconHtml(n.type)}
             <div class="flex-1 min-w-0">
-              <div class="flex items-center justify-between">
-                <span class="font-bold text-[#141F1E]">${n.title}</span>
-                <span class="text-[10px] text-[#7A8684]">${n.time}</span>
+              <div class="flex items-center justify-between gap-2">
+                <span class="font-bold text-[#141F1E] text-xs">${n.title}</span>
+                <span class="text-[10px] text-[#7A8684] shrink-0 font-medium">${n.time || ''}</span>
               </div>
-              <p class="text-[11px] text-[#7A8684] mt-0.5">${n.desc}</p>
+              <p class="text-[11px] text-[#7A8684] mt-1 leading-snug">${n.desc}</p>
+              ${(n.amount || n.receiptNo) ? `
+                <div class="flex items-center gap-2 mt-2">
+                  ${n.amount ? `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#E8EFEE] text-[#0E4D45]">Amount: ${n.amount}</span>` : ''}
+                  ${n.receiptNo ? `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-[#F1EFEA] text-[#141F1E]">Receipt #${n.receiptNo}</span>` : ''}
+                </div>
+              ` : ''}
             </div>
           </div>
         `).join('');
@@ -10905,14 +11417,18 @@ function openNotificationsModal() {
     modal.classList.add('active');
   }
 }
+window.openNotificationsModal = openNotificationsModal;
 
 function closeNotificationsModal() {
   const modal = document.getElementById('notifications-modal');
   if (modal) modal.classList.remove('active');
 }
+window.closeNotificationsModal = closeNotificationsModal;
 
 // Initial Boot
 document.addEventListener('DOMContentLoaded', () => {
+  reconcileStudentsWithPaymentLedger();
+  seedInitialActivityNotifications();
   updateHeaderDateDisplay();
   if (window.location.hash) {
     const hash = window.location.hash.replace('#', '');

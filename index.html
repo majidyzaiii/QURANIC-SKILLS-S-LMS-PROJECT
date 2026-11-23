@@ -240,10 +240,10 @@
       <div class="flex items-center gap-2">
         <span class="w-2 h-2 rounded-full bg-[#0E4D45]"></span>
         <span class="font-semibold text-[#141F1E]">Online Quran Academy LMS</span>
-        <span>• Production SaaS Architecture</span>
+        <span>• Student &amp; Fee Management</span>
       </div>
       <div>
-        <span>Strict Privacy PII Guard • Chronological FIFO Waterfall Engine</span>
+        <span>Privacy Protection • Automated Fee Allocation</span>
       </div>
     </div>
   </footer>
@@ -259,7 +259,7 @@
             <div class="w-8 h-8 rounded-xl bg-[#E8EFEE] text-[#0E4D45] flex items-center justify-center font-bold text-xs shrink-0">
               <svg class="w-4 h-4 text-[#0E4D45]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
             </div>
-            <h3 class="text-sm sm:text-base font-bold text-[#141F1E] leading-snug">Receive Tuition Fee (FIFO Waterfall Engine)</h3>
+            <h3 class="text-sm sm:text-base font-bold text-[#141F1E] leading-snug">Receive Tuition Fee</h3>
           </div>
           <p class="text-xs text-[#7A8684] mt-1.5 leading-relaxed break-words pl-0.5">Chronologically allocates payment starting from the oldest overdue/partial month.</p>
         </div>
@@ -317,9 +317,9 @@
           </div>
         </div>
 
-        <!-- Live Chronological FIFO Allocation Preview Container -->
+        <!-- Payment Allocation Breakdown Container -->
         <div>
-          <label class="block text-xs font-bold text-[#141F1E] mb-1.5">Live FIFO Allocation Distribution</label>
+          <label class="block text-xs font-bold text-[#141F1E] mb-1.5">Payment Allocation Breakdown</label>
           <div id="fifo-allocation-preview">
             <!-- Dynamically calculated table generated in app.js -->
           </div>
@@ -361,9 +361,9 @@
 
       <div class="p-6 space-y-4">
         
-        <!-- Student Selector (Masked) -->
+        <!-- Student Selector -->
         <div>
-          <label class="block text-xs font-bold text-[#141F1E] mb-1">Student (PII Protected)</label>
+          <label class="block text-xs font-bold text-[#141F1E] mb-1">Select Student</label>
           <select id="logger-student-select" class="w-full text-xs bg-[#FFFFFF] border border-[#ECEAE4] rounded-xl px-3 py-2 text-[#141F1E] font-medium outline-none focus:border-[#0E4D45]">
             <!-- Injected by app.js -->
           </select>
@@ -517,7 +517,7 @@
               <h3 class="text-base font-bold text-[#141F1E]">Add New Student</h3>
               <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-[#F8F6F1] text-[#7A8684] border border-[#ECEAE4]">Manual ID</span>
             </div>
-            <p class="text-xs text-[#7A8684] mt-0.5">Enroll new student into the academy with automated FIFO ledger setup.</p>
+            <p class="text-xs text-[#7A8684] mt-0.5">Enroll new student into the academy with automated ledger setup.</p>
           </div>
         </div>
         <button onclick="closeAddStudentModal()" class="w-8 h-8 rounded-full border border-[#ECEAE4] bg-[#F8F6F1] text-[#7A8684] hover:text-[#141F1E] hover:bg-[#ECEAE4] flex items-center justify-center text-sm font-bold transition-colors cursor-pointer">✕</button>
@@ -1686,7 +1686,7 @@
           </div>
           <div>
             <h3 class="text-base font-bold text-[#141F1E]">Academy Configuration & System Settings</h3>
-            <p class="text-xs text-[#7A8684] mt-0.5">Global policies, fee rules, PII privacy controls & WhatsApp gateways.</p>
+            <p class="text-xs text-[#7A8684] mt-0.5">Global policies, fee rules, privacy controls & WhatsApp notifications.</p>
           </div>
         </div>
         <button onclick="closeSettingsModal()" class="w-8 h-8 rounded-full border border-[#ECEAE4] bg-white text-[#7A8684] hover:text-[#141F1E] flex items-center justify-center text-sm font-bold cursor-pointer">✕</button>
@@ -1755,9 +1755,9 @@
               </select>
             </div>
             <div>
-              <label class="block font-semibold text-[#141F1E] mb-1">Auto FIFO Allocation</label>
+              <label class="block font-semibold text-[#141F1E] mb-1">Fee Allocation Method</label>
               <select id="setting-fee-fifo" class="w-full bg-white border border-[#ECEAE4] rounded-xl px-3 py-2 text-[#0E4D45] font-bold outline-none">
-                <option value="enabled" selected>Strict FIFO (Oldest First)</option>
+                <option value="enabled" selected>Oldest Due First (Automated)</option>
                 <option value="manual">Manual Allocation</option>
               </select>
             </div>
@@ -1774,11 +1774,11 @@
           </div>
         </div>
 
-        <!-- SECTION 3: PRIVACY & TEACHER/MANAGER PII LOCK -->
+        <!-- SECTION 3: PRIVACY & STUDENT CONTACT LOCK -->
         <div class="bg-[#F8F6F1] p-4 rounded-2xl border border-[#ECEAE4] space-y-3">
           <div class="flex items-center gap-2">
             <span class="w-2 h-2 rounded-full bg-[#0E4D45]"></span>
-            <h4 class="font-bold text-[#141F1E] text-xs uppercase tracking-wide">3. Strict Student PII Privacy Lock</h4>
+            <h4 class="font-bold text-[#141F1E] text-xs uppercase tracking-wide">3. Student Privacy & Contact Lock</h4>
           </div>
           <div class="p-3 bg-white rounded-xl border border-[#ECEAE4] space-y-2">
             <div class="flex items-center justify-between">
@@ -1860,61 +1860,13 @@
         <button onclick="closeNotificationsModal()" class="w-8 h-8 rounded-full border border-[#ECEAE4] bg-white text-[#7A8684] hover:text-[#141F1E] flex items-center justify-center text-sm font-bold cursor-pointer">✕</button>
       </div>
 
-      <div class="p-6 space-y-3 max-h-[60vh] overflow-y-auto text-xs">
-        <!-- Notification Item 1 -->
-        <div class="p-3 rounded-xl bg-[#F8F6F1] border border-[#ECEAE4] flex items-start gap-3">
-          <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center flex-shrink-0">
-            <svg class="w-4 h-4 text-emerald-800" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+      <div id="notifications-modal-list" class="p-6 space-y-3 max-h-[60vh] overflow-y-auto text-xs">
+        <div class="py-10 text-center flex flex-col items-center justify-center">
+          <div class="w-10 h-10 rounded-full bg-[#E8EFEE] text-[#0E4D45] flex items-center justify-center mb-2.5">
+            <svg class="w-5 h-5 text-[#0E4D45]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
           </div>
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center justify-between">
-              <span class="font-bold text-[#141F1E]">Fee Received via FIFO Engine</span>
-              <span class="text-[10px] text-[#7A8684]">10m ago</span>
-            </div>
-            <p class="text-[11px] text-[#7A8684] mt-0.5">Payment of <strong>$150 USD</strong> cleared for Zaid &amp; Sara Khan (FAM-104). October dues fully settled.</p>
-          </div>
-        </div>
-
-        <!-- Notification Item 2 -->
-        <div class="p-3 rounded-xl bg-[#F8F6F1] border border-[#ECEAE4] flex items-start gap-3">
-          <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center flex-shrink-0">
-            <svg class="w-4 h-4 text-amber-800" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-          </div>
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center justify-between">
-              <span class="font-bold text-[#141F1E]">New Trial Request Registered</span>
-              <span class="text-[10px] text-[#7A8684]">1h ago</span>
-            </div>
-            <p class="text-[11px] text-[#7A8684] mt-0.5">Trial candidate <strong>Hamza Naveed (UK)</strong> requested Noorani Qaida evaluation with Ustadh Bilal Tariq.</p>
-          </div>
-        </div>
-
-        <!-- Notification Item 3 -->
-        <div class="p-3 rounded-xl bg-[#F8F6F1] border border-[#ECEAE4] flex items-start gap-3">
-          <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-800 flex items-center justify-center flex-shrink-0">
-            <svg class="w-4 h-4 text-blue-800" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
-          </div>
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center justify-between">
-              <span class="font-bold text-[#141F1E]">Automated WhatsApp Reminder Sent</span>
-              <span class="text-[10px] text-[#7A8684]">3h ago</span>
-            </div>
-            <p class="text-[11px] text-[#7A8684] mt-0.5">System WhatsApp gateway dispatched automated October fee invoice reminder to 3 pending accounts.</p>
-          </div>
-        </div>
-
-        <!-- Notification Item 4 -->
-        <div class="p-3 rounded-xl bg-[#F8F6F1] border border-[#ECEAE4] flex items-start gap-3">
-          <div class="w-8 h-8 rounded-lg bg-[#E8EFEE] text-[#0E4D45] flex items-center justify-center flex-shrink-0">
-            <svg class="w-4 h-4 text-[#0E4D45]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
-          </div>
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center justify-between">
-              <span class="font-bold text-[#141F1E]">Academic Session Initialized</span>
-              <span class="text-[10px] text-[#7A8684]">Today</span>
-            </div>
-            <p class="text-[11px] text-[#7A8684] mt-0.5">Academic session <strong>2026</strong> synchronized with full 12-Month attendance matrix and fee ledgers.</p>
-          </div>
+          <p class="text-xs font-semibold text-[#141F1E]">No new notifications</p>
+          <p class="text-[11px] text-[#7A8684] mt-0.5">Live operational logs, fee alerts, and trial requests will appear here.</p>
         </div>
       </div>
 
@@ -2149,7 +2101,7 @@
           </button>
           <button type="button" onclick="setNavTab('students'); closeMobileDrawer(event)" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer text-[#141F1E] hover:bg-[#F8F6F1] font-semibold">
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-            <span class="truncate">Full PII Directory</span>
+            <span class="truncate">Student Directory</span>
           </button>
           <button type="button" onclick="setNavTab('teachers'); closeMobileDrawer(event)" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer text-[#141F1E] hover:bg-[#F8F6F1] font-semibold">
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
@@ -2172,7 +2124,7 @@
           </button>
           <button type="button" onclick="closeMobileDrawer(event); openReceiveFeeModal()" class="w-full flex items-center justify-center gap-2 py-2 px-3 text-xs font-bold rounded-xl bg-white border border-[#0E4D45] text-[#0E4D45] hover:bg-[#F8F6F1] shadow-2xs cursor-pointer">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-            <span>Receive Fee (FIFO)</span>
+            <span>Receive Fee</span>
           </button>
         </div>
       </div>

@@ -684,6 +684,14 @@ html, body {
     align-items: center !important;
     justify-content: center !important;
   }
+
+  /* Position toasts cleanly above mobile bottom navigation bar */
+  #toast-container {
+    bottom: 76px !important;
+    right: 16px !important;
+    left: 16px !important;
+    align-items: center !important;
+  }
 }
 
 /* Dual-Metric Attendance vs Pass Chart Tooltip - z-index higher than canvas lines and points */
@@ -691,6 +699,12 @@ html, body {
   position: absolute !important;
   z-index: 50 !important;
   pointer-events: none !important;
+}
+
+/* Toast container default desktop placement */
+#toast-container {
+  bottom: 24px;
+  right: 24px;
 }
 
 

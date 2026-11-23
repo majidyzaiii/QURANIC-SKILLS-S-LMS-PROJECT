@@ -4238,7 +4238,7 @@ const PORTAL_ROLES = {
     title: 'Super Administrator',
     badge: 'Super Admin',
     initials: 'AF',
-    desc: 'Full Unrestricted PII & Financial Ledger',
+    desc: 'Complete Student & Financial Records',
     icon: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />`
   },
   manager: {
@@ -4248,7 +4248,7 @@ const PORTAL_ROLES = {
     title: 'Academic Operations Manager',
     badge: 'Ops Manager',
     initials: 'TJ',
-    desc: 'Masked PII, Live Radar & Substitute Dispatch',
+    desc: 'Protected Student Privacy & Live Sessions',
     icon: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />`
   },
   teacher: {
@@ -4602,7 +4602,7 @@ function renderNavLinks() {
     links = [
       { id: 'dashboard', label: 'Dashboard', shortLabel: 'Dashboard', icon: 'M3 3h7v7H3V3zm11 0h7v7h-7V3zm0 11h7v7h-7v-7zM3 14h7v7H3v-7z' },
       { id: 'fee-matrix', label: '12-Month Fee Ledger', shortLabel: 'Fees', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
-      { id: 'students', label: 'Full PII Directory', shortLabel: 'Students', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },
+      { id: 'students', label: 'Student Directory', shortLabel: 'Students', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },
       { id: 'teachers', label: 'Teacher Payroll', shortLabel: 'Payroll', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' },
       { id: 'trials-notices', label: 'Trials & Notices', shortLabel: 'Trials', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' }
     ];
@@ -4787,14 +4787,14 @@ function renderAdminDashboardView() {
     <div class="kpi-cards-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 w-full mb-8" style="gap: 16px;">
       
       <!-- Card 1: Total Enrolled Students (Dynamic) -->
-      <div onclick="handleKpiCardClick('students')" class="bg-white rounded-2xl border border-[#ECEAE4] p-5 shadow-2xs hover:shadow-xs hover:border-[#CBD5E1] transition-all cursor-pointer flex flex-col justify-between" title="Click to view full students directory">
+      <div onclick="handleKpiCardClick('students')" class="bg-white rounded-2xl border border-[#ECEAE4] p-5 shadow-2xs hover:shadow-xs hover:border-[#CBD5E1] transition-all cursor-pointer flex flex-col justify-between" title="Click to view student directory">
         <div class="mb-3 text-[#0E4D45]">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/></svg>
         </div>
         <div>
           <div class="flex items-baseline gap-2 mb-1">
             <span class="text-2xl sm:text-3xl font-semibold tracking-tight text-[#141F1E] tabular-nums">${dynamicTotalStudents}</span>
-            <span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium bg-[#E0F2F1] text-[#0E4D45] tabular-nums">${dynamicTotalStudents > 0 ? '+' + ((dynamicTotalStudents / 300) * 3.5).toFixed(2) + '%' : '0 Active'}</span>
+            ${dynamicTotalStudents > 0 ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium bg-[#E0F2F1] text-[#0E4D45] tabular-nums">+${((dynamicTotalStudents / 300) * 3.5).toFixed(2)}%</span>` : ''}
           </div>
           <p class="text-xs font-medium text-[#7A8684]">Total Active Students</p>
         </div>
@@ -4808,7 +4808,7 @@ function renderAdminDashboardView() {
         <div>
           <div class="flex items-baseline gap-2 mb-1">
             <span class="text-2xl sm:text-3xl font-semibold tracking-tight text-[#141F1E] tabular-nums">$${dynamicFeeCollected.toLocaleString()}</span>
-            <span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium bg-[#E0F2F1] text-[#0E4D45] tabular-nums">${collectionPercentage}%</span>
+            ${collectionPercentage > 0 ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium bg-[#E0F2F1] text-[#0E4D45] tabular-nums">${collectionPercentage}%</span>` : ''}
           </div>
           <p class="text-xs font-medium text-[#7A8684]">Fee Collected (${MONTHS_LIST[CURRENT_MONTH_INDEX]})</p>
         </div>
@@ -4822,7 +4822,7 @@ function renderAdminDashboardView() {
         <div>
           <div class="flex items-baseline gap-2 mb-1">
             <span class="text-2xl sm:text-3xl font-semibold tracking-tight text-[#141F1E] tabular-nums">$${dynamicBalanceDue.toLocaleString()}</span>
-            <span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A] tabular-nums">${dynamicPartialCount} Due</span>
+            ${dynamicPartialCount > 0 ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A] tabular-nums">${dynamicPartialCount} Due</span>` : ''}
           </div>
           <p class="text-xs font-medium text-[#7A8684]">Partial / Balance Due</p>
         </div>
@@ -4836,7 +4836,7 @@ function renderAdminDashboardView() {
         <div>
           <div class="flex items-baseline gap-2 mb-1">
             <span class="text-2xl sm:text-3xl font-semibold tracking-tight text-[#141F1E] tabular-nums">${dynamicDefaulterCount}</span>
-            <span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium bg-[#FEE2E2] text-[#991B1B] border border-[#FECACA] tabular-nums">${grandTotal > 0 ? ((dynamicDefaulterCount / grandTotal) * 100).toFixed(1) + '%' : '0%'}</span>
+            ${dynamicDefaulterCount > 0 && grandTotal > 0 ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium bg-[#FEE2E2] text-[#991B1B] border border-[#FECACA] tabular-nums">${((dynamicDefaulterCount / grandTotal) * 100).toFixed(1)}%</span>` : ''}
           </div>
           <p class="text-xs font-medium text-[#7A8684]">Overdue Defaulters</p>
         </div>
@@ -4850,7 +4850,7 @@ function renderAdminDashboardView() {
         <div>
           <div class="flex items-baseline gap-2 mb-1">
             <span class="text-2xl sm:text-3xl font-semibold tracking-tight text-[#141F1E] tabular-nums">${totalStudents > 0 ? '96.8%' : '—'}</span>
-            <span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium ${totalStudents > 0 ? 'bg-[#E0F2F1] text-[#0E4D45]' : 'bg-[#F8F6F1] text-[#7A8684]'} tabular-nums">${totalStudents > 0 ? '+1.5%' : 'Pending'}</span>
+            ${totalStudents > 0 ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium bg-[#E0F2F1] text-[#0E4D45] tabular-nums">+1.5%</span>` : ''}
           </div>
           <p class="text-xs font-medium text-[#7A8684]">Class Attendance Rate</p>
         </div>
@@ -4866,8 +4866,9 @@ function renderAdminDashboardView() {
         <div class="flex items-center justify-between mb-4">
           <div>
             <h3 class="text-base font-bold text-[#141F1E]">Active Classes</h3>
-            <p class="text-xs text-[#7A8684] font-medium"><span class="font-bold text-[#141F1E]">${ACTIVE_CLASSES.length}</span> Classes Live & Scheduled</p>
+            <p class="text-xs text-[#7A8684] font-medium"><span class="font-bold text-[#141F1E] mr-1.5">${ACTIVE_CLASSES.length}</span>Classes Live &amp; Scheduled</p>
           </div>
+          ${ACTIVE_CLASSES.length > 0 ? `
           <div class="flex items-center gap-1.5">
             <button class="w-7 h-7 rounded-full border border-[#ECEAE4] flex items-center justify-center text-[#7A8684] hover:bg-[#F8F6F1] hover:text-[#141F1E] transition-colors" title="Previous">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7"/></svg>
@@ -4876,6 +4877,7 @@ function renderAdminDashboardView() {
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5l7 7-7 7"/></svg>
             </button>
           </div>
+          ` : ''}
         </div>
 
         <div class="space-y-3">
@@ -4907,8 +4909,9 @@ function renderAdminDashboardView() {
         <div class="flex items-center justify-between mb-4">
           <div>
             <h3 class="text-base font-bold text-[#141F1E]">Upcoming Sessions</h3>
-            <p class="text-xs text-[#7A8684] font-medium"><span class="font-bold text-[#141F1E]">${UPCOMING_SESSIONS.length}</span> Scheduled Today</p>
+            <p class="text-xs text-[#7A8684] font-medium"><span class="font-bold text-[#141F1E] mr-1.5">${UPCOMING_SESSIONS.length}</span>Scheduled Today</p>
           </div>
+          ${UPCOMING_SESSIONS.length > 0 ? `
           <div class="flex items-center gap-1.5">
             <button class="w-7 h-7 rounded-full border border-[#ECEAE4] flex items-center justify-center text-[#7A8684] hover:bg-[#F8F6F1] hover:text-[#141F1E] transition-colors" title="Previous">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7"/></svg>
@@ -4917,6 +4920,7 @@ function renderAdminDashboardView() {
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5l7 7-7 7"/></svg>
             </button>
           </div>
+          ` : ''}
         </div>
 
         <div class="space-y-3.5">
@@ -4959,9 +4963,6 @@ function renderAdminDashboardView() {
       <div class="ts-card p-6">
         <div class="flex items-center justify-between mb-2">
           <h3 class="text-base font-bold text-[#141F1E]">Fee Collection Status</h3>
-          <button class="w-7 h-7 rounded-lg hover:bg-[#F8F6F1] flex items-center justify-center text-[#7A8684] transition-colors" title="Options">
-            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
-          </button>
         </div>
         <div class="flex items-baseline justify-between mb-4">
           <span class="text-xs text-[#7A8684]">Total Enrolled Students</span>
@@ -4969,6 +4970,7 @@ function renderAdminDashboardView() {
         </div>
 
         <!-- Segmented horizontal progress bar (TalentSync Exact Aesthetic) -->
+        ${grandTotal > 0 ? `
         <div class="segmented-bar mb-5 h-2.5 rounded-full overflow-hidden flex bg-[#ECEAE4]">
           <div class="h-full bg-[#0E4D45] transition-all" style="width: ${paidPct}%;" title="Paid (Clear): ${dynamicPaidCount} (${paidPct}%)"></div>
           <div class="h-full bg-[#3B7A72] transition-all border-l border-white" style="width: ${advPct}%;" title="Advance Paid: ${dynamicAdvanceCount} (${advPct}%)"></div>
@@ -4976,6 +4978,11 @@ function renderAdminDashboardView() {
           <div class="h-full bg-[#EF4444] transition-all border-l border-white" style="width: ${defPct}%;" title="Defaulters: ${dynamicDefaulterCount} (${defPct}%)"></div>
           <div class="h-full bg-[#CBD5E1] transition-all border-l border-white" style="width: ${trialPct}%;" title="New Trials: ${trialsCount} (${trialPct}%)"></div>
         </div>
+        ` : `
+        <div class="mb-5 py-2.5 px-3 rounded-xl bg-[#F8F6F1] border border-[#ECEAE4] text-center">
+          <span class="text-xs text-[#7A8684]">No fee activity recorded for this period</span>
+        </div>
+        `}
 
         <!-- Legend list with counts matching TalentSync -->
         <div class="space-y-2.5 text-xs">
@@ -5057,13 +5064,8 @@ function renderAdminDashboardView() {
     <div class="ts-card p-6">
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h3 class="text-base font-bold text-[#141F1E]">Recent Tuition Settlements & Waterfall Ledger</h3>
-          <p class="text-xs text-[#7A8684]">Audited transactions with automatic FIFO allocation distribution</p>
-        </div>
-        <div class="flex items-center gap-2">
-          <button onclick="setNavTab('fee-matrix')" class="px-4 py-2 text-xs font-semibold rounded-lg bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors cursor-pointer">
-            Open 12-Month Matrix →
-          </button>
+          <h3 class="text-base font-bold text-[#141F1E]">Recent Tuition Settlements</h3>
+          <p class="text-xs text-[#7A8684]">Recorded transactions with automated fee allocation</p>
         </div>
       </div>
 
@@ -5076,7 +5078,7 @@ function renderAdminDashboardView() {
               <th class="pb-3">Student &amp; family</th>
               <th class="pb-3">Payment type</th>
               <th class="pb-3">Amount</th>
-              <th class="pb-3">Waterfall allocation</th>
+              <th class="pb-3">Fee allocation</th>
               <th class="pb-3">Method</th>
               <th class="pb-3 text-right">Receipt</th>
             </tr>
@@ -5090,7 +5092,7 @@ function renderAdminDashboardView() {
                       <svg class="w-5 h-5 text-[#0E4D45]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6H2.25m0 0v8.25m0 0a60.07 60.07 0 0 0 15.797 2.101c.727.198 1.453-.342 1.453-1.096V14.25m-15.797 0A60.07 60.07 0 0 1 18 12M3.75 4.5H18M3.75 4.5A2.25 2.25 0 0 0 1.5 6.75v10.5A2.25 2.25 0 0 0 3.75 19.5m16.5-15a2.25 2.25 0 0 0-2.25-2.25H3.75A2.25 2.25 0 0 0 1.5 4.5m18.75 0V15a2.25 2.25 0 0 1-2.25 2.25H3.75"/></svg>
                     </div>
                     <p class="text-xs font-semibold text-[#141F1E]">No recent transactions</p>
-                    <p class="text-[11px] text-[#7A8684] mt-0.5">Recorded fee settlements and waterfall distributions will appear here.</p>
+                    <p class="text-[11px] text-[#7A8684] mt-0.5">Recorded fee settlements and payment allocations will appear here.</p>
                   </div>
                 </td>
               </tr>
@@ -5853,10 +5855,7 @@ function renderAttendanceVsPassCardMarkup() {
           </svg>
         </div>
         <p class="text-sm font-semibold text-[#141F1E]">No Attendance &amp; Pass Data Logged for ${selectedTf.label}</p>
-        <p class="text-xs text-[#7A8684] mt-1 max-w-sm">No live attendance records found for ${selectedTf.label.toLowerCase()}. Enroll students or log daily sabaq to generate real-time analytics.</p>
-        <button onclick="setNavTab('students')" class="mt-4 px-4 py-1.5 rounded-lg bg-[#0E4D45] text-white text-xs font-semibold hover:bg-[#14534B] transition-colors shadow-2xs cursor-pointer flex items-center gap-1.5">
-          <span>View Student Directory →</span>
-        </button>
+        <p class="text-xs text-[#7A8684] mt-1 max-w-md mx-auto leading-relaxed">No live attendance records found for ${selectedTf.label.toLowerCase()}. Attendance records will appear here as classes are conducted.</p>
       </div>
     ` : `
       <div class="relative w-full h-[260px] select-none overflow-visible" id="attendance-chart-wrapper">
@@ -6328,7 +6327,7 @@ function renderStudentFeeLedgerRow(student, isChildOfFamily = false, isLastChild
           <div class="absolute right-0 top-11 rounded-2xl shadow-xl border border-[#ECEAE4] p-1.5 w-52 bg-white z-50 text-left animate-in fade-in zoom-in-95 duration-150">
             <button onclick="closeLedgerRowActionMenu(); openReceiveFeeModal('${student.id}')" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer whitespace-nowrap">
               <svg class="w-4 h-4 text-[#0E4D45] shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
-              <span>Receive Fee (FIFO)</span>
+              <span>Receive Fee</span>
             </button>
             <button onclick="closeLedgerRowActionMenu(); openWhatsAppFeeReminder('${student.id}')" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer whitespace-nowrap">
               <svg class="w-4 h-4 text-[#25D366] shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
@@ -6401,10 +6400,10 @@ function renderAdminFeeMatrixView() {
         <div>
           <div class="flex items-center gap-2 flex-wrap">
             <h2 class="text-base sm:text-xl font-bold text-[#141F1E] leading-tight">12-Month Fee Ledger <span class="text-[#0E4D45]">(${CURRENT_YEAR})</span></h2>
-            <span class="ts-badge ts-badge-paid text-[10px] sm:text-xs">Admin PII Unlocked</span>
+            <span class="ts-badge ts-badge-paid text-[10px] sm:text-xs">Admin Access</span>
           </div>
           <p class="text-xs text-[#7A8684] mt-1 hidden sm:block">
-            Automated FIFO Waterfall settlement, multi-currency ledger, and family group sibling accounting.
+            Automated fee settlement, multi-currency ledger, and family group sibling accounting.
           </p>
         </div>
 
@@ -6412,7 +6411,7 @@ function renderAdminFeeMatrixView() {
         <div class="w-full sm:w-auto mt-2 sm:mt-0">
           <button onclick="openReceiveFeeModal()" class="w-full sm:w-auto px-5 py-2.5 sm:py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors shadow-sm flex items-center justify-center gap-1.5 cursor-pointer">
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-            <span>Receive Fee (FIFO)</span>
+            <span>Receive Fee</span>
           </button>
         </div>
       </div>
@@ -6420,7 +6419,7 @@ function renderAdminFeeMatrixView() {
       <!-- PART 2: DESKTOP LINEAR GRID TOOLBAR (Consolidated to ONE Single Row below Title) -->
       <div class="hidden md:flex items-center justify-between gap-3 mb-3 pb-3 border-b border-[#ECEAE4]">
         
-        <!-- Left: Search Box with Inline Filter ⚙️ Icon Button & Dropdown Popover -->
+        <!-- Left: Search Box with Inline Filter Button -->
         <div class="flex items-center gap-2 flex-1 max-w-md relative" id="desktop-fee-filter-container">
           
           <!-- Search Input -->
@@ -6428,7 +6427,7 @@ function renderAdminFeeMatrixView() {
             <input 
               type="text" 
               id="fee-matrix-search-input"
-              placeholder="Search student or ID..." 
+              placeholder="Search student..." 
               oninput="setSearchQuery(this.value)" 
               onkeyup="setSearchQuery(this.value)"
               value="${AppState.searchQuery}" 
@@ -6442,98 +6441,23 @@ function renderAdminFeeMatrixView() {
             ` : ''}
           </div>
 
-          <!-- Inline Filter ⚙️ Icon Button -->
-          <div class="relative">
-            <button 
-              type="button" 
-              id="fee-filter-dropdown-btn"
-              onclick="toggleFeeFilterDropdown(event)" 
-              class="relative h-9 px-3 rounded-xl border border-[#ECEAE4] bg-white hover:bg-[#F8F6F1] flex items-center justify-center gap-1.5 text-xs font-semibold text-[#141F1E] shadow-2xs shrink-0 cursor-pointer transition-colors"
-              title="Filter Ledger (Status, Family Group, Currency)"
-            >
-              <svg class="w-3.5 h-3.5 text-[#0E4D45]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-              </svg>
-              <span>Filter</span>
-              ${(AppState.selectedFilter !== 'all' || AppState.selectedCurrency !== 'all' || isFamilyGrouped) ? `
-                <span class="w-2 h-2 rounded-full bg-[#0E4D45]"></span>
-              ` : ''}
-            </button>
-
-            <!-- Dropdown Popover Overlay for Desktop Filters -->
-            <div id="fee-filter-dropdown-menu" class="hidden absolute left-0 mt-2 w-80 bg-white rounded-2xl border border-[#ECEAE4] shadow-2xl p-4 z-50 text-[#141F1E]">
-              <div class="flex items-center justify-between pb-2.5 mb-3 border-b border-[#ECEAE4]">
-                <span class="text-xs font-bold text-[#141F1E] flex items-center gap-1.5">
-                  <span>Filter Ledger</span>
-                  ${(AppState.selectedFilter !== 'all' || AppState.selectedCurrency !== 'all' || isFamilyGrouped) ? `
-                    <span class="text-[10px] px-1.5 py-0.2 rounded-full bg-[#0E4D45]/10 text-[#0E4D45] font-semibold">Active</span>
-                  ` : ''}
-                </span>
-                <button type="button" onclick="resetFeeFilters();" class="text-[11px] font-semibold text-[#0E4D45] hover:underline cursor-pointer">Reset</button>
-              </div>
-
-              <div class="space-y-3.5 text-xs">
-                <!-- Status Filter Pills -->
-                <div>
-                  <span class="text-[10px] font-bold uppercase tracking-wider text-[#7A8684] block mb-1.5">Payment Status</span>
-                  <div class="grid grid-cols-3 gap-1.5">
-                    ${[
-                      { id: 'all', label: `All (${AppState.students ? AppState.students.length : 0})` },
-                      { id: 'paid', label: 'Paid' },
-                      { id: 'partial', label: 'Partial' },
-                      { id: 'advance', label: 'Advance' },
-                      { id: 'defaulter', label: 'Overdue' }
-                    ].map(s => `
-                      <button 
-                        type="button" 
-                        onclick="setFeeFilter('${s.id}')" 
-                        class="py-1.5 px-2 rounded-xl text-xs font-semibold transition-all cursor-pointer border text-center ${AppState.selectedFilter === s.id ? 'bg-[#0E4D45] text-white border-[#0E4D45] shadow-xs' : 'bg-white text-gray-700 border-[#ECEAE4] hover:bg-[#F8F6F1]'}"
-                      >
-                        ${s.label}
-                      </button>
-                    `).join('')}
-                  </div>
-                </div>
-
-                <!-- Family Group Toggle -->
-                <div class="flex items-center justify-between p-2.5 rounded-xl bg-[#F8F6F1] border border-[#ECEAE4]">
-                  <div>
-                    <span class="font-bold text-xs text-[#141F1E] block">Family Group</span>
-                    <span class="text-[10px] text-gray-500">Group sibling accounts</span>
-                  </div>
-                  <button 
-                    type="button" 
-                    role="switch" 
-                    aria-checked="${isFamilyGrouped ? 'true' : 'false'}" 
-                    onclick="toggleGroupByFamily()" 
-                    class="flex items-center gap-2 cursor-pointer"
-                  >
-                    <div class="transition-colors relative" style="width: 28px; height: 16px; border-radius: 9999px; background-color: ${isFamilyGrouped ? '#0E4D45' : '#CBD5E1'}; position: relative;">
-                      <div class="transition-all shadow-xs" style="width: 12px; height: 12px; border-radius: 9999px; background-color: #FFFFFF; position: absolute; top: 2px; left: ${isFamilyGrouped ? '14px' : '2px'};"></div>
-                    </div>
-                    <span class="text-[11px] font-bold ${isFamilyGrouped ? 'text-[#0E4D45]' : 'text-gray-400'}">${isFamilyGrouped ? 'ON' : 'OFF'}</span>
-                  </button>
-                </div>
-
-                <!-- Currency Filter -->
-                <div>
-                  <span class="text-[10px] font-bold uppercase tracking-wider text-[#7A8684] block mb-1.5">Currency</span>
-                  <select 
-                    onchange="setCurrencyFilter(this.value)" 
-                    class="h-8 w-full text-xs bg-white border border-[#ECEAE4] rounded-xl px-2.5 text-[#141F1E] font-medium outline-none focus:border-[#0E4D45] cursor-pointer shadow-2xs"
-                  >
-                    <option value="all" ${AppState.selectedCurrency === 'all' ? 'selected' : ''}>All Currencies</option>
-                    <option value="USD" ${AppState.selectedCurrency === 'USD' ? 'selected' : ''}>$ USD</option>
-                    <option value="GBP" ${AppState.selectedCurrency === 'GBP' ? 'selected' : ''}>£ GBP</option>
-                    <option value="EUR" ${AppState.selectedCurrency === 'EUR' ? 'selected' : ''}>€ EUR</option>
-                    <option value="CAD" ${AppState.selectedCurrency === 'CAD' ? 'selected' : ''}>C$ CAD</option>
-                    <option value="PKR" ${AppState.selectedCurrency === 'PKR' ? 'selected' : ''}>Rs PKR</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-          </div>
+          <!-- Inline Filter Button -->
+          <button 
+            type="button" 
+            id="fee-filter-dropdown-btn"
+            onclick="toggleFeeFilterDropdown(event)" 
+            class="relative h-9 px-3 rounded-xl border border-[#ECEAE4] bg-white hover:bg-[#F8F6F1] flex items-center justify-center gap-1.5 text-xs font-semibold text-[#141F1E] shadow-2xs shrink-0 cursor-pointer transition-colors"
+            title="Filter Ledger (Status, Family Group, Currency)"
+          >
+            <svg class="w-3.5 h-3.5 text-[#0E4D45]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+            <span>Filter</span>
+            ${(AppState.selectedFilter !== 'all' || AppState.selectedCurrency !== 'all' || isFamilyGrouped) ? `
+              <span class="w-2 h-2 rounded-full bg-[#0E4D45]"></span>
+            ` : ''}
+          </button>
         </div>
 
         <!-- Right: Active Month Stepper < Nov 2026 > -->
@@ -6545,6 +6469,84 @@ function renderAdminFeeMatrixView() {
           <button type="button" onclick="stepAcademicMonth(1)" class="w-7 h-7 rounded-lg flex items-center justify-center text-[#7A8684] hover:text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer" title="Next Month">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
           </button>
+        </div>
+      </div>
+
+      <!-- Collapsible Desktop Filter Panel (Does NOT cover table headers or legend) -->
+      <div id="fee-filter-dropdown-menu" class="${AppState.isFeeFilterOpen ? '' : 'hidden'} mb-4 p-4 bg-[#F8F6F1] rounded-2xl border border-[#ECEAE4] transition-all text-[#141F1E]">
+        <div class="flex items-center justify-between pb-2.5 mb-3 border-b border-[#ECEAE4]">
+          <span class="text-xs font-bold text-[#141F1E] flex items-center gap-1.5">
+            <span>Filter Ledger</span>
+            ${(AppState.selectedFilter !== 'all' || AppState.selectedCurrency !== 'all' || isFamilyGrouped) ? `
+              <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#0E4D45]/10 text-[#0E4D45] font-semibold">Active</span>
+            ` : ''}
+          </span>
+          <div class="flex items-center gap-3">
+            <button type="button" onclick="resetFeeFilters();" class="text-[11px] font-semibold text-[#0E4D45] hover:underline cursor-pointer">Reset Filters</button>
+            <button type="button" onclick="closeFeeFilterDropdown();" class="text-[#7A8684] hover:text-[#141F1E] text-xs font-bold cursor-pointer" title="Close Filters">✕</button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+          <!-- Status Filter Pills -->
+          <div>
+            <span class="text-[10px] font-bold uppercase tracking-wider text-[#7A8684] block mb-1.5">Payment Status</span>
+            <div class="grid grid-cols-3 gap-1.5">
+              ${[
+                { id: 'all', label: `All (${AppState.students ? AppState.students.length : 0})` },
+                { id: 'paid', label: 'Paid' },
+                { id: 'partial', label: 'Partial' },
+                { id: 'advance', label: 'Advance' },
+                { id: 'defaulter', label: 'Overdue' }
+              ].map(s => `
+                <button 
+                  type="button" 
+                  onclick="setFeeFilter('${s.id}')" 
+                  class="py-1.5 px-2 rounded-xl text-xs font-semibold transition-all cursor-pointer border text-center ${AppState.selectedFilter === s.id ? 'bg-[#0E4D45] text-white border-[#0E4D45] shadow-xs' : 'bg-white text-gray-700 border-[#ECEAE4] hover:bg-[#F8F6F1]'}"
+                >
+                  ${s.label}
+                </button>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Family Group Toggle -->
+          <div class="flex flex-col justify-between p-3 rounded-xl bg-white border border-[#ECEAE4]">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="font-bold text-xs text-[#141F1E] block">Family Group</span>
+                <span class="text-[10px] text-gray-500">Group sibling accounts together</span>
+              </div>
+              <button 
+                type="button" 
+                role="switch" 
+                aria-checked="${isFamilyGrouped ? 'true' : 'false'}" 
+                onclick="toggleGroupByFamily()" 
+                class="flex items-center gap-2 cursor-pointer"
+              >
+                <div class="transition-colors relative" style="width: 28px; height: 16px; border-radius: 9999px; background-color: ${isFamilyGrouped ? '#0E4D45' : '#CBD5E1'}; position: relative;">
+                  <div class="transition-all shadow-xs" style="width: 12px; height: 12px; border-radius: 9999px; background-color: #FFFFFF; position: absolute; top: 2px; left: ${isFamilyGrouped ? '14px' : '2px'};"></div>
+                </div>
+                <span class="text-[11px] font-bold ${isFamilyGrouped ? 'text-[#0E4D45]' : 'text-gray-400'}">${isFamilyGrouped ? 'ON' : 'OFF'}</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Currency Filter -->
+          <div>
+            <span class="text-[10px] font-bold uppercase tracking-wider text-[#7A8684] block mb-1.5">Currency</span>
+            <select 
+              onchange="setCurrencyFilter(this.value)" 
+              class="h-9 w-full text-xs bg-white border border-[#ECEAE4] rounded-xl px-2.5 text-[#141F1E] font-medium outline-none focus:border-[#0E4D45] cursor-pointer shadow-2xs"
+            >
+              <option value="all" ${AppState.selectedCurrency === 'all' ? 'selected' : ''}>All Currencies</option>
+              <option value="USD" ${AppState.selectedCurrency === 'USD' ? 'selected' : ''}>$ USD</option>
+              <option value="GBP" ${AppState.selectedCurrency === 'GBP' ? 'selected' : ''}>£ GBP</option>
+              <option value="EUR" ${AppState.selectedCurrency === 'EUR' ? 'selected' : ''}>€ EUR</option>
+              <option value="CAD" ${AppState.selectedCurrency === 'CAD' ? 'selected' : ''}>C$ CAD</option>
+              <option value="PKR" ${AppState.selectedCurrency === 'PKR' ? 'selected' : ''}>Rs PKR</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -6646,8 +6648,8 @@ function renderAdminFeeMatrixView() {
               <th class="pb-3 w-24 text-[11px] font-semibold text-[#7A8684] uppercase tracking-wider">Status</th>
               <!-- 12 Months Columns -->
               ${MONTHS_LIST.map((m, idx) => `
-                <th class="pb-3 text-center w-12 cursor-pointer transition-colors" onclick="setAcademyMonthYear(${idx}, ${CURRENT_YEAR})" title="Click to inspect & highlight ${m} ${CURRENT_YEAR}">
-                  <span class="inline-block px-1.5 py-0.5 rounded-md text-[11px] font-semibold uppercase tracking-wider transition-all ${idx === CURRENT_MONTH_INDEX ? 'bg-[#0E4D45] text-white shadow-xs' : 'text-[#7A8684] hover:text-[#141F1E] hover:bg-[#E8EFEE]'}">
+                <th class="pb-3 text-center w-12 select-none">
+                  <span class="inline-block px-1.5 py-0.5 rounded-md text-[11px] font-semibold uppercase tracking-wider ${idx === CURRENT_MONTH_INDEX ? 'bg-[#0E4D45] text-white shadow-xs' : 'text-[#7A8684]'}">
                     ${m}
                   </span>
                 </th>
@@ -6666,7 +6668,7 @@ function renderAdminFeeMatrixView() {
                           <svg class="w-6 h-6 text-[#0E4D45]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"/></svg>
                         </div>
                         <p class="text-xs font-bold text-[#141F1E]">No active students found in fee ledger.</p>
-                        <p class="text-[11px] text-[#7A8684] mt-1">Enroll your first student in the directory to activate the 12-month billing matrix & automated FIFO ledger.</p>
+                        <p class="text-[11px] text-[#7A8684] mt-1">Enroll your first student in the directory to activate the 12-month billing matrix and fee ledger.</p>
                         <button onclick="setNavTab('students')" class="mt-4 px-4 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-sm flex items-center gap-1.5 cursor-pointer">
                           <span>Go to Student Directory →</span>
                         </button>
@@ -7030,12 +7032,16 @@ function renderMobileFamilyLedgerGroup(fam) {
 
 function toggleFeeFilterDropdown(event) {
   if (event) event.stopPropagation();
+  AppState.isFeeFilterOpen = !AppState.isFeeFilterOpen;
   const menu = document.getElementById('fee-filter-dropdown-menu');
-  if (!menu) return;
-  menu.classList.toggle('hidden');
+  if (menu) {
+    if (AppState.isFeeFilterOpen) menu.classList.remove('hidden');
+    else menu.classList.add('hidden');
+  }
 }
 
 function closeFeeFilterDropdown() {
+  AppState.isFeeFilterOpen = false;
   const menu = document.getElementById('fee-filter-dropdown-menu');
   if (menu && !menu.classList.contains('hidden')) {
     menu.classList.add('hidden');
@@ -7047,7 +7053,8 @@ window.closeFeeFilterDropdown = closeFeeFilterDropdown;
 
 document.addEventListener('click', (e) => {
   const container = document.getElementById('desktop-fee-filter-container');
-  if (container && !container.contains(e.target)) {
+  const menu = document.getElementById('fee-filter-dropdown-menu');
+  if (container && menu && !container.contains(e.target) && !menu.contains(e.target)) {
     closeFeeFilterDropdown();
   }
 });
@@ -7570,7 +7577,7 @@ function renderStudentDirectoryRows(students) {
               </button>
               <button onclick="closeStudentActionMenu(); openReceiveFeeModal('${s.id}')" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer whitespace-nowrap">
                 <svg class="w-4 h-4 text-[#0E4D45] shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
-                <span>Receive Fee (FIFO)</span>
+                <span>Receive Fee</span>
               </button>
               <button onclick="closeStudentActionMenu(); filterByFamilyTag('${s.familyId || s.familyTag}')" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer whitespace-nowrap">
                 <svg class="w-4 h-4 text-[#7A8684] shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
@@ -7830,6 +7837,10 @@ function deleteStudent(studentId, event) {
 }
 
 function exportStudentsToCSV() {
+  if (!AppState.students || AppState.students.length === 0) {
+    showToastNotification('No students found to export.');
+    return;
+  }
   const headers = ['Student ID', 'First Name', 'Last Name', 'Status', 'Course', 'Teacher', 'Guardian Name', 'Phone', 'WhatsApp', 'Email', 'Country', 'Timezone', 'Monthly Fee', 'Currency'];
   const rows = AppState.students.map(s => {
     const teacher = AppState.teachers.find(t => t.id === s.teacherId);
@@ -8714,7 +8725,10 @@ function renderManagerPortalView() {
                 <div class="flex items-center gap-3 mt-2 text-[10px] text-[#334E4B]">
                   <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> ${c.audio}</span>
                   <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> ${c.video}</span>
-                  <span>⏱ ${c.time}</span>
+                  <span class="flex items-center gap-1">
+                    <svg class="w-3 h-3 text-[#7A8684]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                    <span>${c.time}</span>
+                  </span>
                 </div>
               </div>
               <button onclick="simulateJoinRoom('${c.id}')" class="px-3 py-1.5 text-xs font-bold rounded-full bg-[#FFFFFF] border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#0E4D45] hover:text-white transition-all shadow-sm">
@@ -9335,7 +9349,7 @@ function updateFIFOPreview() {
   if (!targetId || amount <= 0) {
     previewContainer.innerHTML = `
       <div class="text-center py-6 text-xs text-[#7A8684] bg-[#F8F6F1] rounded-2xl border border-[#ECEAE4]">
-        Enter payment amount to generate live chronological FIFO waterfall allocation.
+        Enter payment amount to generate live allocation preview.
       </div>
     `;
     return;
@@ -9358,7 +9372,7 @@ function updateFIFOPreview() {
   let html = `
     <div class="rounded-2xl border border-[#ECEAE4] overflow-hidden">
       <div class="bg-[#F8F6F1] px-4 py-2.5 border-b border-[#ECEAE4] flex items-center justify-between text-xs">
-        <span class="font-bold text-[#141F1E]">Chronological Waterfall Preview (FIFO) ${isFamily ? '• Combined Family' : ''}</span>
+        <span class="font-bold text-[#141F1E]">Allocation Breakdown ${isFamily ? '• Combined Family' : ''}</span>
         <span class="text-[#0E4D45] font-semibold">${currency}${amount} Allocated</span>
       </div>
       <table class="w-full text-xs text-left responsive-table-cards">
@@ -9428,7 +9442,7 @@ function handleSaveFeePayment() {
   if (res) {
     closeReceiveFeeModal();
     renderApp();
-    showToastNotification(`✓ Payment of ${res.currency}${amount} recorded via FIFO Waterfall! Receipt ${res.txnId} generated.`);
+    showToastNotification(`✓ Payment of ${res.currency}${amount} recorded successfully. Receipt ${res.txnId} generated.`);
   }
 }
 
@@ -9586,7 +9600,7 @@ function openMonthDetailModal(studentId, monthIndex) {
               </div>
               <div class="min-w-0">
                 <span class="text-xs font-bold text-[#141F1E] group-hover:text-[#0E4D45] block">Record Payment</span>
-                <span class="text-[10px] text-[#7A8684] truncate block">Settle via FIFO Waterfall</span>
+                <span class="text-[10px] text-[#7A8684] truncate block">Automated fee settlement</span>
               </div>
             </button>
 
@@ -9982,7 +9996,38 @@ function saveAcademySettings() {
 
 function openNotificationsModal() {
   const modal = document.getElementById('notifications-modal');
-  if (modal) modal.classList.add('active');
+  if (modal) {
+    const list = document.getElementById('notifications-modal-list');
+    if (list) {
+      if (SYSTEM_NOTIFICATIONS.length === 0) {
+        list.innerHTML = `
+          <div class="py-10 text-center flex flex-col items-center justify-center">
+            <div class="w-10 h-10 rounded-full bg-[#E8EFEE] text-[#0E4D45] flex items-center justify-center mb-2.5">
+              <svg class="w-5 h-5 text-[#0E4D45]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+            </div>
+            <p class="text-xs font-semibold text-[#141F1E]">No new notifications</p>
+            <p class="text-[11px] text-[#7A8684] mt-0.5">Live operational logs, fee alerts, and trial requests will appear here.</p>
+          </div>
+        `;
+      } else {
+        list.innerHTML = SYSTEM_NOTIFICATIONS.map(n => `
+          <div class="p-3 rounded-xl ${n.unread ? 'bg-[#F8F6F1] border border-[#ECEAE4]' : 'bg-white border border-[#ECEAE4]'} flex items-start gap-3">
+            <div class="w-8 h-8 rounded-lg ${n.type === 'success' ? 'bg-[#E0F2F1] text-[#0E4D45]' : 'bg-blue-50 text-blue-700'} flex items-center justify-center flex-shrink-0">
+              ${n.type === 'success' ? '<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>' : '<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>'}
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-[#141F1E]">${n.title}</span>
+                <span class="text-[10px] text-[#7A8684]">${n.time}</span>
+              </div>
+              <p class="text-[11px] text-[#7A8684] mt-0.5">${n.desc}</p>
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+    modal.classList.add('active');
+  }
 }
 
 function closeNotificationsModal() {
@@ -10004,3 +10049,4 @@ document.addEventListener('DOMContentLoaded', () => {
   updateRolePillUI();
   renderNotificationsDropdownContent();
 });
+

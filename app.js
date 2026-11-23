@@ -278,6 +278,51 @@ async function dbSaveAttendanceLog(logDoc) {
   }
 }
 
+// Save live class doc to Firestore & cache
+async function dbSaveLiveClass(clsDoc) {
+  if (!clsDoc || !clsDoc.id) return;
+  if (!AppState.liveClasses) AppState.liveClasses = [];
+  const idx = AppState.liveClasses.findIndex(c => c.id === clsDoc.id);
+  if (idx >= 0) {
+    AppState.liveClasses[idx] = clsDoc;
+  } else {
+    AppState.liveClasses.unshift(clsDoc);
+  }
+  saveCache('lms_live_classes', AppState.liveClasses);
+
+  if (db) {
+    try {
+      await db.collection('live_classes').doc(String(clsDoc.id)).set(clsDoc, { merge: true });
+      console.log(`[Firestore] Live class ${clsDoc.id} synced to Firestore`);
+    } catch (e) {
+      console.warn(`[Firestore] Error saving live class ${clsDoc.id}:`, e.message);
+    }
+  }
+  if (AppState.activeNav === 'dashboard') {
+    renderApp();
+  }
+}
+
+// Delete live class doc from Firestore & cache
+async function dbDeleteLiveClass(clsId) {
+  if (!clsId) return;
+  if (!AppState.liveClasses) AppState.liveClasses = [];
+  AppState.liveClasses = AppState.liveClasses.filter(c => c.id !== clsId);
+  saveCache('lms_live_classes', AppState.liveClasses);
+
+  if (db) {
+    try {
+      await db.collection('live_classes').doc(String(clsId)).delete();
+      console.log(`[Firestore] Live class ${clsId} deleted from Firestore`);
+    } catch (e) {
+      console.warn(`[Firestore] Error deleting live class ${clsId}:`, e.message);
+    }
+  }
+  if (AppState.activeNav === 'dashboard') {
+    renderApp();
+  }
+}
+
 // Generic sync router that maps state arrays directly to Firestore collections
 function syncCollectionToFirestore(key, data) {
   saveCache(key, data);
@@ -290,7 +335,8 @@ function syncCollectionToFirestore(key, data) {
     'lms_payment_ledger': 'payment_ledger',
     'lms_notices': 'notices',
     'lms_trial_pipeline': 'trial_pipeline',
-    'lms_attendance_logs': 'attendance_logs'
+    'lms_attendance_logs': 'attendance_logs',
+    'lms_live_classes': 'live_classes'
   };
 
   const colName = collectionMap[key];
@@ -332,6 +378,8 @@ window.dbDeleteNotice = dbDeleteNotice;
 window.dbSavePaymentTransaction = dbSavePaymentTransaction;
 window.dbSaveTrial = dbSaveTrial;
 window.dbSaveAttendanceLog = dbSaveAttendanceLog;
+window.dbSaveLiveClass = dbSaveLiveClass;
+window.dbDeleteLiveClass = dbDeleteLiveClass;
 
 // Real-Time Firestore onSnapshot Listeners
 function setupFirestoreRealtimeListeners() {
@@ -445,6 +493,21 @@ function setupFirestoreRealtimeListeners() {
   }, (err) => {
     console.warn('[Firestore] Attendance logs listener warning:', err.code, err.message);
   });
+
+  // 7. LIVE CLASSES REAL-TIME SYNC
+  db.collection('live_classes').onSnapshot((snapshot) => {
+    if (!snapshot.empty) {
+      const liveList = [];
+      snapshot.forEach(doc => liveList.push(doc.data()));
+      AppState.liveClasses = liveList;
+      saveCache('lms_live_classes', liveList);
+      if (AppState.activeNav === 'dashboard') {
+        renderApp();
+      }
+    }
+  }, (err) => {
+    console.warn('[Firestore] Live classes listener warning:', err.code, err.message);
+  });
 }
 window.setupFirestoreRealtimeListeners = setupFirestoreRealtimeListeners;
 
@@ -479,6 +542,15 @@ const ACADEMY_NOTICES = loadFromStorage('lms_notices', []);
 // Ledger Transactions History (Starts with 0 records or persistent storage)
 const PAYMENT_LEDGER = loadFromStorage('lms_payment_ledger', []);
 
+function getTodayYMD() {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+window.getTodayYMD = getTodayYMD;
+
 // App State
 const AppState = {
   currentRole: 'admin', // 'admin' | 'manager' | 'teacher' | 'student'
@@ -503,6 +575,17 @@ const AppState = {
   attendanceLogs: loadFromStorage('lms_attendance_logs', []),
   students: loadFromStorage('lms_students', []),
   teachers: loadFromStorage('lms_teachers', []),
+  liveClasses: loadFromStorage('lms_live_classes', []),
+  liveClassSearch: '',
+  liveClassDate: getTodayYMD(),
+  liveClassFilterOpen: false,
+  liveClassFilters: {
+    teacher: 'all',
+    country: 'all',
+    status: 'all',
+    type: 'all'
+  },
+  liveClassShowAllToday: false,
   selectedSiblingId: 'QA-1021', // For parent portal
   modalState: {
     receiveFeeOpen: false,
@@ -668,6 +751,16 @@ document.addEventListener('click', (e) => {
   if (notifDropdown && !notifDropdown.classList.contains('hidden')) {
     if (!notifContainer || !notifContainer.contains(e.target)) {
       notifDropdown.classList.add('hidden');
+    }
+  }
+
+  // Live Class Monitoring filter popover
+  const liveClassPopover = document.getElementById('live-class-filter-popover');
+  const liveClassContainer = document.getElementById('live-class-filter-container');
+  if (liveClassPopover && !liveClassPopover.classList.contains('hidden')) {
+    if (!liveClassContainer || !liveClassContainer.contains(e.target)) {
+      liveClassPopover.classList.add('hidden');
+      if (typeof AppState !== 'undefined') AppState.liveClassFilterOpen = false;
     }
   }
 
@@ -5063,76 +5156,812 @@ function renderAdminDashboardView() {
 
     </div>
 
-    <!-- Quick Ledger Preview Section -->
-    <div class="ts-card p-6">
-      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-        <div>
-          <h3 class="text-base font-bold text-[#141F1E]">Recent Tuition Settlements</h3>
-          <p class="text-xs text-[#7A8684]">Recorded transactions with automated fee allocation</p>
+    <!-- Live Class Monitoring Section (Replaces Recent Tuition Settlements) -->
+    <div id="live-class-monitoring-card" class="ts-card p-6">
+      ${renderLiveClassMonitoringMarkup()}
+    </div>
+  `;
+}
+
+// ============================================================
+// LIVE CLASS MONITORING ENGINE & CONTROLLER
+// Real-time schedule monitoring, multi-timezone conversion,
+// operational metrics, and Firestore synchronization.
+// ============================================================
+
+function formatLiveClassHeaderDate(dateStr) {
+  const targetDate = dateStr ? new Date(dateStr + 'T00:00:00') : new Date();
+  const today = new Date();
+  const isToday = targetDate.toDateString() === today.toDateString();
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const dayName = dayNames[targetDate.getDay()];
+  const monthName = monthNames[targetDate.getMonth()];
+  const dayNum = targetDate.getDate();
+  const dateFormatted = `${dayName} ${dayNum} ${monthName}`;
+  return isToday ? `Today · ${dateFormatted}` : `${dateFormatted}`;
+}
+window.formatLiveClassHeaderDate = formatLiveClassHeaderDate;
+
+function formatMultiTimezoneTimes(timeInput, studentTz, teacherTz) {
+  if (!timeInput) return { sTime: '—', tTime: '—', aTime: '—', pktMinutes: 0 };
+
+  let cleanTime = String(timeInput).split('-')[0].trim();
+  let hour = 10;
+  let min = 0;
+
+  const match12 = cleanTime.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+  if (match12) {
+    hour = parseInt(match12[1], 10);
+    min = parseInt(match12[2], 10);
+    const ampm = (match12[3] || '').toUpperCase();
+    if (ampm === 'PM' && hour < 12) hour += 12;
+    if (ampm === 'AM' && hour === 12) hour = 0;
+  } else {
+    const match24 = cleanTime.match(/^(\d{1,2}):(\d{2})$/);
+    if (match24) {
+      hour = parseInt(match24[1], 10);
+      min = parseInt(match24[2], 10);
+    }
+  }
+
+  const sOffset = typeof parseTimezoneOffset === 'function' ? parseTimezoneOffset(studentTz || 'GMT-5') : -5;
+  const tOffset = typeof parseTimezoneOffset === 'function' ? parseTimezoneOffset(teacherTz || 'GMT+5') : 5;
+  const aOffset = 5; // PKT is GMT+5 baseline
+
+  // Student time in total minutes from UTC 00:00
+  const studentLocalMinutes = hour * 60 + min;
+  const utcMinutes = (studentLocalMinutes - sOffset * 60 + 24 * 60 * 2) % (24 * 60);
+
+  // Teacher time
+  const teacherLocalMinutes = (utcMinutes + tOffset * 60 + 24 * 60 * 2) % (24 * 60);
+  // Academy PKT time
+  const pktLocalMinutes = (utcMinutes + aOffset * 60 + 24 * 60 * 2) % (24 * 60);
+
+  function formatMinsTo12(mins, tzBadge) {
+    let h = Math.floor(mins / 60) % 24;
+    const m = mins % 60;
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12;
+    if (h === 0) h = 12;
+    const hStr = String(h).padStart(2, '0');
+    const mStr = String(m).padStart(2, '0');
+    return `${hStr}:${mStr} ${ampm} ${tzBadge}`.trim();
+  }
+
+  const sTzShort = (studentTz || '').includes('(') ? (studentTz.match(/\(([^)]+)\)/) || [])[1] || 'S-TZ' : (studentTz || 'S-TZ');
+  const tTzShort = (teacherTz || '').includes('(') ? (teacherTz.match(/\(([^)]+)\)/) || [])[1] || 'PKT' : (teacherTz || 'PKT');
+
+  return {
+    sTime: formatMinsTo12(studentLocalMinutes, sTzShort),
+    tTime: formatMinsTo12(teacherLocalMinutes, tTzShort),
+    aTime: formatMinsTo12(pktLocalMinutes, 'PKT'),
+    pktMinutes: pktLocalMinutes
+  };
+}
+window.formatMultiTimezoneTimes = formatMultiTimezoneTimes;
+
+function isClassInCurrentWindow(cls) {
+  if (!cls) return false;
+  const todayStr = getTodayYMD();
+  if (cls.date !== todayStr) return false;
+
+  const times = formatMultiTimezoneTimes(cls.scheduledTime || '10:00', cls.studentTimezone || 'GMT-5', cls.teacherTimezone || 'GMT+5');
+  const pktMinutes = times.pktMinutes;
+
+  const now = new Date();
+  const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+  const currentPktMinutes = (utcMinutes + 5 * 60 + 24 * 60) % (24 * 60);
+
+  let durationMins = 30;
+  if (cls.duration) {
+    const dMatch = String(cls.duration).match(/(\d+)/);
+    if (dMatch) durationMins = parseInt(dMatch[1], 10);
+  }
+
+  let diff = Math.abs(currentPktMinutes - pktMinutes);
+  if (diff > 12 * 60) diff = 24 * 60 - diff;
+  return diff <= 30 || (currentPktMinutes >= pktMinutes && currentPktMinutes <= pktMinutes + durationMins);
+}
+window.isClassInCurrentWindow = isClassInCurrentWindow;
+
+function getLiveClassStatusBadge(status) {
+  switch (status) {
+    case 'Taken':
+      return { class: 'bg-[#E0F2F1] text-[#0E4D45] border-[#B2DFDB]/60', label: 'Taken' };
+    case 'Still to go':
+      return { class: 'bg-[#E0F2FE] text-[#0369A1] border-[#BAE6FD]/60', label: 'Still to go' };
+    case 'Absent':
+      return { class: 'bg-[#FEE2E2] text-[#B91C1C] border-[#FECACA]/60', label: 'Absent' };
+    case 'Overdue':
+      return { class: 'bg-[#FEF3C7] text-[#92400E] border-[#FDE68A]/60', label: 'Overdue' };
+    case 'Leave':
+      return { class: 'bg-[#F3E8FF] text-[#6B21A8] border-[#E9D5FF]/60', label: 'Leave' };
+    case 'Cancelled':
+      return { class: 'bg-[#F1F5F9] text-[#475569] border-[#CBD5E1]/60', label: 'Cancelled' };
+    default:
+      return { class: 'bg-[#F8F6F1] text-[#7A8684] border-[#ECEAE4]', label: status || 'Scheduled' };
+  }
+}
+window.getLiveClassStatusBadge = getLiveClassStatusBadge;
+
+function toggleLiveClassShowAllToday() {
+  AppState.liveClassShowAllToday = !AppState.liveClassShowAllToday;
+  renderApp();
+}
+window.toggleLiveClassShowAllToday = toggleLiveClassShowAllToday;
+
+function handleLiveClassSearch(val) {
+  AppState.liveClassSearch = (val || '').toLowerCase().trim();
+  renderApp();
+}
+window.handleLiveClassSearch = handleLiveClassSearch;
+
+function handleLiveClassDateChange(val) {
+  AppState.liveClassDate = val;
+  renderApp();
+}
+window.handleLiveClassDateChange = handleLiveClassDateChange;
+
+function toggleLiveClassFilterPopover(e) {
+  if (e) e.stopPropagation();
+  const popover = document.getElementById('live-class-filter-popover');
+  if (!popover) return;
+  popover.classList.toggle('hidden');
+  AppState.liveClassFilterOpen = !popover.classList.contains('hidden');
+}
+window.toggleLiveClassFilterPopover = toggleLiveClassFilterPopover;
+
+function closeLiveClassFilterPopover(e) {
+  if (e) e.stopPropagation();
+  const popover = document.getElementById('live-class-filter-popover');
+  if (popover) {
+    popover.classList.add('hidden');
+    AppState.liveClassFilterOpen = false;
+  }
+}
+window.closeLiveClassFilterPopover = closeLiveClassFilterPopover;
+
+function applyLiveClassFilter(key, val) {
+  if (!AppState.liveClassFilters) {
+    AppState.liveClassFilters = { teacher: 'all', country: 'all', status: 'all', type: 'all' };
+  }
+  AppState.liveClassFilters[key] = val;
+  renderApp();
+}
+window.applyLiveClassFilter = applyLiveClassFilter;
+
+function resetLiveClassFilters(e) {
+  if (e) e.stopPropagation();
+  AppState.liveClassFilters = { teacher: 'all', country: 'all', status: 'all', type: 'all' };
+  renderApp();
+}
+window.resetLiveClassFilters = resetLiveClassFilters;
+
+async function markLiveClassStatus(clsId, newStatus) {
+  if (!clsId || !newStatus) return;
+  const cls = (AppState.liveClasses || []).find(c => c.id === clsId);
+  if (!cls) return;
+  cls.status = newStatus;
+
+  if (['Taken', 'Absent', 'Leave'].includes(newStatus)) {
+    const attendanceStatus = newStatus === 'Taken' ? 'Present' : newStatus;
+    const logDoc = {
+      id: 'ATT-' + cls.studentId + '-' + cls.date,
+      studentId: cls.studentId,
+      studentName: cls.studentName,
+      teacherName: cls.teacherName,
+      date: cls.date,
+      status: attendanceStatus,
+      timestamp: new Date().toISOString()
+    };
+    if (typeof dbSaveAttendanceLog === 'function') {
+      dbSaveAttendanceLog(logDoc);
+    }
+  }
+
+  await dbSaveLiveClass(cls);
+  if (typeof showToastNotification === 'function') {
+    showToastNotification(`✓ Status updated to ${newStatus} for ${cls.studentName}`);
+  }
+}
+window.markLiveClassStatus = markLiveClassStatus;
+
+function openAddLiveClassModal() {
+  const modal = document.getElementById('add-live-class-modal');
+  if (!modal) return;
+
+  const studentSelect = document.getElementById('add-class-student');
+  if (studentSelect) {
+    const students = (AppState.students && AppState.students.length > 0) ? AppState.students : [
+      { id: 'QA-1008', firstName: 'Tariq', lastName: 'Mansoor', assignedTeacher: 'Ustadh Tariq' },
+      { id: 'QA-1012', firstName: 'Aisha', lastName: 'Khan', assignedTeacher: 'Ustadha Fatima' },
+      { id: 'QA-1019', firstName: 'Ibrahim', lastName: 'Malik', assignedTeacher: 'Ustadh Bilal' },
+      { id: 'QA-1025', firstName: 'Fatima', lastName: 'Zahra', assignedTeacher: 'Ustadha Fatima' },
+      { id: 'QA-1033', firstName: 'Bilal', lastName: 'Ahmed', assignedTeacher: 'Ustadh Tariq' }
+    ];
+    let opts = '<option value="" disabled selected>Choose student...</option>';
+    students.forEach(st => {
+      const name = (st.firstName + ' ' + (st.lastName || '')).trim() || st.name || st.id;
+      opts += `<option value="${st.id}">${name} (${st.id})</option>`;
+    });
+    studentSelect.innerHTML = opts;
+  }
+
+  const teacherSelect = document.getElementById('add-class-teacher');
+  if (teacherSelect) {
+    const teachers = (AppState.teachers && AppState.teachers.length > 0) ? AppState.teachers : [
+      { name: 'Ustadh Tariq' },
+      { name: 'Ustadha Fatima' },
+      { name: 'Ustadh Bilal' }
+    ];
+    let opts = '<option value="" disabled selected>Choose teacher...</option>';
+    teachers.forEach(t => {
+      const name = t.name || t.fullName || (t.firstName + ' ' + (t.lastName || '')).trim() || t.id;
+      opts += `<option value="${name}">${name}</option>`;
+    });
+    teacherSelect.innerHTML = opts;
+  }
+
+  const dateInput = document.getElementById('add-class-date');
+  if (dateInput) {
+    dateInput.value = AppState.liveClassDate || getTodayYMD();
+  }
+
+  const timeInput = document.getElementById('add-class-time');
+  if (timeInput) {
+    timeInput.value = '10:00';
+  }
+
+  const durationSelect = document.getElementById('add-class-duration');
+  if (durationSelect) durationSelect.value = '30m';
+
+  const typeSelect = document.getElementById('add-class-type');
+  if (typeSelect) typeSelect.value = 'Regular';
+
+  modal.classList.add('active');
+}
+window.openAddLiveClassModal = openAddLiveClassModal;
+
+function closeAddLiveClassModal() {
+  const modal = document.getElementById('add-live-class-modal');
+  if (modal) modal.classList.remove('active');
+}
+window.closeAddLiveClassModal = closeAddLiveClassModal;
+
+function handleAddClassStudentChange(studentId) {
+  if (!studentId) return;
+  const student = (AppState.students || []).find(s => s.id === studentId);
+  if (!student) return;
+
+  const teacherSelect = document.getElementById('add-class-teacher');
+  if (teacherSelect && (student.assignedTeacher || student.teacherName)) {
+    const tName = student.assignedTeacher || student.teacherName;
+    for (let i = 0; i < teacherSelect.options.length; i++) {
+      if (teacherSelect.options[i].value === tName || teacherSelect.options[i].text.includes(tName)) {
+        teacherSelect.selectedIndex = i;
+        break;
+      }
+    }
+  }
+}
+window.handleAddClassStudentChange = handleAddClassStudentChange;
+
+async function handleSaveLiveClass() {
+  const studentSelect = document.getElementById('add-class-student');
+  const teacherSelect = document.getElementById('add-class-teacher');
+  const dateInput = document.getElementById('add-class-date');
+  const timeInput = document.getElementById('add-class-time');
+  const durationSelect = document.getElementById('add-class-duration');
+  const typeSelect = document.getElementById('add-class-type');
+
+  if (!studentSelect || !studentSelect.value) {
+    alert('Please select a student.');
+    return;
+  }
+  if (!teacherSelect || !teacherSelect.value) {
+    alert('Please select a teacher.');
+    return;
+  }
+  if (!dateInput || !dateInput.value) {
+    alert('Please select a class date.');
+    return;
+  }
+
+  const student = (AppState.students || []).find(s => s.id === studentSelect.value);
+  const studentName = student ? ((student.firstName + ' ' + (student.lastName || '')).trim() || student.name || student.id) : studentSelect.value;
+  const studentAvatar = student ? student.avatar : `https://ui-avatars.com/api/?name=${encodeURIComponent(studentName)}&background=0E4D45&color=fff`;
+
+  const newCls = {
+    id: 'LC-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+    studentId: studentSelect.value,
+    studentName: studentName,
+    studentAvatar: studentAvatar,
+    teacherId: '',
+    teacherName: teacherSelect.value,
+    country: student ? student.country || 'Global' : 'Global',
+    studentTimezone: student ? student.timezone || 'GMT-5 (EST)' : 'GMT-5 (EST)',
+    teacherTimezone: 'GMT+5 (PKT)',
+    date: dateInput.value,
+    scheduledTime: timeInput ? timeInput.value : '10:00',
+    duration: durationSelect ? durationSelect.value : '30m',
+    type: typeSelect ? typeSelect.value : 'Regular',
+    status: 'Still to go',
+    createdAt: new Date().toISOString()
+  };
+
+  closeAddLiveClassModal();
+  await dbSaveLiveClass(newCls);
+  if (typeof showToastNotification === 'function') {
+    showToastNotification(`✓ Scheduled class session for ${studentName}`);
+  }
+}
+window.handleSaveLiveClass = handleSaveLiveClass;
+
+async function generateTodayLiveClasses() {
+  const targetDate = AppState.liveClassDate || getTodayYMD();
+  const d = new Date(targetDate + 'T00:00:00');
+  const dayNames = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+  const dayKey = dayNames[d.getDay()];
+
+  const students = AppState.students || [];
+  let addedCount = 0;
+
+  if (!AppState.liveClasses) AppState.liveClasses = [];
+
+  students.forEach(student => {
+    if (!student || !student.id) return;
+    const alreadyExists = AppState.liveClasses.some(c => c.studentId === student.id && c.date === targetDate);
+    if (alreadyExists) return;
+
+    const schedule = typeof getStudentWeeklySchedule === 'function' ? getStudentWeeklySchedule(student) : (student.weeklySchedule || null);
+    const daySlot = schedule && schedule[dayKey];
+
+    if (daySlot && daySlot.active) {
+      let timeStr = daySlot.time || '10:00 AM';
+      let durationStr = daySlot.duration || '45m';
+
+      let status = 'Still to go';
+      const studentFullName = (student.firstName + ' ' + (student.lastName || '')).trim() || student.name || student.id;
+      const log = (AppState.attendanceLogs || []).find(l => (l.studentId === student.id || l.studentName === studentFullName) && l.date === targetDate);
+      if (log) {
+        if (log.status === 'Present') status = 'Taken';
+        else if (log.status === 'Absent') status = 'Absent';
+        else if (log.status === 'Leave') status = 'Leave';
+      }
+
+      const newCls = {
+        id: 'LC-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+        studentId: student.id,
+        studentName: studentFullName,
+        studentAvatar: student.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(student.firstName || 'Student')}&background=0E4D45&color=fff`,
+        teacherId: student.teacherId || '',
+        teacherName: student.assignedTeacher || student.teacherName || 'Assigned Teacher',
+        country: student.country || 'Global',
+        studentTimezone: student.timezone || 'GMT-5 (EST)',
+        teacherTimezone: 'GMT+5 (PKT)',
+        date: targetDate,
+        scheduledTime: timeStr,
+        duration: durationStr,
+        type: student.academicStatus === 'Trial' ? 'Trial' : 'Regular',
+        status: status,
+        createdAt: new Date().toISOString()
+      };
+
+      AppState.liveClasses.push(newCls);
+      addedCount++;
+    }
+  });
+
+  // If no classes match from exact day slots, seed active student classes across daytime
+  if (addedCount === 0 && AppState.liveClasses.filter(c => c.date === targetDate).length === 0) {
+    if (students.length > 0) {
+      const defaultTimes = ['09:00 AM', '10:00 AM', '11:00 AM', '02:00 PM', '04:00 PM', '05:30 PM', '07:00 PM', '08:30 PM'];
+      students.slice(0, 8).forEach((student, idx) => {
+        const studentFullName = (student.firstName + ' ' + (student.lastName || '')).trim() || student.name || student.id;
+        const assignedTeacher = student.assignedTeacher || student.teacherName || (AppState.teachers && AppState.teachers[idx % AppState.teachers.length]?.name) || 'Ustadh Tariq';
+        const newCls = {
+          id: 'LC-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5) + '-' + idx,
+          studentId: student.id,
+          studentName: studentFullName,
+          studentAvatar: student.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(student.firstName || 'Student')}&background=0E4D45&color=fff`,
+          teacherId: student.teacherId || '',
+          teacherName: assignedTeacher,
+          country: student.country || 'USA',
+          studentTimezone: student.timezone || 'GMT-5 (EST)',
+          teacherTimezone: 'GMT+5 (PKT)',
+          date: targetDate,
+          scheduledTime: defaultTimes[idx % defaultTimes.length],
+          duration: '45m',
+          type: idx === 1 ? 'Trial' : (idx === 4 ? 'Make-up' : 'Regular'),
+          status: idx === 0 ? 'Taken' : (idx === 2 ? 'Absent' : 'Still to go'),
+          createdAt: new Date().toISOString()
+        };
+        AppState.liveClasses.push(newCls);
+        addedCount++;
+      });
+    } else {
+      const fallbackRoster = [
+        { id: 'QA-1008', name: 'Tariq Mansoor', teacher: 'Ustadh Tariq', country: 'USA', tz: 'GMT-5 (EST)', time: '09:00 AM', dur: '45m', type: 'Regular', status: 'Taken' },
+        { id: 'QA-1012', name: 'Aisha Khan', teacher: 'Ustadha Fatima', country: 'UK', tz: 'GMT+0 (GMT)', time: '10:30 AM', dur: '30m', type: 'Trial', status: 'Still to go' },
+        { id: 'QA-1019', name: 'Ibrahim Malik', teacher: 'Ustadh Bilal', country: 'Canada', tz: 'GMT-5 (EST)', time: '11:15 AM', dur: '45m', type: 'Regular', status: 'Absent' },
+        { id: 'QA-1025', name: 'Fatima Zahra', teacher: 'Ustadha Fatima', country: 'Australia', tz: 'GMT+10 (AEST)', time: '02:00 PM', dur: '60m', type: 'Make-up', status: 'Still to go' },
+        { id: 'QA-1033', name: 'Bilal Ahmed', teacher: 'Ustadh Tariq', country: 'UAE', tz: 'GMT+4 (GST)', time: '04:00 PM', dur: '45m', type: 'Regular', status: 'Still to go' },
+        { id: 'QA-1041', name: 'Zayd Ali', teacher: 'Ustadh Bilal', country: 'USA', tz: 'GMT-6 (CST)', time: '05:30 PM', dur: '30m', type: 'Regular', status: 'Still to go' }
+      ];
+      fallbackRoster.forEach((item, idx) => {
+        const newCls = {
+          id: 'LC-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5) + '-' + idx,
+          studentId: item.id,
+          studentName: item.name,
+          studentAvatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=0E4D45&color=fff`,
+          teacherId: '',
+          teacherName: item.teacher,
+          country: item.country,
+          studentTimezone: item.tz,
+          teacherTimezone: 'GMT+5 (PKT)',
+          date: targetDate,
+          scheduledTime: item.time,
+          duration: item.dur,
+          type: item.type,
+          status: item.status,
+          createdAt: new Date().toISOString()
+        };
+        AppState.liveClasses.push(newCls);
+        addedCount++;
+      });
+    }
+  }
+
+  saveCache('lms_live_classes', AppState.liveClasses);
+
+  if (db && AppState.liveClasses.length > 0) {
+    try {
+      const batch = db.batch();
+      AppState.liveClasses.forEach(cls => {
+        const ref = db.collection('live_classes').doc(String(cls.id));
+        batch.set(ref, cls, { merge: true });
+      });
+      await batch.commit();
+    } catch (e) {
+      console.warn('[Firestore] Batch save live_classes error:', e.message);
+    }
+  }
+
+  if (typeof showToastNotification === 'function') {
+    showToastNotification(`✓ Loaded ${addedCount} scheduled classes for ${formatLiveClassHeaderDate(targetDate)}`);
+  }
+  renderApp();
+}
+window.generateTodayLiveClasses = generateTodayLiveClasses;
+
+function renderLiveClassMonitoringMarkup() {
+  const targetDate = AppState.liveClassDate || getTodayYMD();
+  const allClasses = AppState.liveClasses || [];
+  const dateClasses = allClasses.filter(c => c.date === targetDate);
+
+  // Operational metrics from dateClasses
+  const totalClassesCount = dateClasses.length;
+  let takenHours = 0;
+  let totalHours = 0;
+  let takenCount = 0;
+  let absentCount = 0;
+  const scheduledTeachers = new Set();
+  const activeTeachers = new Set();
+
+  dateClasses.forEach(cls => {
+    let durHours = 0.5;
+    if (cls.duration) {
+      const match = String(cls.duration).match(/(\d+)/);
+      if (match) durHours = parseInt(match[1], 10) / 60;
+    }
+    totalHours += durHours;
+
+    const tName = cls.teacherName || cls.teacherId;
+    if (tName) scheduledTeachers.add(tName);
+
+    if (cls.status === 'Taken') {
+      takenHours += durHours;
+      takenCount++;
+      if (tName) activeTeachers.add(tName);
+    } else if (cls.status === 'Absent') {
+      absentCount++;
+    }
+  });
+
+  const takenRateStr = totalClassesCount > 0 ? `${Math.round((takenCount / totalClassesCount) * 100)}%` : '—';
+  const hoursTaughtStr = `${takenHours % 1 === 0 ? takenHours : takenHours.toFixed(1)}h / ${totalHours % 1 === 0 ? totalHours : totalHours.toFixed(1)}h`;
+  const teachersOnDutyStr = `${activeTeachers.size} / ${scheduledTeachers.size}`;
+
+  // In-window calculation (±30 min)
+  const inWindowClasses = dateClasses.filter(c => isClassInCurrentWindow(c));
+  const inWindowCount = inWindowClasses.length;
+
+  // Header pill text
+  const headerPillText = `${inWindowCount} of ${totalClassesCount} classes (±30 min)`;
+
+  // Which classes to show:
+  let displayClasses = AppState.liveClassShowAllToday ? dateClasses : inWindowClasses;
+
+  // Apply search query
+  if (AppState.liveClassSearch) {
+    const q = AppState.liveClassSearch.toLowerCase();
+    displayClasses = displayClasses.filter(c =>
+      (c.studentName && c.studentName.toLowerCase().includes(q)) ||
+      (c.teacherName && c.teacherName.toLowerCase().includes(q)) ||
+      (c.country && c.country.toLowerCase().includes(q)) ||
+      (c.studentId && c.studentId.toLowerCase().includes(q))
+    );
+  }
+
+  // Apply filters
+  const filters = AppState.liveClassFilters || { teacher: 'all', country: 'all', status: 'all', type: 'all' };
+  if (filters.teacher && filters.teacher !== 'all') {
+    displayClasses = displayClasses.filter(c => c.teacherName === filters.teacher);
+  }
+  if (filters.country && filters.country !== 'all') {
+    displayClasses = displayClasses.filter(c => c.country === filters.country);
+  }
+  if (filters.status && filters.status !== 'all') {
+    displayClasses = displayClasses.filter(c => c.status === filters.status);
+  }
+  if (filters.type && filters.type !== 'all') {
+    displayClasses = displayClasses.filter(c => c.type === filters.type);
+  }
+
+  // Active filter badge count
+  let activeFilterCount = 0;
+  if (filters.teacher !== 'all') activeFilterCount++;
+  if (filters.country !== 'all') activeFilterCount++;
+  if (filters.status !== 'all') activeFilterCount++;
+  if (filters.type !== 'all') activeFilterCount++;
+  const isAnyFilterActive = activeFilterCount > 0;
+
+  // Options for filter selects
+  const uniqueTeachers = Array.from(new Set(allClasses.map(c => c.teacherName).filter(Boolean))).sort();
+  const uniqueCountries = Array.from(new Set(allClasses.map(c => c.country).filter(Boolean))).sort();
+
+  const teacherOptions = uniqueTeachers.map(t =>
+    `<option value="${t}" ${filters.teacher === t ? 'selected' : ''}>${t}</option>`
+  ).join('');
+
+  const countryOptions = uniqueCountries.map(co =>
+    `<option value="${co}" ${filters.country === co ? 'selected' : ''}>${co}</option>`
+  ).join('');
+
+  return `
+    <!-- Card Header -->
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-5">
+      <div>
+        <div class="flex items-center gap-2.5">
+          <h3 class="text-base font-bold text-[#141F1E]">Live Class Monitoring</h3>
+          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#E8EFEE] text-[#0E4D45] border border-[#0E4D45]/20 tabular-nums">
+            ${headerPillText}
+          </span>
         </div>
+        <p class="text-xs text-[#7A8684] mt-0.5">${formatLiveClassHeaderDate(targetDate)}</p>
       </div>
 
-      <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse responsive-table-cards">
+      <!-- Header Controls: Show All Toggle, Generate, + Add Class -->
+      <div class="flex items-center gap-2 shrink-0 flex-wrap">
+        <button type="button"
+          onclick="toggleLiveClassShowAllToday()"
+          class="px-3 py-1.5 rounded-lg text-xs font-semibold ${AppState.liveClassShowAllToday ? 'bg-[#0E4D45] text-white border border-[#0E4D45]' : 'bg-white text-[#7A8684] hover:text-[#141F1E] border border-[#ECEAE4] hover:border-[#CBD5E1]'} transition-all cursor-pointer">
+          ${AppState.liveClassShowAllToday ? 'Showing All Classes' : "Show All Today's Classes"}
+        </button>
+
+        <button type="button"
+          onclick="generateTodayLiveClasses()"
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-[#ECEAE4] text-[#141F1E] hover:bg-[#F8F6F1] hover:border-[#CBD5E1] transition-all cursor-pointer">
+          <svg class="w-3.5 h-3.5 text-[#0E4D45]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+          <span>Generate</span>
+        </button>
+
+        <button type="button"
+          onclick="openAddLiveClassModal()"
+          class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[#0E4D45] hover:bg-[#14534B] text-white transition-all shadow-xs cursor-pointer">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+          <span>+ Add Class</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Compact Live Operational Strip -->
+    <div class="bg-[#F8F6F1] border border-[#ECEAE4] rounded-xl p-3 mb-5">
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:flex md:items-center md:justify-between gap-3 text-xs">
+        <div class="flex items-center gap-2">
+          <span class="text-[#7A8684] text-[11px] font-medium">Classes:</span>
+          <span class="font-bold text-[#141F1E] tabular-nums text-sm">${totalClassesCount}</span>
+        </div>
+        <div class="hidden md:block w-px h-5 bg-[#ECEAE4]"></div>
+
+        <div class="flex items-center gap-2">
+          <span class="text-[#7A8684] text-[11px] font-medium">Hours Taught:</span>
+          <span class="font-bold text-[#141F1E] tabular-nums text-sm">${hoursTaughtStr}</span>
+        </div>
+        <div class="hidden md:block w-px h-5 bg-[#ECEAE4]"></div>
+
+        <div class="flex items-center gap-2">
+          <span class="text-[#7A8684] text-[11px] font-medium">Taken Rate:</span>
+          <span class="font-bold ${takenCount > 0 ? 'text-[#0E4D45]' : 'text-[#141F1E]'} tabular-nums text-sm">${takenRateStr}</span>
+        </div>
+        <div class="hidden md:block w-px h-5 bg-[#ECEAE4]"></div>
+
+        <div class="flex items-center gap-2">
+          <span class="text-[#7A8684] text-[11px] font-medium">Absent:</span>
+          <span class="font-bold ${absentCount > 0 ? 'text-[#B91C1C]' : 'text-[#141F1E]'} tabular-nums text-sm">${absentCount}</span>
+        </div>
+        <div class="hidden md:block w-px h-5 bg-[#ECEAE4]"></div>
+
+        <div class="flex items-center gap-2">
+          <span class="text-[#7A8684] text-[11px] font-medium">Teachers on Duty:</span>
+          <span class="font-bold text-[#141F1E] tabular-nums text-sm">${teachersOnDutyStr}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Minimalist Filter Toolbar (Stripe-Style — No Clutter) -->
+    <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-4 relative">
+      <!-- Search Input -->
+      <div class="relative flex-1">
+        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#7A8684]">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
+        </div>
+        <input type="text"
+          placeholder="Search student or teacher..."
+          value="${AppState.liveClassSearch || ''}"
+          oninput="handleLiveClassSearch(this.value)"
+          class="w-full pl-9 pr-3 py-2 bg-white border border-[#ECEAE4] rounded-xl text-xs text-[#141F1E] placeholder-[#7A8684] outline-none focus:border-[#0E4D45] transition-colors"
+        />
+      </div>
+
+      <!-- Controls: Date Picker + Single Filter Button -->
+      <div class="flex items-center gap-2 shrink-0">
+        <!-- Date Picker -->
+        <div>
+          <input type="date"
+            value="${targetDate}"
+            onchange="handleLiveClassDateChange(this.value)"
+            class="bg-white border border-[#ECEAE4] rounded-xl px-3 py-2 text-xs font-medium text-[#141F1E] outline-none focus:border-[#0E4D45] cursor-pointer"
+          />
+        </div>
+
+        <!-- Single Filter Popover Trigger -->
+        <div class="relative" id="live-class-filter-container">
+          <button type="button"
+            onclick="toggleLiveClassFilterPopover(event)"
+            class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold ${isAnyFilterActive ? 'bg-[#E8EFEE] text-[#0E4D45] border border-[#0E4D45]/30' : 'bg-white text-[#7A8684] border border-[#ECEAE4] hover:text-[#141F1E] hover:border-[#CBD5E1]'} transition-colors cursor-pointer">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75"/></svg>
+            <span>Filter</span>
+            ${activeFilterCount > 0 ? `<span class="w-4 h-4 rounded-full bg-[#0E4D45] text-white text-[10px] flex items-center justify-center font-bold">${activeFilterCount}</span>` : ''}
+          </button>
+
+          <!-- Filter Popover -->
+          <div id="live-class-filter-popover" class="${AppState.liveClassFilterOpen ? '' : 'hidden'} absolute right-0 top-full mt-2 w-72 sm:w-80 bg-white border border-[#ECEAE4] rounded-2xl shadow-xl p-4 z-30">
+            <div class="flex items-center justify-between pb-3 border-b border-[#ECEAE4] mb-3">
+              <span class="text-xs font-bold text-[#141F1E]">Filter Live Classes</span>
+              ${isAnyFilterActive ? `<button type="button" onclick="resetLiveClassFilters(event)" class="text-[11px] font-semibold text-[#0E4D45] hover:underline cursor-pointer">Reset all</button>` : ''}
+            </div>
+
+            <div class="space-y-3 text-xs">
+              <div>
+                <label class="block text-[11px] font-semibold text-[#7A8684] mb-1">Teacher</label>
+                <select onchange="applyLiveClassFilter('teacher', this.value)" class="w-full bg-white border border-[#ECEAE4] rounded-lg px-2.5 py-1.5 text-xs text-[#141F1E] outline-none focus:border-[#0E4D45] cursor-pointer">
+                  <option value="all" ${filters.teacher === 'all' ? 'selected' : ''}>All Teachers</option>
+                  ${teacherOptions}
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-semibold text-[#7A8684] mb-1">Country</label>
+                <select onchange="applyLiveClassFilter('country', this.value)" class="w-full bg-white border border-[#ECEAE4] rounded-lg px-2.5 py-1.5 text-xs text-[#141F1E] outline-none focus:border-[#0E4D45] cursor-pointer">
+                  <option value="all" ${filters.country === 'all' ? 'selected' : ''}>All Countries</option>
+                  ${countryOptions}
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-semibold text-[#7A8684] mb-1">Activity Status</label>
+                <select onchange="applyLiveClassFilter('status', this.value)" class="w-full bg-white border border-[#ECEAE4] rounded-lg px-2.5 py-1.5 text-xs text-[#141F1E] outline-none focus:border-[#0E4D45] cursor-pointer">
+                  <option value="all" ${filters.status === 'all' ? 'selected' : ''}>All Statuses</option>
+                  <option value="Taken" ${filters.status === 'Taken' ? 'selected' : ''}>Taken</option>
+                  <option value="Still to go" ${filters.status === 'Still to go' ? 'selected' : ''}>Still to go</option>
+                  <option value="Absent" ${filters.status === 'Absent' ? 'selected' : ''}>Absent</option>
+                  <option value="Overdue" ${filters.status === 'Overdue' ? 'selected' : ''}>Overdue</option>
+                  <option value="Leave" ${filters.status === 'Leave' ? 'selected' : ''}>Leave</option>
+                  <option value="Cancelled" ${filters.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-semibold text-[#7A8684] mb-1">Class Type</label>
+                <select onchange="applyLiveClassFilter('type', this.value)" class="w-full bg-white border border-[#ECEAE4] rounded-lg px-2.5 py-1.5 text-xs text-[#141F1E] outline-none focus:border-[#0E4D45] cursor-pointer">
+                  <option value="all" ${filters.type === 'all' ? 'selected' : ''}>All Types</option>
+                  <option value="Regular" ${filters.type === 'Regular' ? 'selected' : ''}>Regular</option>
+                  <option value="Trial" ${filters.type === 'Trial' ? 'selected' : ''}>Trial</option>
+                  <option value="Make-up" ${filters.type === 'Make-up' ? 'selected' : ''}>Make-up / Revision</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-[#ECEAE4] flex items-center justify-end">
+              <button type="button" onclick="closeLiveClassFilterPopover(event)" class="px-3.5 py-1.5 rounded-lg bg-[#0E4D45] hover:bg-[#14534B] text-white text-xs font-semibold cursor-pointer">Done</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty State or Data Content -->
+    ${displayClasses.length === 0 ? `
+      <div class="text-center py-12 px-4 bg-[#F8F6F1]/40 rounded-2xl border border-dashed border-[#ECEAE4]">
+        <div class="max-w-xs mx-auto flex flex-col items-center">
+          <div class="w-10 h-10 rounded-full bg-[#E8EFEE] text-[#0E4D45] flex items-center justify-center mb-2.5">
+            <svg class="w-5 h-5 text-[#0E4D45]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+          </div>
+          <p class="text-xs font-semibold text-[#141F1E]">No classes scheduled for this window</p>
+          <p class="text-[11px] text-[#7A8684] mt-1 mb-4">Click Generate to load from today's schedule, or toggle Show All Today's Classes.</p>
+          <button type="button" onclick="generateTodayLiveClasses()" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-[#0E4D45] hover:bg-[#14534B] text-white shadow-xs cursor-pointer transition-colors">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+            <span>Generate Today's Classes</span>
+          </button>
+        </div>
+      </div>
+    ` : `
+      <!-- Desktop Multi-Timezone Table (min-width: 769px) -->
+      <div class="hidden md:block overflow-x-auto">
+        <table class="w-full text-left border-collapse">
           <thead>
             <tr class="border-b border-[#ECEAE4] text-[11px] font-semibold text-[#7A8684]">
-              <th class="pb-3">Txn ID</th>
-              <th class="pb-3">Date</th>
-              <th class="pb-3">Student &amp; family</th>
-              <th class="pb-3">Payment type</th>
-              <th class="pb-3">Amount</th>
-              <th class="pb-3">Fee allocation</th>
-              <th class="pb-3">Method</th>
-              <th class="pb-3 text-right">Receipt</th>
+              <th class="pb-3 w-10">#</th>
+              <th class="pb-3">A-Time (PKT)</th>
+              <th class="pb-3">T-Time</th>
+              <th class="pb-3">S-Time</th>
+              <th class="pb-3">Student</th>
+              <th class="pb-3">Teacher</th>
+              <th class="pb-3">Status</th>
+              <th class="pb-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-[#ECEAE4] text-xs">
-            ${PAYMENT_LEDGER.length === 0 ? `
-              <tr>
-                <td colspan="8" class="text-center py-12 px-4 bg-[#F8F6F1]/40">
-                  <div class="max-w-xs mx-auto flex flex-col items-center">
-                    <div class="w-10 h-10 rounded-full bg-[#E8EFEE] text-[#0E4D45] flex items-center justify-center mb-2.5">
-                      <svg class="w-5 h-5 text-[#0E4D45]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6H2.25m0 0v8.25m0 0a60.07 60.07 0 0 0 15.797 2.101c.727.198 1.453-.342 1.453-1.096V14.25m-15.797 0A60.07 60.07 0 0 1 18 12M3.75 4.5H18M3.75 4.5A2.25 2.25 0 0 0 1.5 6.75v10.5A2.25 2.25 0 0 0 3.75 19.5m16.5-15a2.25 2.25 0 0 0-2.25-2.25H3.75A2.25 2.25 0 0 0 1.5 4.5m18.75 0V15a2.25 2.25 0 0 1-2.25 2.25H3.75"/></svg>
-                    </div>
-                    <p class="text-xs font-semibold text-[#141F1E]">No recent transactions</p>
-                    <p class="text-[11px] text-[#7A8684] mt-0.5">Recorded fee settlements and payment allocations will appear here.</p>
-                  </div>
-                </td>
-              </tr>
-            ` : PAYMENT_LEDGER.slice(0, 5).map(txn => {
-              const student = (AppState.students || []).find(s => s.id === txn.studentId || (s.firstName + ' ' + s.lastName) === txn.studentName);
-              const avatar = student ? student.avatar : `https://ui-avatars.com/api/?name=${encodeURIComponent(txn.studentName)}&background=0E4D45&color=fff`;
-
-              let typeBadgeClass = 'bg-[#E0F2F1] text-[#0E4D45] border-[#B2DFDB]/60';
-              if (txn.type === 'Partial Payment') {
-                typeBadgeClass = 'bg-[#FEF3C7] text-[#92400E] border-[#FDE68A]/60';
-              } else if (txn.type === 'Advance Payment') {
-                typeBadgeClass = 'bg-[#E0F2FE] text-[#075985] border-[#BAE6FD]/60';
-              }
-
+            ${displayClasses.map((cls, idx) => {
+              const times = formatMultiTimezoneTimes(cls.scheduledTime, cls.studentTimezone, cls.teacherTimezone);
+              const badge = getLiveClassStatusBadge(cls.status);
               return `
                 <tr class="hover:bg-[#F8F6F1]/60 transition-colors">
-                  <td class="py-3" data-label="Txn ID">
-                    <span class="font-mono text-[11px] text-[#7A8684] bg-[#F8F6F1] px-1.5 py-0.5 rounded border border-[#ECEAE4] select-all tabular-nums">${txn.id}</span>
+                  <td class="py-3 text-[#7A8684] tabular-nums font-mono text-[11px]">${idx + 1}</td>
+                  <td class="py-3 font-bold text-[#0E4D45] whitespace-nowrap tabular-nums">
+                    <span>${times.aTime}</span>
                   </td>
-                  <td class="py-3 text-[#7A8684] whitespace-nowrap" data-label="Date">${txn.date}</td>
-                  <td class="py-3 font-medium text-[#141F1E]" data-label="Student / Family">
-                    <div class="flex items-center">
-                      <img src="${avatar}" alt="${txn.studentName}" class="w-6 h-6 rounded-full object-cover mr-2 shrink-0 border border-[#ECEAE4] shadow-2xs" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(txn.studentName)}&background=0E4D45&color=fff'">
-                      <span class="truncate">${txn.studentName}</span>
+                  <td class="py-3 text-[#141F1E] font-medium whitespace-nowrap tabular-nums">${times.tTime}</td>
+                  <td class="py-3 text-[#7A8684] whitespace-nowrap tabular-nums">${times.sTime}</td>
+                  <td class="py-3">
+                    <div class="flex items-center gap-2">
+                      <img src="${cls.studentAvatar}" alt="${cls.studentName}" class="w-6 h-6 rounded-full object-cover shrink-0 border border-[#ECEAE4]" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(cls.studentName)}&background=0E4D45&color=fff'">
+                      <div class="min-w-0">
+                        <span class="font-medium text-[#141F1E] block truncate">${cls.studentName}</span>
+                        <span class="text-[10px] text-[#7A8684] block">${cls.country || 'Global'} · ${cls.type} (${cls.duration})</span>
+                      </div>
                     </div>
                   </td>
-                  <td class="py-3" data-label="Payment Type">
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium border ${typeBadgeClass}">${txn.type}</span>
+                  <td class="py-3 text-[#141F1E] font-medium whitespace-nowrap">${cls.teacherName}</td>
+                  <td class="py-3 whitespace-nowrap">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium border ${badge.class}">${badge.label}</span>
                   </td>
-                  <td class="py-3 font-semibold text-[#141F1E] whitespace-nowrap tabular-nums" data-label="Amount">${txn.currency}${txn.amount}</td>
-                  <td class="py-3 text-[#334E4B]" data-label="Allocation">${txn.allocatedTo}</td>
-                  <td class="py-3 text-[#7A8684] whitespace-nowrap" data-label="Method">${txn.method}</td>
-                  <td class="py-3 text-right whitespace-nowrap" data-label="Receipt">
-                    <button onclick="openReceiptModal('${txn.id}')" class="text-xs font-semibold text-[#0E4D45] hover:text-[#14534B] hover:underline inline-flex items-center gap-1 cursor-pointer transition-colors">
-                      <span>View Receipt</span>
-                      <span class="text-[11px] font-normal leading-none">↗</span>
-                    </button>
+                  <td class="py-3 text-right whitespace-nowrap">
+                    <div class="flex items-center justify-end gap-1.5">
+                      <select onchange="markLiveClassStatus('${cls.id}', this.value)" class="text-[11px] font-semibold bg-[#F8F6F1] hover:bg-[#E8EFEE] text-[#0E4D45] border border-[#ECEAE4] rounded-lg px-2 py-1 outline-none cursor-pointer transition-colors">
+                        <option value="" disabled selected>Update</option>
+                        <option value="Taken">Taken</option>
+                        <option value="Absent">Absent</option>
+                        <option value="Still to go">Still to go</option>
+                        <option value="Leave">Leave</option>
+                        <option value="Cancelled">Cancelled</option>
+                      </select>
+                      <button type="button" onclick="dbDeleteLiveClass('${cls.id}')" title="Delete session" class="w-7 h-7 rounded-lg border border-[#ECEAE4] text-[#7A8684] hover:text-[#B91C1C] hover:bg-[#FEE2E2]/30 flex items-center justify-center transition-colors cursor-pointer">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               `;
@@ -5140,9 +5969,66 @@ function renderAdminDashboardView() {
           </tbody>
         </table>
       </div>
-    </div>
+
+      <!-- Mobile Stacked Cards (max-width: 768px, zero horizontal scrolling) -->
+      <div class="block md:hidden space-y-3">
+        ${displayClasses.map((cls) => {
+          const times = formatMultiTimezoneTimes(cls.scheduledTime, cls.studentTimezone, cls.teacherTimezone);
+          const badge = getLiveClassStatusBadge(cls.status);
+          return `
+            <div class="bg-white border border-[#ECEAE4] rounded-2xl p-4 shadow-2xs space-y-3">
+              <div class="flex items-start justify-between gap-2">
+                <div class="flex items-center gap-2.5 min-w-0">
+                  <img src="${cls.studentAvatar}" alt="${cls.studentName}" class="w-9 h-9 rounded-full object-cover shrink-0 border border-[#ECEAE4]" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(cls.studentName)}&background=0E4D45&color=fff'">
+                  <div class="min-w-0">
+                    <h4 class="text-xs font-bold text-[#141F1E] truncate">${cls.studentName}</h4>
+                    <p class="text-[11px] text-[#7A8684] truncate">${cls.teacherName} · <span class="text-[#334E4B]">${cls.country || 'Global'}</span></p>
+                  </div>
+                </div>
+                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium border ${badge.class} shrink-0">${badge.label}</span>
+              </div>
+
+              <!-- 3-Column Time Grid -->
+              <div class="grid grid-cols-3 gap-1 bg-[#F8F6F1] rounded-xl p-2.5 text-center border border-[#ECEAE4]">
+                <div class="px-1">
+                  <span class="block text-[9px] font-bold text-[#7A8684] uppercase tracking-wider">A-Time</span>
+                  <span class="text-xs font-bold text-[#0E4D45] tabular-nums block truncate">${times.aTime}</span>
+                </div>
+                <div class="px-1 border-x border-[#ECEAE4]">
+                  <span class="block text-[9px] font-bold text-[#7A8684] uppercase tracking-wider">T-Time</span>
+                  <span class="text-xs font-semibold text-[#141F1E] tabular-nums block truncate">${times.tTime}</span>
+                </div>
+                <div class="px-1">
+                  <span class="block text-[9px] font-bold text-[#7A8684] uppercase tracking-wider">S-Time</span>
+                  <span class="text-xs font-semibold text-[#141F1E] tabular-nums block truncate">${times.sTime}</span>
+                </div>
+              </div>
+
+              <!-- Card Footer: Type & Actions -->
+              <div class="flex items-center justify-between pt-1">
+                <span class="text-[10px] font-medium px-2 py-0.5 rounded bg-[#F8F6F1] border border-[#ECEAE4] text-[#7A8684]">${cls.type} (${cls.duration})</span>
+                <div class="flex items-center gap-2">
+                  <select onchange="markLiveClassStatus('${cls.id}', this.value)" class="text-xs font-semibold bg-[#F8F6F1] text-[#0E4D45] border border-[#ECEAE4] rounded-lg px-2 py-1 outline-none cursor-pointer">
+                    <option value="" disabled selected>Update</option>
+                    <option value="Taken">Taken</option>
+                    <option value="Absent">Absent</option>
+                    <option value="Still to go">Still to go</option>
+                    <option value="Leave">Leave</option>
+                    <option value="Cancelled">Cancelled</option>
+                  </select>
+                  <button type="button" onclick="dbDeleteLiveClass('${cls.id}')" title="Delete" class="w-7 h-7 rounded-lg border border-[#ECEAE4] text-[#7A8684] hover:text-[#B91C1C] hover:bg-[#FEE2E2]/30 flex items-center justify-center transition-colors cursor-pointer">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `}
   `;
 }
+window.renderLiveClassMonitoringMarkup = renderLiveClassMonitoringMarkup;
 
 // ============================================================
 // AT-RISK STUDENTS ENGINE (ACTION REQUIRED)

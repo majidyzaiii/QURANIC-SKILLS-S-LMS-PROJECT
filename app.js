@@ -10261,14 +10261,11 @@ function renderAdminFeeMatrixView() {
       <!-- Collapsible Desktop Filter Panel (Does NOT cover table headers or legend) -->
       <div id="fee-filter-dropdown-menu" class="${AppState.isFeeFilterOpen ? '' : 'hidden'} mb-4 p-4 bg-[#F8F6F1] rounded-2xl border border-[#ECEAE4] transition-all text-[#141F1E]">
         <div class="flex items-center justify-between pb-2.5 mb-3 border-b border-[#ECEAE4]">
-          <span class="text-xs font-bold text-[#141F1E] flex items-center gap-1.5">
-            <span>Filter Ledger</span>
-            ${(AppState.selectedFilter !== 'all' || AppState.selectedCurrency !== 'all' || isFamilyGrouped) ? `
-              <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#0E4D45]/10 text-[#0E4D45] font-semibold">Active</span>
-            ` : ''}
-          </span>
+          <span class="text-xs font-bold text-[#141F1E]">Filter Ledger</span>
           <div class="flex items-center gap-3">
-            <button type="button" onclick="resetFeeFilters();" class="text-[11px] font-semibold text-[#0E4D45] hover:underline cursor-pointer">Reset Filters</button>
+            ${(AppState.selectedFilter !== 'all' || AppState.selectedCurrency !== 'all' || !isFamilyGrouped) ? `
+              <button type="button" onclick="resetFeeFilters();" class="text-[11px] font-semibold text-[#0E4D45] hover:underline cursor-pointer">Reset Filters</button>
+            ` : ''}
             <button type="button" onclick="closeFeeFilterDropdown();" class="text-[#7A8684] hover:text-[#141F1E] text-xs font-bold cursor-pointer" title="Close Filters">✕</button>
           </div>
         </div>
@@ -10277,7 +10274,7 @@ function renderAdminFeeMatrixView() {
           <!-- Status Filter Pills -->
           <div>
             <span class="text-xs font-semibold text-[#141F1E] block mb-1.5">Payment Status</span>
-            <div class="grid grid-cols-3 gap-1.5">
+            <div class="flex gap-1.5">
               ${[
                 { id: 'all', label: `All (${AppState.students ? AppState.students.length : 0})` },
                 { id: 'paid', label: 'Paid' },
@@ -10288,7 +10285,7 @@ function renderAdminFeeMatrixView() {
                 <button 
                   type="button" 
                   onclick="setFeeFilter('${s.id}')" 
-                  class="py-1.5 px-2 rounded-xl text-xs font-semibold transition-all cursor-pointer border text-center ${AppState.selectedFilter === s.id ? 'bg-[#0E4D45] text-white border-[#0E4D45] shadow-xs' : 'bg-white text-gray-700 border-[#ECEAE4] hover:bg-[#F8F6F1]'}"
+                  class="flex-1 min-w-0 h-9 px-1 rounded-xl text-xs font-semibold transition-all cursor-pointer border flex items-center justify-center whitespace-nowrap ${AppState.selectedFilter === s.id ? 'bg-[#0E4D45] text-white border-[#0E4D45] shadow-xs' : 'bg-white text-gray-700 border-[#ECEAE4] hover:bg-[#F8F6F1]'}"
                 >
                   ${s.label}
                 </button>
@@ -10297,18 +10294,16 @@ function renderAdminFeeMatrixView() {
           </div>
 
           <!-- Family Group Toggle -->
-          <div class="flex flex-col justify-between p-3 rounded-xl bg-white border border-[#ECEAE4]">
-            <div class="flex items-center justify-between">
-              <div>
-                <span class="font-bold text-xs text-[#141F1E] block">Family Group</span>
-                <span class="text-[10px] text-gray-500">Group sibling accounts together</span>
-              </div>
+          <div>
+            <span class="text-xs font-semibold text-[#141F1E] block mb-1.5">Family Group</span>
+            <div class="flex items-center justify-between h-9">
+              <span class="text-[10px] text-gray-500">Group sibling accounts together</span>
               <button 
                 type="button" 
                 role="switch" 
                 aria-checked="${isFamilyGrouped ? 'true' : 'false'}" 
                 onclick="toggleGroupByFamily()" 
-                class="flex items-center gap-2 cursor-pointer"
+                class="flex items-center gap-2 cursor-pointer shrink-0"
               >
                 <div class="transition-colors relative" style="width: 28px; height: 16px; border-radius: 9999px; background-color: ${isFamilyGrouped ? '#0E4D45' : '#CBD5E1'}; position: relative;">
                   <div class="transition-all shadow-xs" style="width: 12px; height: 12px; border-radius: 9999px; background-color: #FFFFFF; position: absolute; top: 2px; left: ${isFamilyGrouped ? '14px' : '2px'};"></div>

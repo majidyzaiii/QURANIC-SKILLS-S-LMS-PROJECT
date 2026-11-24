@@ -12964,16 +12964,39 @@ function currencyMonthLabel(monthKey) {
 
 function getCurrencySettings() {
   const stored = (typeof AppState !== 'undefined' && AppState.currencySettings && typeof AppState.currencySettings === 'object') ? AppState.currencySettings : {};
+  const storedRates = stored.rates || {};
+  const storedOv = stored.manualOverrides || {};
+  // Codes the user added by hand (not from the rate API) — their rates are
+  // manual by definition and must never be treated as automatic.
+  const customCodes = Array.isArray(stored.customCurrencyCodes) ? stored.customCurrencyCodes : [];
+  const customSet = {};
+  customCodes.forEach(function (c) { customSet[String(c).toUpperCase()] = true; });
+  // Pure fetched/seed rates (no manual overrides) — overrides are decided
+  // against these, so saving a rate equal to the automatic rate clears it.
+  // Complete the table from `rates`: every rate in `rates` that is not a
+  // hand-added code IS the automatic rate for that currency — fetched
+  // rates are merged into `rates` by the monthly update, only overrides
+  // are manual. Legacy docs written before `autoRates` existed carry no
+  // stored auto rates at all; without this, every fetched long-tail rate
+  // has no auto entry to compare against on save, so the save persists
+  // all of them as manual overrides. Stored auto rates always win over
+  // the derived value, so a real override is never laundered into an
+  // automatic rate — and a stale override (equal to its rate) is pruned
+  // on the next load, because its baseline is now known.
+  const autoRates = Object.assign({}, DEFAULT_CURRENCY_RATES, stored.autoRates || {});
+  Object.keys(storedRates).forEach(function (code) {
+    const c = String(code).toUpperCase();
+    if (autoRates[c] === undefined && !customSet[c]) autoRates[c] = storedRates[code];
+  });
   return {
     base: 'PKR',
     month: (typeof stored.month === 'string' && stored.month) ? stored.month : currentMonthKey(),
     updatedAt: stored.updatedAt || null,
     source: stored.source || 'seed',
-    rates: Object.assign({}, DEFAULT_CURRENCY_RATES, stored.rates || {}),
-    // Pure fetched/seed rates (no manual overrides) — overrides are decided
-    // against these, so saving a rate equal to the automatic rate clears it.
-    autoRates: Object.assign({}, DEFAULT_CURRENCY_RATES, stored.autoRates || {}),
-    manualOverrides: Object.assign({}, stored.manualOverrides || {})
+    rates: Object.assign({}, DEFAULT_CURRENCY_RATES, storedRates),
+    autoRates: autoRates,
+    manualOverrides: Object.assign({}, storedOv),
+    customCurrencyCodes: customCodes.slice()
   };
 }
 
@@ -13161,7 +13184,8 @@ async function loadCurrencySettings() {
         source: cached.source || 'seed',
         rates: Object.assign({}, cached.rates || {}),
         autoRates: Object.assign({}, cached.autoRates || {}),
-        manualOverrides: Object.assign({}, cached.manualOverrides || {})
+        manualOverrides: Object.assign({}, cached.manualOverrides || {}),
+        customCurrencyCodes: Array.isArray(cached.customCurrencyCodes) ? cached.customCurrencyCodes.slice() : []
       };
     }
   } catch (e) {}
@@ -13177,7 +13201,8 @@ async function loadCurrencySettings() {
           source: d.source || 'manual',
           rates: Object.assign({}, d.rates || {}),
           autoRates: Object.assign({}, d.autoRates || {}),
-          manualOverrides: Object.assign({}, d.manualOverrides || {})
+          manualOverrides: Object.assign({}, d.manualOverrides || {}),
+          customCurrencyCodes: Array.isArray(d.customCurrencyCodes) ? d.customCurrencyCodes.slice() : []
         };
         saveCache(CURRENCY_SETTINGS_CACHE_KEY, AppState.currencySettings);
       }
@@ -13195,7 +13220,7 @@ async function saveCurrencySettingsToCloud(settings) {
   }
   try {
     await db.collection('settings').doc('currency').set(
-      { base: 'PKR', month: settings.month, updatedAt: settings.updatedAt, source: settings.source, rates: settings.rates, autoRates: settings.autoRates || {}, manualOverrides: settings.manualOverrides || {} },
+      { base: 'PKR', month: settings.month, updatedAt: settings.updatedAt, source: settings.source, rates: settings.rates, autoRates: settings.autoRates || {}, manualOverrides: settings.manualOverrides || {}, customCurrencyCodes: settings.customCurrencyCodes || [] },
       { merge: true }
     );
     return true;
@@ -13264,7 +13289,8 @@ async function maybeUpdateCurrencyRates(force) {
       source: Object.keys(current.manualOverrides || {}).length > 0 ? 'manual' : (current.source === 'seed' ? 'seed' : 'api'),
       rates: Object.assign({}, current.rates || {}),
       autoRates: Object.assign({}, current.autoRates || {}),
-      manualOverrides: Object.assign({}, current.manualOverrides || {})
+      manualOverrides: Object.assign({}, current.manualOverrides || {}),
+      customCurrencyCodes: (current.customCurrencyCodes || []).slice()
     };
     AppState.currencySettings = cleaned;
     try { saveCache(CURRENCY_SETTINGS_CACHE_KEY, cleaned); } catch (e) {}
@@ -13290,7 +13316,8 @@ async function maybeUpdateCurrencyRates(force) {
     source: Object.keys(prunedOverrides).length > 0 ? 'manual' : 'api',
     rates: Object.assign({}, fetched, prunedOverrides),
     autoRates: Object.assign({}, fetched),
-    manualOverrides: prunedOverrides
+    manualOverrides: prunedOverrides,
+    customCurrencyCodes: (fresh.customCurrencyCodes || []).slice()
   };
   AppState.currencySettings = next;
   currencyRatesStale = false;
@@ -13361,11 +13388,13 @@ function renderCurrencyRatesTable(filter) {
   }
   body.innerHTML = rows.map(function (code) {
     const isManual = s.manualOverrides && s.manualOverrides[code] !== undefined;
+    // A hand-added currency has no automatic rate to reset to.
+    const isCustom = s.customCurrencyCodes && s.customCurrencyCodes.indexOf(code) !== -1;
     return '<tr class="border-t border-[#ECEAE4]">' +
       '<td class="px-3 py-2 font-bold text-[#141F1E]">' + code + (isManual ? ' <span class="ml-1 text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#E8EFEE] text-[#0E4D45]">MANUAL</span>' : '') + '</td>' +
       '<td class="px-3 py-2 text-[#7A8684]">' + (ISO_CURRENCY_BY_CODE[code] || '') + '</td>' +
       '<td class="px-3 py-2 text-right"><input type="number" min="0" step="any" data-currency-rate="' + code + '" value="' + s.rates[code] + '" class="w-28 bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-8 px-2 text-xs text-[#0E4D45] font-bold text-right outline-none focus:border-[#0E4D45] focus:bg-white transition-all"></td>' +
-      '<td class="px-3 py-2 text-right">' + (isManual ? '<button type="button" onclick="handleResetCurrencyRate(\'' + code + '\')" title="Use the automatic rate" class="px-2 py-1 text-[10px] font-bold rounded-full bg-white border border-[#0E4D45] text-[#0E4D45] hover:bg-[#E8EFEE] transition-colors cursor-pointer whitespace-nowrap">Auto</button>' : '') + '</td>' +
+      '<td class="px-3 py-2 text-right">' + ((isManual && !isCustom) ? '<button type="button" onclick="handleResetCurrencyRate(\'' + code + '\')" title="Use the automatic rate" class="px-2 py-1 text-[10px] font-bold rounded-full bg-white border border-[#0E4D45] text-[#0E4D45] hover:bg-[#E8EFEE] transition-colors cursor-pointer whitespace-nowrap">Auto</button>' : '') + '</td>' +
       '</tr>';
   }).join('');
 }
@@ -13414,6 +13443,10 @@ function handleAddCurrencyRate() {
   currencySettingsDraft.rates[code] = Math.round(rate * 100) / 100;
   currencySettingsDraft.manualOverrides = currencySettingsDraft.manualOverrides || {};
   currencySettingsDraft.manualOverrides[code] = currencySettingsDraft.rates[code];
+  // Mark it hand-added: its rate is manual by definition and must never
+  // be treated as an automatic rate when the settings are re-read.
+  currencySettingsDraft.customCurrencyCodes = currencySettingsDraft.customCurrencyCodes || [];
+  if (currencySettingsDraft.customCurrencyCodes.indexOf(code) === -1) currencySettingsDraft.customCurrencyCodes.push(code);
   const filterEl = document.getElementById('currency-rates-filter');
   if (filterEl) filterEl.value = '';
   renderCurrencyRatesTable('');
@@ -13453,7 +13486,10 @@ async function handleSaveCurrencySettings() {
     if (saveLabel) saveLabel.textContent = on ? 'Saving…' : 'Save Settings';
   };
   const inputs = document.querySelectorAll('#currency-rates-table-body input[data-currency-rate]');
-  const nextRates = {};
+  // Start from the rates as opened: the table only renders the rows that
+  // match the current search filter, so building nextRates from the inputs
+  // alone would silently drop every filtered-out currency from the doc.
+  const nextRates = Object.assign({}, draft.rates || {});
   const nextOverrides = {};
   inputs.forEach(function (el) {
     const code = el.getAttribute('data-currency-rate');
@@ -13474,7 +13510,8 @@ async function handleSaveCurrencySettings() {
     source: Object.keys(nextOverrides).length > 0 ? 'manual' : (draft.source === 'seed' ? 'seed' : 'api'),
     rates: nextRates,
     autoRates: Object.assign({}, autoRates),
-    manualOverrides: nextOverrides
+    manualOverrides: nextOverrides,
+    customCurrencyCodes: (draft.customCurrencyCodes || []).slice()
   };
   const prevSettings = getCurrencySettings();
   const failedDraft = currencySettingsDraft;

@@ -3563,7 +3563,7 @@ function openViewWeeklyScheduleModal(studentId) {
       </div>
       <div class="p-3 bg-[#FFFFFF] rounded-xl border border-[#ECEAE4] flex items-center justify-between">
         <span class="text-xs text-[#7A8684] font-medium">Tuition Rate</span>
-        <span class="text-sm font-bold text-[#0E4D45]">${student.currency}${student.monthlyFee}/month</span>
+        <span class="text-sm font-bold text-[#0E4D45]">${studentFeePKRHtml(student)}/month</span>
       </div>
     </div>
   `;
@@ -5310,9 +5310,8 @@ function handleSaveEditSchedule() {
   }
 
   // Update Fee & Currency
-  const currencySymbols = { 'USD': '$', 'GBP': '£', 'EUR': '€', 'CAD': 'C$', 'PKR': 'Rs' };
   student.currencyCode = currencyCode;
-  student.currency = currencySymbols[currencyCode] || '$';
+  student.currency = getCurrencySymbol(currencyCode);
   if (monthlyFee !== student.monthlyFee) {
     student.monthlyFee = monthlyFee;
     if (Array.isArray(student.months)) {
@@ -5864,8 +5863,7 @@ async function handleSaveNewStudent() {
   const firstName = nameParts[0];
   const lastName = nameParts.slice(1).join(' ') || '';
 
-  const currencySymbols = { 'USD': '$', 'GBP': '£', 'EUR': '€', 'CAD': 'C$', 'PKR': 'Rs' };
-  const currency = currencySymbols[currencyCode] || '$';
+  const currency = getCurrencySymbol(currencyCode);
 
   const defaultWeeklySchedule = {
     mon: { active: true, time: '10:00 AM - 10:45 AM' },
@@ -6812,6 +6810,7 @@ function calculateFIFOWaterfall(studentOrTarget, paymentAmount, targetMonthIndex
     studentId: s.id,
     studentName: `${s.firstName} ${s.lastName}`,
     currency: s.currency,
+    currencyCode: s.currencyCode,
     monthlyFee: s.monthlyFee,
     months: JSON.parse(JSON.stringify(s.months))
   }));
@@ -6833,6 +6832,7 @@ function calculateFIFOWaterfall(studentOrTarget, paymentAmount, targetMonthIndex
         studentId: sim.studentId,
         studentName: sim.studentName,
         currency: sim.currency,
+        currencyCode: sim.currencyCode,
         monthIndex: monthIdx,
         month: m.month,
         feeDue: effectiveFeeDue,
@@ -6922,6 +6922,11 @@ function commitFIFOPayment(targetId, amount, paymentMethod = 'Online Portal', ta
   });
 
   const currency = result.studentSimulations[0].currency;
+  const currencyCode = result.studentSimulations[0].currencyCode || null;
+  // Freeze this payment's PKR equivalent at the current rate. It is
+  // never recalculated, so later rate changes cannot rewrite history.
+  const pkrRate = currencyCode ? getCurrencyRate(currencyCode) : null;
+  const pkrAmount = pkrRate !== null ? Math.round(amount * pkrRate) : null;
   const isFamily = result.isFamily;
   const guardianName = isFamily 
     ? (AppState.students.find(s => s.familyId === result.familyId || s.familyTag === result.familyId)?.guardianName || 'Guardian')
@@ -6945,6 +6950,8 @@ function commitFIFOPayment(targetId, amount, paymentMethod = 'Online Portal', ta
     studentName: studentName,
     amount: amount,
     currency: currency,
+    currencyCode: currencyCode,
+    ...(pkrAmount !== null ? { pkrAmount: pkrAmount, pkrRate: pkrRate, pkrMonth: currentMonthKey() } : {}),
     type: isFamily ? 'Family Combined Invoice' : (result.allocations.some(a => a.isAdvance) ? 'Advance / Combined Fee' : 'Tuition Settlement'),
     allocatedTo: allocationSummary,
     allocations: result.allocations,
@@ -6970,6 +6977,7 @@ function commitFIFOPayment(targetId, amount, paymentMethod = 'Online Portal', ta
     txnId,
     studentName,
     currency,
+    pkrAmount,
     allocationSummary,
     result
   };
@@ -7832,7 +7840,21 @@ function renderAdminDashboardView() {
   let partialCount = 0;
   let defaulterCount = 0;
   let advanceCount = 0;
-  let totalCurrentMonthDue = 0;
+  // PKR accumulators for the current month. Unpaid balances convert at the
+  // CURRENT rate; amounts whose currency has no rate are counted
+  // separately and never mixed into the PKR totals.
+  let totalCurrentMonthDuePKR = 0;
+  let overdueDuePKR = 0;
+  let dueExcludedStudents = 0;
+  const dueExcludedCodes = {};
+  const addDuePKR = (student, amount) => {
+    if (!amount || amount <= 0) return;
+    const conv = convertToPKR(amount, student.currencyCode);
+    if (conv.hasRate) { totalCurrentMonthDuePKR += conv.pkr; return; }
+    dueExcludedStudents++;
+    const code = student.currencyCode || 'unknown';
+    dueExcludedCodes[code] = (dueExcludedCodes[code] || 0) + 1;
+  };
 
   AppState.students.forEach(s => {
     const m = (Array.isArray(s.months) && s.months[CURRENT_MONTH_INDEX]) || null;
@@ -7843,20 +7865,25 @@ function renderAdminDashboardView() {
         advanceCount++;
       } else if (m.status === 'partial') {
         partialCount++;
-        totalCurrentMonthDue += (m.remainingDue || 0);
+        addDuePKR(s, m.remainingDue || 0);
       } else if (m.status === 'defaulter') {
         defaulterCount++;
-        totalCurrentMonthDue += (m.remainingDue || 0);
+        addDuePKR(s, m.remainingDue || 0);
+        const conv = convertToPKR(m.remainingDue || 0, s.currencyCode);
+        if (conv.hasRate) overdueDuePKR += conv.pkr;
       }
     } else {
       const status = getStudentFeeStatus(s);
       if (status.code === 'paid') paidCount++;
       else if (status.code === 'partial') {
         partialCount++;
-        totalCurrentMonthDue += getStudentBalanceDue(s);
+        addDuePKR(s, getStudentBalanceDue(s));
       } else if (status.code === 'defaulter') {
         defaulterCount++;
-        totalCurrentMonthDue += getStudentBalanceDue(s);
+        const bal = getStudentBalanceDue(s);
+        addDuePKR(s, bal);
+        const conv = convertToPKR(bal, s.currencyCode);
+        if (conv.hasRate) overdueDuePKR += conv.pkr;
       } else if (status.code === 'advance') {
         advanceCount++;
       }
@@ -7869,10 +7896,17 @@ function renderAdminDashboardView() {
     ledgerSum += (Number(p.amount) || 0);
   });
 
-  // Real dynamic totals from state (strictly month-specific)
+  // Real dynamic totals from state (strictly month-specific), in PKR.
+  // Fee Collected uses each payment's frozen PKR where recorded, else the
+  // current rate; unpaid balances always use the current rate.
   const dynamicTotalStudents = totalStudents;
-  const dynamicFeeCollected = getMonthFeeCollected(CURRENT_MONTH_INDEX, CURRENT_YEAR);
-  const dynamicBalanceDue = totalCurrentMonthDue;
+  const collectedPKR = getMonthFeeCollectedPKR(CURRENT_MONTH_INDEX, CURRENT_YEAR);
+  const dynamicFeeCollectedPKR = collectedPKR.pkr;
+  const dynamicBalanceDuePKR = totalCurrentMonthDuePKR;
+  const dynamicBilledPKR = dynamicFeeCollectedPKR + dynamicBalanceDuePKR;
+  const amountCollectionPct = dynamicBilledPKR > 0 ? Math.min(100, Math.round((dynamicFeeCollectedPKR / dynamicBilledPKR) * 100)) : 0;
+  const paidHeadcount = paidCount + advanceCount;
+  const excludedCurrencyList = Object.keys(Object.assign({}, collectedPKR.excludedCodes, dueExcludedCodes));
 
   // Segmented progress bar metrics
   const dynamicPaidCount = paidCount;
@@ -7894,7 +7928,21 @@ function renderAdminDashboardView() {
   const hasAttendanceLogs = attendanceMonthData && attendanceMonthData.hasData && attendanceMonthData.totalAttend > 0;
   const attendanceRateStr = hasAttendanceLogs ? `${attendanceMonthData.avgPassingRate}%` : 'No data';
 
+  // Currency info bar values (PKR base; rates for the stored month).
+  const currencySettingsNow = getCurrencySettings();
+  const usdRateNow = getCurrencyRate('USD');
+  const gbpRateNow = getCurrencyRate('GBP');
+  const currencyMonthText = currencyMonthLabel(currencySettingsNow.month);
+
   return `
+    <!-- Currency: every fee amount on this Dashboard is shown in PKR -->
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 mb-4 px-1 text-[11px] text-[#7A8684]">
+      <span class="inline-flex items-center gap-1.5 font-bold text-[#0E4D45]">All amounts in PKR</span>
+      ${usdRateNow ? `<span>1 USD = ${formatPKRAmount(usdRateNow)}</span>` : ''}
+      ${gbpRateNow ? `<span>1 GBP = ${formatPKRAmount(gbpRateNow)}</span>` : ''}
+      <span>Rates ${currencyMonthText}${currencyRatesStale ? ' — could not update' : ''}</span>
+      <button onclick="openCurrencySettingsModal()" class="px-3 py-1.5 rounded-full bg-white border border-[#0E4D45] text-[#0E4D45] text-[11px] font-bold hover:bg-[#E8EFEE] transition-all whitespace-nowrap cursor-pointer">Currency Settings</button>
+    </div>
     <!-- 5 Top KPI Cards sitting cleanly below header on #F8F6F1 -->
     <div class="kpi-cards-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 w-full mb-8" style="gap: 16px;">
       
@@ -7919,10 +7967,11 @@ function renderAdminDashboardView() {
         </div>
         <div>
           <div class="flex items-baseline gap-2 mb-1">
-            <span class="text-2xl sm:text-3xl font-semibold tracking-tight text-[#141F1E] tabular-nums">$${dynamicFeeCollected.toLocaleString()}</span>
-            ${collectionPercentage > 0 ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium bg-[#E0F2F1] text-[#0E4D45] tabular-nums">${collectionPercentage}%</span>` : ''}
+            <span class="text-2xl sm:text-3xl font-semibold tracking-tight text-[#141F1E] tabular-nums">${formatPKRAmount(dynamicFeeCollectedPKR)}</span>
+            ${amountCollectionPct > 0 ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium bg-[#E0F2F1] text-[#0E4D45] tabular-nums" title="Share of this month's billed fees collected (in PKR)">${amountCollectionPct}%</span>` : ''}
           </div>
           <p class="text-xs font-medium text-[#7A8684]">Fee Collected (${MONTHS_LIST[CURRENT_MONTH_INDEX]})</p>
+          <p class="text-[11px] text-[#7A8684] mt-0.5">${paidHeadcount} of ${grandTotal} students paid</p>
         </div>
       </div>
 
@@ -7933,7 +7982,7 @@ function renderAdminDashboardView() {
         </div>
         <div>
           <div class="flex items-baseline gap-2 mb-1">
-            <span class="text-2xl sm:text-3xl font-semibold tracking-tight text-[#141F1E] tabular-nums">$${dynamicBalanceDue.toLocaleString()}</span>
+            <span class="text-2xl sm:text-3xl font-semibold tracking-tight text-[#141F1E] tabular-nums">${formatPKRAmount(dynamicBalanceDuePKR)}</span>
             ${dynamicPartialCount > 0 ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A] tabular-nums">${dynamicPartialCount} Due</span>` : ''}
           </div>
           <p class="text-xs font-medium text-[#7A8684]">Partial / Balance Due</p>
@@ -7951,6 +8000,7 @@ function renderAdminDashboardView() {
             ${dynamicDefaulterCount > 0 && grandTotal > 0 ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium bg-[#FEE2E2] text-[#991B1B] border border-[#FECACA] tabular-nums">${((dynamicDefaulterCount / grandTotal) * 100).toFixed(1)}%</span>` : ''}
           </div>
           <p class="text-xs font-medium text-[#7A8684]">Overdue Accounts</p>
+          <p class="text-[11px] text-[#7A8684] mt-0.5">${formatPKRAmount(overdueDuePKR)} overdue</p>
         </div>
       </div>
 
@@ -7969,6 +8019,11 @@ function renderAdminDashboardView() {
       </div>
 
     </div>
+    ${excludedCurrencyList.length > 0 ? `
+    <div class="mb-6 px-4 py-2.5 rounded-xl bg-[#FFFBEB] border border-[#FDE68A] text-[11px] text-[#92400E] font-medium flex flex-wrap items-center gap-2">
+      <span>Amounts in ${excludedCurrencyList.join(', ')} are excluded from the PKR totals — exchange rate not set.</span>
+      <button onclick="openCurrencySettingsModal()" class="font-bold underline cursor-pointer">Set rate</button>
+    </div>` : ''}
 
     <!-- Middle 3-Column Bento Grid Matching TalentSync Reference Structure -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
@@ -10395,11 +10450,11 @@ function renderFamilyLedgerHeaderRow(fam, isCollapsed = false) {
 
           <!-- Right side of row: Combined Total Due & Subtle Secondary Button -->
           <div class="flex items-center gap-4" onclick="event.stopPropagation()">
-            ${pkgFee ? `<span class="text-[11px] font-semibold text-[#0E4D45] bg-[#E8EFEE] border border-[#0E4D45]/20 rounded-md px-2 py-0.5 whitespace-nowrap">Package ${fam.currency}${formatFeeAmount(pkgFee)}/mo • ${fam.currency}${formatFeeAmount(pkgShare)} per child</span>` : ''}
+            ${pkgFee ? `<span class="text-[11px] font-semibold text-[#0E4D45] bg-[#E8EFEE] border border-[#0E4D45]/20 rounded-md px-2 py-0.5 whitespace-nowrap">${familyPackagePKRHtml(fam, pkgFee, pkgShare)}</span>` : ''}
             <div class="flex items-center gap-1.5 text-xs">
               <span class="text-[#6B7280] text-[11px]">Combined Due:</span>
               <span class="font-bold ${fam.totalDue > 0 ? 'text-red-600' : 'text-[#065F46]'}">
-                ${fam.totalDue > 0 ? `-${fam.currency}${fam.totalDue} Due` : 'Clear'}
+                ${fam.totalDue > 0 ? familyDuePKRHtml(fam) : 'Clear'}
               </span>
             </div>
             <button onclick="openFamilyPackageModal('${fam.familyId}')" 
@@ -10460,9 +10515,9 @@ function renderStudentFeeLedgerRow(student, isChildOfFamily = false, isLastChild
 
       <!-- Monthly Fee & Balance -->
       <td class="py-3 pr-3 whitespace-nowrap">
-        <div class="font-semibold text-xs text-[#141F1E]">${student.currency}${student.monthlyFee}<span class="text-[10px] text-gray-400 font-normal">/mo</span></div>
+        <div class="font-semibold text-xs text-[#141F1E]">${studentFeePKRHtml(student)}<span class="text-[10px] text-gray-400 font-normal">/mo</span></div>
         <div class="text-[11px] mt-0.5 font-medium ${balanceDue > 0 ? 'text-red-600' : 'text-emerald-600'}">
-          ${balanceDue > 0 ? `-${student.currency}${balanceDue} Due` : 'Clear'}
+          ${balanceDue > 0 ? studentDuePKRHtml(student, balanceDue) : 'Clear'}
         </div>
       </td>
 
@@ -10477,10 +10532,14 @@ function renderStudentFeeLedgerRow(student, isChildOfFamily = false, isLastChild
         const statusMap = { paid: 'Paid', partial: 'Partial', advance: 'Advance', defaulter: 'Overdue', upcoming: 'Upcoming', not_enrolled: 'Not Enrolled' };
         const cleanStatus = statusMap[m.status] || 'Not Enrolled';
         let tooltip = `${m.month} ${CURRENT_YEAR}: ${cleanStatus}`;
+        const cellPKR = (m.status === 'defaulter')
+          ? convertToPKR(m.feeDue || student.monthlyFee, student.currencyCode)
+          : getStudentMonthPaidPKR(student, idx);
+        const cellPKRText = cellPKR.hasRate ? ' (' + formatPKRAmount(cellPKR.pkr) + ')' : ' (rate not set)';
         
         if (m.status === 'paid') {
           cellContent = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span><span>${student.currency}${m.amountPaid}</span>`;
-          tooltip += ` - Paid ${student.currency}${m.amountPaid}`;
+          tooltip += ` - Paid ${student.currency}${m.amountPaid}${cellPKRText}`;
           const rcpt = m.receiptNo || '';
           const pDate = m.paymentDate || 'Nov 24, 2026';
           const pMethod = m.paymentMethod || 'Online Card (Stripe)';
@@ -10489,13 +10548,13 @@ function renderStudentFeeLedgerRow(student, isChildOfFamily = false, isLastChild
           }
         } else if (m.status === 'partial') {
           cellContent = `<span class="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0"></span><span>${student.currency}${m.amountPaid}</span>`;
-          tooltip += ` - Partial: ${student.currency}${m.amountPaid} / Remaining: ${student.currency}${m.remainingDue}`;
+          tooltip += ` - Partial: ${student.currency}${m.amountPaid}${cellPKRText} / Remaining: ${student.currency}${m.remainingDue}`;
         } else if (m.status === 'advance') {
           cellContent = `<span class="w-1.5 h-1.5 rounded-full bg-teal-500 shrink-0"></span><span>${student.currency}${m.amountPaid}</span>`;
-          tooltip += ` - Advance: ${student.currency}${m.amountPaid}`;
+          tooltip += ` - Advance: ${student.currency}${m.amountPaid}${cellPKRText}`;
         } else if (m.status === 'defaulter') {
           cellContent = `<span class="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0"></span><span>${student.currency}${m.feeDue || student.monthlyFee}</span>`;
-          tooltip += ` - Overdue: ${student.currency}${m.feeDue}`;
+          tooltip += ` - Overdue: ${student.currency}${m.feeDue}${cellPKRText}`;
         } else {
           cellContent = `<span class="text-gray-300 font-normal">—</span>`;
           tooltip += ` - Not yet due`;
@@ -10581,22 +10640,31 @@ function renderAdminFeeMatrixView() {
   let monthPaidCount = 0;
   let monthPartialCount = 0;
   let monthOverdueCount = 0;
-  let monthTotalCollected = 0;
+  // Month total in PKR: each student's paid amount uses the frozen PKR of
+  // its covering payment where recorded, else the current rate. Amounts
+  // whose currency has no rate are excluded, never mixed into the total.
+  let monthTotalCollectedPKR = 0;
+  const monthTotalExcludedCodes = {};
 
   filtered.forEach(s => {
     const m = s.months ? s.months[CURRENT_MONTH_INDEX] : null;
     if (m) {
       if (m.status === 'paid' || m.status === 'advance') {
         monthPaidCount++;
-        monthTotalCollected += (m.amountPaid || 0);
+        const r = getStudentMonthPaidPKR(s, CURRENT_MONTH_INDEX);
+        if (r.hasRate) monthTotalCollectedPKR += r.pkr;
+        else monthTotalExcludedCodes[s.currencyCode || 'unknown'] = true;
       } else if (m.status === 'partial') {
         monthPartialCount++;
-        monthTotalCollected += (m.amountPaid || 0);
+        const r = getStudentMonthPaidPKR(s, CURRENT_MONTH_INDEX);
+        if (r.hasRate) monthTotalCollectedPKR += r.pkr;
+        else monthTotalExcludedCodes[s.currencyCode || 'unknown'] = true;
       } else if (m.status === 'defaulter') {
         monthOverdueCount++;
       }
     }
   });
+  const monthTotalExcludedList = Object.keys(monthTotalExcludedCodes);
 
   return `
     <div class="ts-card p-3.5 sm:p-6 mb-8 overflow-hidden">
@@ -10614,7 +10682,10 @@ function renderAdminFeeMatrixView() {
         </div>
 
         <!-- Primary Action Button: Receive Fee (Full-width on mobile, auto-width on desktop) -->
-        <div class="w-full sm:w-auto mt-2 sm:mt-0">
+        <div class="w-full sm:w-auto mt-2 sm:mt-0 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          <button onclick="openCurrencySettingsModal()" class="w-full sm:w-auto px-4 py-2.5 sm:py-2 text-xs font-bold rounded-full bg-white border border-[#0E4D45] text-[#0E4D45] hover:bg-[#E8EFEE] transition-colors shadow-sm flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap" title="Exchange rates — all amounts shown in PKR">
+            <span>Currency Settings</span>
+          </button>
           <button onclick="openReceiveFeeModal()" class="w-full sm:w-auto px-5 py-2.5 sm:py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors shadow-sm flex items-center justify-center gap-1.5 cursor-pointer">
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
             <span>Receive Fee</span>
@@ -10735,11 +10806,7 @@ function renderAdminFeeMatrixView() {
               class="h-9 w-full text-xs bg-white border border-[#ECEAE4] rounded-xl px-2.5 text-[#141F1E] font-medium outline-none focus:border-[#0E4D45] cursor-pointer shadow-2xs"
             >
               <option value="all" ${AppState.selectedCurrency === 'all' ? 'selected' : ''}>All Currencies</option>
-              <option value="USD" ${AppState.selectedCurrency === 'USD' ? 'selected' : ''}>$ USD</option>
-              <option value="GBP" ${AppState.selectedCurrency === 'GBP' ? 'selected' : ''}>£ GBP</option>
-              <option value="EUR" ${AppState.selectedCurrency === 'EUR' ? 'selected' : ''}>€ EUR</option>
-              <option value="CAD" ${AppState.selectedCurrency === 'CAD' ? 'selected' : ''}>C$ CAD</option>
-              <option value="PKR" ${AppState.selectedCurrency === 'PKR' ? 'selected' : ''}>Rs PKR</option>
+              ${ledgerCurrencyFilterCodes().map(c => `<option value="${c}" ${AppState.selectedCurrency === c ? 'selected' : ''}>${getCurrencySymbol(c)} ${c}</option>`).join('')}
             </select>
           </div>
         </div>
@@ -10763,7 +10830,7 @@ function renderAdminFeeMatrixView() {
           <span class="text-gray-300">·</span>
           <span class="text-red-700 font-semibold">${monthOverdueCount} Overdue</span>
           <span class="text-gray-300">·</span>
-          <span class="text-[#0E4D45] font-bold">$${monthTotalCollected.toLocaleString()} Month Total</span>
+          <span class="text-[#0E4D45] font-bold">${formatPKRAmount(monthTotalCollectedPKR)} Month Total</span>${monthTotalExcludedList.length > 0 ? `<span class="text-gray-300">·</span><span class="text-amber-700 font-semibold">${monthTotalExcludedList.join(', ')} excluded — rate not set</span>` : ''}
         </div>
       </div>
 
@@ -10822,7 +10889,7 @@ function renderAdminFeeMatrixView() {
             <span class="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0"></span><span class="font-bold text-[#141F1E]">${monthOverdueCount}</span> Overdue
           </div>
           <div class="font-bold text-[#0E4D45] shrink-0 pl-2">
-            $${monthTotalCollected.toLocaleString()} Total
+            ${formatPKRAmount(monthTotalCollectedPKR)} Total
           </div>
         </div>
       </div>
@@ -11098,7 +11165,7 @@ function renderMobileStudentFeeCard(student, isChildOfFamily = false) {
         <!-- Right: Monthly Fee & Status Badge -->
         <div class="text-right shrink-0">
           <div class="font-bold text-sm text-[#141F1E]">
-            ${student.currency || '$'}${student.monthlyFee || 0}<span class="text-[10px] text-gray-400 font-normal">/mo</span>
+            ${studentFeePKRHtml(student)}<span class="text-[10px] text-gray-400 font-normal">/mo</span>
           </div>
           <div class="mt-1">
             ${renderStudentLedgerStatusPill(student)}
@@ -11112,7 +11179,7 @@ function renderMobileStudentFeeCard(student, isChildOfFamily = false) {
         <div class="flex items-center justify-between text-[11px] text-[#7A8684] mb-2 font-medium">
           <span class="text-[10px] uppercase font-bold tracking-wider text-gray-400">12-Month Status (${CURRENT_YEAR})</span>
           <span class="text-[10px] font-semibold ${balanceDue > 0 ? 'text-red-600' : 'text-emerald-600'}">
-            ${balanceDue > 0 ? `-${student.currency || '$'}${balanceDue} Due` : 'Clear ✓'}
+            ${balanceDue > 0 ? studentDuePKRHtml(student, balanceDue) : 'Clear ✓'}
           </span>
         </div>
 
@@ -11218,7 +11285,7 @@ function renderMobileFamilyLedgerGroup(fam) {
         <div class="text-right">
           <span class="text-[10px] text-gray-400 font-medium block">Total Balance</span>
           <span class="text-xs font-bold ${fam.totalDue > 0 ? 'text-red-600' : 'text-emerald-600'}">
-            ${fam.totalDue > 0 ? `-${fam.currency}${fam.totalDue} Due` : 'Clear ✓'}
+            ${fam.totalDue > 0 ? familyDuePKRHtml(fam) : 'Clear ✓'}
           </span>
         </div>
       </div>
@@ -11344,14 +11411,9 @@ function updateFeeFilterBottomSheetUI() {
   }
 
   if (currencyContainer) {
-    const currencies = [
-      { id: 'all', label: 'All' },
-      { id: 'USD', label: '$ USD' },
-      { id: 'GBP', label: '£ GBP' },
-      { id: 'EUR', label: '€ EUR' },
-      { id: 'CAD', label: 'C$ CAD' },
-      { id: 'PKR', label: 'Rs PKR' }
-    ];
+    const currencies = [{ id: 'all', label: 'All' }].concat(
+      ledgerCurrencyFilterCodes().map(c => ({ id: c, label: getCurrencySymbol(c) + ' ' + c }))
+    );
     currencyContainer.innerHTML = currencies.map(c => {
       const active = AppState.selectedCurrency === c.id;
       return `
@@ -11771,7 +11833,7 @@ function renderStudentDirectoryRows(students) {
         <!-- 5. Agreed Fee (Single-line clean agreed monthly fee) -->
         <td class="py-3.5 px-2.5 whitespace-nowrap" data-label="Agreed Fee">
           <span class="text-xs text-[#141F1E] font-medium">
-            <span class="font-bold text-[#0E4D45]">${s.currency}${s.monthlyFee}</span><span class="text-[#7A8684] text-[11px]">/mo</span>
+            <span class="font-bold text-[#0E4D45]">${studentFeePKRHtml(s)}</span><span class="text-[#7A8684] text-[11px]">/mo</span>
           </span>
         </td>
 
@@ -12664,6 +12726,691 @@ async function handleSavePayrollSettings() {
   showToastNotification('✓ Payroll settings saved. Unpaid payroll figures recalculated.');
 }
 window.handleSavePayrollSettings = handleSavePayrollSettings;
+
+
+// ==== PKR CURRENCY MODULE START ====
+// ==========================================
+// 7c. MULTI-CURRENCY → PKR (Dashboard, Ledger, Directory)
+// Base currency is PKR. Exchange rates live in Firestore
+// (settings/currency), refresh automatically once a month from a free
+// public API, and can be edited by hand in the Currency Settings modal.
+// A rate edited by hand is kept even after a monthly automatic update.
+// A payment's PKR equivalent is frozen when it is recorded
+// (pkrAmount / pkrRate / pkrMonth on the payment doc) and is never
+// recalculated. Unpaid balances always convert at the CURRENT rate.
+// Amounts whose currency has no rate are never mixed into PKR totals.
+// ==========================================
+
+// Full ISO 4217 currency list (code + English name), alphabetical.
+const ISO_CURRENCIES = [
+  { code: 'AED', name: 'UAE Dirham' },
+  { code: 'AFN', name: 'Afghan Afghani' },
+  { code: 'ALL', name: 'Albanian Lek' },
+  { code: 'AMD', name: 'Armenian Dram' },
+  { code: 'ANG', name: 'Netherlands Antillean Guilder' },
+  { code: 'AOA', name: 'Angolan Kwanza' },
+  { code: 'ARS', name: 'Argentine Peso' },
+  { code: 'AUD', name: 'Australian Dollar' },
+  { code: 'AWG', name: 'Aruban Florin' },
+  { code: 'AZN', name: 'Azerbaijani Manat' },
+  { code: 'BAM', name: 'Bosnia-Herzegovina Convertible Mark' },
+  { code: 'BBD', name: 'Barbadian Dollar' },
+  { code: 'BDT', name: 'Bangladeshi Taka' },
+  { code: 'BGN', name: 'Bulgarian Lev' },
+  { code: 'BHD', name: 'Bahraini Dinar' },
+  { code: 'BIF', name: 'Burundian Franc' },
+  { code: 'BMD', name: 'Bermudian Dollar' },
+  { code: 'BND', name: 'Brunei Dollar' },
+  { code: 'BOB', name: 'Bolivian Boliviano' },
+  { code: 'BRL', name: 'Brazilian Real' },
+  { code: 'BSD', name: 'Bahamian Dollar' },
+  { code: 'BTN', name: 'Bhutanese Ngultrum' },
+  { code: 'BWP', name: 'Botswana Pula' },
+  { code: 'BYN', name: 'Belarusian Ruble' },
+  { code: 'BZD', name: 'Belize Dollar' },
+  { code: 'CAD', name: 'Canadian Dollar' },
+  { code: 'CDF', name: 'Congolese Franc' },
+  { code: 'CHF', name: 'Swiss Franc' },
+  { code: 'CLP', name: 'Chilean Peso' },
+  { code: 'CLF', name: 'Chilean Unit of Account (UF)' },
+  { code: 'CNY', name: 'Chinese Yuan' },
+  { code: 'CNH', name: 'Chinese Yuan (offshore)' },
+  { code: 'COP', name: 'Colombian Peso' },
+  { code: 'CRC', name: 'Costa Rican Colon' },
+  { code: 'CUP', name: 'Cuban Peso' },
+  { code: 'CVE', name: 'Cape Verdean Escudo' },
+  { code: 'CZK', name: 'Czech Koruna' },
+  { code: 'DJF', name: 'Djiboutian Franc' },
+  { code: 'DKK', name: 'Danish Krone' },
+  { code: 'DOP', name: 'Dominican Peso' },
+  { code: 'DZD', name: 'Algerian Dinar' },
+  { code: 'EGP', name: 'Egyptian Pound' },
+  { code: 'ERN', name: 'Eritrean Nakfa' },
+  { code: 'ETB', name: 'Ethiopian Birr' },
+  { code: 'EUR', name: 'Euro' },
+  { code: 'FJD', name: 'Fijian Dollar' },
+  { code: 'FKP', name: 'Falkland Islands Pound' },
+  { code: 'FOK', name: 'Faroese Króna' },
+  { code: 'GBP', name: 'British Pound Sterling' },
+  { code: 'GEL', name: 'Georgian Lari' },
+  { code: 'GHS', name: 'Ghanaian Cedi' },
+  { code: 'GIP', name: 'Gibraltar Pound' },
+  { code: 'GGP', name: 'Guernsey Pound' },
+  { code: 'GMD', name: 'Gambian Dalasi' },
+  { code: 'GNF', name: 'Guinean Franc' },
+  { code: 'GTQ', name: 'Guatemalan Quetzal' },
+  { code: 'GYD', name: 'Guyanese Dollar' },
+  { code: 'HKD', name: 'Hong Kong Dollar' },
+  { code: 'HNL', name: 'Honduran Lempira' },
+  { code: 'HRK', name: 'Croatian Kuna' },
+  { code: 'HTG', name: 'Haitian Gourde' },
+  { code: 'HUF', name: 'Hungarian Forint' },
+  { code: 'IDR', name: 'Indonesian Rupiah' },
+  { code: 'ILS', name: 'Israeli New Shekel' },
+  { code: 'IMP', name: 'Isle of Man Pound' },
+  { code: 'INR', name: 'Indian Rupee' },
+  { code: 'IQD', name: 'Iraqi Dinar' },
+  { code: 'IRR', name: 'Iranian Rial' },
+  { code: 'ISK', name: 'Icelandic Krona' },
+  { code: 'JMD', name: 'Jamaican Dollar' },
+  { code: 'JEP', name: 'Jersey Pound' },
+  { code: 'JOD', name: 'Jordanian Dinar' },
+  { code: 'JPY', name: 'Japanese Yen' },
+  { code: 'KES', name: 'Kenyan Shilling' },
+  { code: 'KID', name: 'Kiribati Dollar' },
+  { code: 'KGS', name: 'Kyrgystani Som' },
+  { code: 'KHR', name: 'Cambodian Riel' },
+  { code: 'KMF', name: 'Comorian Franc' },
+  { code: 'KPW', name: 'North Korean Won' },
+  { code: 'KRW', name: 'South Korean Won' },
+  { code: 'KWD', name: 'Kuwaiti Dinar' },
+  { code: 'KYD', name: 'Cayman Islands Dollar' },
+  { code: 'KZT', name: 'Kazakhstani Tenge' },
+  { code: 'LAK', name: 'Laotian Kip' },
+  { code: 'LBP', name: 'Lebanese Pound' },
+  { code: 'LKR', name: 'Sri Lankan Rupee' },
+  { code: 'LRD', name: 'Liberian Dollar' },
+  { code: 'LSL', name: 'Lesotho Loti' },
+  { code: 'LYD', name: 'Libyan Dinar' },
+  { code: 'MAD', name: 'Moroccan Dirham' },
+  { code: 'MDL', name: 'Moldovan Leu' },
+  { code: 'MGA', name: 'Malagasy Ariary' },
+  { code: 'MKD', name: 'Macedonian Denar' },
+  { code: 'MMK', name: 'Myanma Kyat' },
+  { code: 'MNT', name: 'Mongolian Tugrik' },
+  { code: 'MOP', name: 'Macanese Pataca' },
+  { code: 'MRU', name: 'Mauritanian Ouguiya' },
+  { code: 'MUR', name: 'Mauritian Rupee' },
+  { code: 'MVR', name: 'Maldivian Rufiyaa' },
+  { code: 'MWK', name: 'Malawian Kwacha' },
+  { code: 'MXN', name: 'Mexican Peso' },
+  { code: 'MYR', name: 'Malaysian Ringgit' },
+  { code: 'MZN', name: 'Mozambican Metical' },
+  { code: 'NAD', name: 'Namibian Dollar' },
+  { code: 'NGN', name: 'Nigerian Naira' },
+  { code: 'NIO', name: 'Nicaraguan Cordoba' },
+  { code: 'NOK', name: 'Norwegian Krone' },
+  { code: 'NPR', name: 'Nepalese Rupee' },
+  { code: 'NZD', name: 'New Zealand Dollar' },
+  { code: 'OMR', name: 'Omani Rial' },
+  { code: 'PAB', name: 'Panamanian Balboa' },
+  { code: 'PEN', name: 'Peruvian Sol' },
+  { code: 'PGK', name: 'Papua New Guinean Kina' },
+  { code: 'PHP', name: 'Philippine Peso' },
+  { code: 'PKR', name: 'Pakistani Rupee' },
+  { code: 'PLN', name: 'Polish Zloty' },
+  { code: 'PYG', name: 'Paraguayan Guarani' },
+  { code: 'QAR', name: 'Qatari Riyal' },
+  { code: 'RON', name: 'Romanian Leu' },
+  { code: 'RSD', name: 'Serbian Dinar' },
+  { code: 'RUB', name: 'Russian Ruble' },
+  { code: 'RWF', name: 'Rwandan Franc' },
+  { code: 'SAR', name: 'Saudi Riyal' },
+  { code: 'SBD', name: 'Solomon Islands Dollar' },
+  { code: 'SCR', name: 'Seychellois Rupee' },
+  { code: 'SDG', name: 'Sudanese Pound' },
+  { code: 'SEK', name: 'Swedish Krona' },
+  { code: 'SGD', name: 'Singapore Dollar' },
+  { code: 'SHP', name: 'Saint Helena Pound' },
+  { code: 'SLE', name: 'Sierra Leonean Leone' },
+  { code: 'SLL', name: 'Sierra Leonean Leone' },
+  { code: 'SOS', name: 'Somali Shilling' },
+  { code: 'SRD', name: 'Surinamese Dollar' },
+  { code: 'SSP', name: 'South Sudanese Pound' },
+  { code: 'STN', name: 'Sao Tome and Principe Dobra' },
+  { code: 'SYP', name: 'Syrian Pound' },
+  { code: 'SZL', name: 'Swazi Lilangeni' },
+  { code: 'THB', name: 'Thai Baht' },
+  { code: 'TJS', name: 'Tajikistani Somoni' },
+  { code: 'TMT', name: 'Turkmenistani Manat' },
+  { code: 'TND', name: 'Tunisian Dinar' },
+  { code: 'TOP', name: 'Tongan Pa\'anga' },
+  { code: 'TRY', name: 'Turkish Lira' },
+  { code: 'TTD', name: 'Trinidad and Tobago Dollar' },
+  { code: 'TVD', name: 'Tuvaluan Dollar' },
+  { code: 'TWD', name: 'New Taiwan Dollar' },
+  { code: 'TZS', name: 'Tanzanian Shilling' },
+  { code: 'UAH', name: 'Ukrainian Hryvnia' },
+  { code: 'UGX', name: 'Ugandan Shilling' },
+  { code: 'USD', name: 'US Dollar' },
+  { code: 'UYU', name: 'Uruguayan Peso' },
+  { code: 'UZS', name: 'Uzbekistan Som' },
+  { code: 'VED', name: 'Venezuelan Bolivar Soberano' },
+  { code: 'VES', name: 'Venezuelan Bolivar Soberano' },
+  { code: 'VND', name: 'Vietnamese Dong' },
+  { code: 'VUV', name: 'Vanuatu Vatu' },
+  { code: 'WST', name: 'Samoan Tala' },
+  { code: 'XAF', name: 'Central African CFA Franc' },
+  { code: 'XCD', name: 'East Caribbean Dollar' },
+  { code: 'XCG', name: 'Caribbean Guilder' },
+  { code: 'XDR', name: 'Special Drawing Rights' },
+  { code: 'XOF', name: 'West African CFA Franc' },
+  { code: 'XPF', name: 'CFP Franc' },
+  { code: 'YER', name: 'Yemeni Rial' },
+  { code: 'ZAR', name: 'South African Rand' },
+  { code: 'ZMW', name: 'Zambian Kwacha' },
+  { code: 'ZWG', name: 'Zimbabwe Gold' },
+  { code: 'ZWL', name: 'Zimbabwean Dollar' }
+];
+const ISO_CURRENCY_BY_CODE = {};
+ISO_CURRENCIES.forEach(function (c) { ISO_CURRENCY_BY_CODE[c.code] = c.name; });
+
+// Display symbol for a currency code; falls back to the code itself.
+const CURRENCY_SYMBOLS = { 'USD': '$', 'GBP': '£', 'EUR': '€', 'CAD': 'C$', 'PKR': 'Rs', 'AED': 'AED', 'SAR': 'SAR', 'INR': '₹', 'AUD': 'A$', 'NZD': 'NZ$', 'JPY': '¥', 'CNY': 'CN¥', 'HKD': 'HK$', 'SGD': 'S$', 'CHF': 'CHF', 'SEK': 'kr', 'NOK': 'kr', 'DKK': 'kr', 'CZK': 'Kč', 'PLN': 'zł', 'HUF': 'Ft', 'ILS': '₪', 'THB': '฿', 'MYR': 'RM', 'IDR': 'Rp', 'PHP': '₱', 'KRW': '₩', 'TWD': 'NT$', 'ZAR': 'R', 'BRL': 'R$', 'MXN': 'MX$', 'TRY': '₺', 'RUB': '₽', 'UAH': '₴', 'QAR': 'QR', 'KWD': 'KD', 'BHD': 'BD', 'OMR': 'RO', 'JOD': 'JD', 'EGP': 'E£', 'NGN': '₦', 'KES': 'KSh', 'GEL': '₾' };
+function getCurrencySymbol(code) {
+  if (!code) return '$';
+  const c = String(code).toUpperCase();
+  return CURRENCY_SYMBOLS[c] || c;
+}
+
+// Old payment docs stored only a symbol, never a currencyCode. Resolve
+// through the student / family first; this map is the last resort. All
+// current data is USD, so '$' -> 'USD' is the only mapping in practice.
+const CURRENCY_CODE_BY_SYMBOL = { '$': 'USD', '£': 'GBP', '€': 'EUR', 'C$': 'CAD', 'Rs': 'PKR' };
+
+// Seeded PKR-per-1-unit rates (open.er-api.com v6, USD base, 24 Nov 2026).
+// Fallback only: the monthly auto-update replaces them with fresh rates.
+const DEFAULT_CURRENCY_RATES = { USD: 276.55, GBP: 360.71, CAD: 192.58, EUR: 302.03, AED: 75.30, SAR: 73.75 };
+const CURRENCY_SETTINGS_CACHE_KEY = 'lms_currency_settings';
+const CURRENCY_RATE_API_PRIMARY = 'https://open.er-api.com/v6/latest/USD';
+const CURRENCY_RATE_API_FALLBACK = 'https://api.exchangerate-api.com/v4/latest/USD';
+let currencySettingsLoaded = false;
+let currencySettingsLoading = false;
+let currencyRatesStale = false;
+let currencySettingsDraft = null;
+
+function currentMonthKey() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
+function currencyMonthLabel(monthKey) {
+  if (!monthKey || typeof monthKey !== 'string') return '';
+  const parts = monthKey.split('-');
+  const m = parseInt(parts[1], 10);
+  const name = (typeof FULL_MONTHS_LIST !== 'undefined' && FULL_MONTHS_LIST[m - 1]) ? FULL_MONTHS_LIST[m - 1] : ('Month ' + (parts[1] || ''));
+  return name + ' ' + (parts[0] || '');
+}
+
+function getCurrencySettings() {
+  const stored = (typeof AppState !== 'undefined' && AppState.currencySettings && typeof AppState.currencySettings === 'object') ? AppState.currencySettings : {};
+  return {
+    base: 'PKR',
+    month: (typeof stored.month === 'string' && stored.month) ? stored.month : currentMonthKey(),
+    updatedAt: stored.updatedAt || null,
+    source: stored.source || 'seed',
+    rates: Object.assign({}, DEFAULT_CURRENCY_RATES, stored.rates || {}),
+    manualOverrides: Object.assign({}, stored.manualOverrides || {})
+  };
+}
+
+function getCurrencyRate(code) {
+  if (!code) return null;
+  const c = String(code).toUpperCase();
+  if (c === 'PKR') return 1;
+  const r = Number(getCurrencySettings().rates[c]);
+  return (isFinite(r) && r > 0) ? r : null;
+}
+
+// Convert an amount in `code` to whole PKR. Returns { pkr, hasRate }.
+function convertToPKR(amount, code) {
+  const rate = getCurrencyRate(code);
+  if (rate === null) return { pkr: 0, hasRate: false };
+  return { pkr: Math.round((Number(amount) || 0) * rate), hasRate: true };
+}
+
+// "Rs. 218,960" — whole rupees, thousands separators.
+function formatPKRAmount(pkr) {
+  return 'Rs. ' + (Math.round(Number(pkr) || 0)).toLocaleString('en-US');
+}
+
+// Currency code for a payment doc (or one of its allocations). Old docs
+// stored only a symbol; resolve through the student / family first.
+function getPaymentCurrencyCode(p, a) {
+  if (a && a.currencyCode) return String(a.currencyCode).toUpperCase();
+  if (p && p.currencyCode) return String(p.currencyCode).toUpperCase();
+  const sid = (a && a.studentId) || (p && p.studentId) || '';
+  const students = (typeof AppState !== 'undefined' && AppState.students) || [];
+  const s = students.find(function (x) { return String(x.id) === String(sid); });
+  if (s && s.currencyCode) return String(s.currencyCode).toUpperCase();
+  if (sid && typeof isFamilyTarget === 'function' && isFamilyTarget(sid)) {
+    const member = students.find(function (x) { return (x.familyId === sid || x.familyTag === sid) && x.currencyCode; });
+    if (member) return String(member.currencyCode).toUpperCase();
+  }
+  const sym = (a && a.currency) || (p && p.currency) || '';
+  return CURRENCY_CODE_BY_SYMBOL[sym] || null;
+}
+
+// PKR value of one allocation inside a payment: the payment's frozen PKR
+// split pro-rata across its allocations, else converted at the current
+// rate. Returns { pkr, hasRate }.
+function getAllocationPKR(p, a) {
+  const amt = Number((a && a.allocatedAmount) || 0);
+  if (amt <= 0) return { pkr: 0, hasRate: true };
+  if (p && typeof p.pkrAmount === 'number' && Number(p.amount) > 0) {
+    return { pkr: Math.round(p.pkrAmount * amt / Number(p.amount)), hasRate: true };
+  }
+  return convertToPKR(amt, getPaymentCurrencyCode(p, a));
+}
+
+// PKR collected for one month from PAYMENT_LEDGER (frozen PKR first).
+// Returns { pkr, excludedCodes } where excludedCodes maps currency codes
+// that had no rate (and were therefore left out of the total).
+function getMonthFeeCollectedPKR(monthIndex, year) {
+  const shortM = MONTHS_LIST[monthIndex];
+  const fullM = FULL_MONTHS_LIST[monthIndex];
+  let pkr = 0;
+  const excludedCodes = {};
+  const noteExcluded = function (code) { const c = code || 'unknown'; excludedCodes[c] = (excludedCodes[c] || 0) + 1; };
+  if (Array.isArray(PAYMENT_LEDGER) && PAYMENT_LEDGER.length > 0) {
+    PAYMENT_LEDGER.forEach(function (p) {
+      if (!p) return;
+      if (Array.isArray(p.allocations) && p.allocations.length > 0) {
+        p.allocations.forEach(function (a) {
+          if (!a || !(a.monthIndex === monthIndex || a.month === shortM || a.month === fullM)) return;
+          const r = getAllocationPKR(p, a);
+          if (r.hasRate) pkr += r.pkr; else noteExcluded(getPaymentCurrencyCode(p, a));
+        });
+      } else if (p.allocatedTo && (String(p.allocatedTo).indexOf(shortM) !== -1 || String(p.allocatedTo).indexOf(fullM) !== -1)) {
+        const r = getAllocationPKR(p, { allocatedAmount: Number(p.amount) || 0 });
+        if (r.hasRate) pkr += r.pkr; else noteExcluded(getPaymentCurrencyCode(p, null));
+      } else if (p.date) {
+        const d = new Date(p.date);
+        if (!isNaN(d.getTime()) && d.getMonth() === monthIndex && (!year || d.getFullYear() === year)) {
+          const r = getAllocationPKR(p, { allocatedAmount: Number(p.amount) || 0 });
+          if (r.hasRate) pkr += r.pkr; else noteExcluded(getPaymentCurrencyCode(p, null));
+        }
+      }
+    });
+    return { pkr: pkr, excludedCodes: excludedCodes };
+  }
+  (AppState.students || []).forEach(function (s) {
+    const m = Array.isArray(s.months) ? s.months[monthIndex] : null;
+    if (!m) return;
+    const r = convertToPKR(m.amountPaid || 0, s.currencyCode);
+    if (r.hasRate) pkr += r.pkr;
+    else if ((m.amountPaid || 0) > 0) noteExcluded(s.currencyCode);
+  });
+  return { pkr: pkr, excludedCodes: excludedCodes };
+}
+
+// PKR paid for one student's one month (used by the Ledger). Prefers the
+// frozen PKR of the covering payment(s); any remainder converts at the
+// current rate. Returns { pkr, hasRate, frozen }.
+function getStudentMonthPaidPKR(student, monthIndex) {
+  const m = student && Array.isArray(student.months) ? student.months[monthIndex] : null;
+  if (!m) return { pkr: 0, hasRate: true };
+  const amt = Number(m.amountPaid) || 0;
+  if (amt <= 0) return { pkr: 0, hasRate: true };
+  let frozenPkr = 0;
+  let frozenCovered = 0;
+  if (Array.isArray(PAYMENT_LEDGER)) {
+    PAYMENT_LEDGER.forEach(function (p) {
+      if (!p || !Array.isArray(p.allocations) || typeof p.pkrAmount !== 'number' || Number(p.amount) <= 0) return;
+      p.allocations.forEach(function (a) {
+        if (!a || a.studentId !== student.id) return;
+        if (!(a.monthIndex === monthIndex || a.month === MONTHS_LIST[monthIndex] || a.month === FULL_MONTHS_LIST[monthIndex])) return;
+        const alloc = Number(a.allocatedAmount) || 0;
+        if (alloc <= 0) return;
+        frozenPkr += Math.round(p.pkrAmount * alloc / Number(p.amount));
+        frozenCovered += alloc;
+      });
+    });
+  }
+  const remainder = Math.max(0, Math.round((amt - frozenCovered) * 100) / 100);
+  if (remainder <= 0) return { pkr: frozenPkr, hasRate: true, frozen: true };
+  const conv = convertToPKR(remainder, student.currencyCode);
+  if (!conv.hasRate) return { pkr: frozenPkr, hasRate: false };
+  return { pkr: frozenPkr + conv.pkr, hasRate: true, frozen: frozenCovered > 0 };
+}
+
+// Display helpers: PKR first, original currency small beside it. When no
+// rate is set, the original currency is shown on its own (never a wrong
+// PKR figure).
+function studentFeePKRHtml(student) {
+  const fee = Number(student.monthlyFee) || 0;
+  const conv = convertToPKR(fee, student.currencyCode);
+  if (!conv.hasRate) return (student.currency || '$') + formatFeeAmount(fee);
+  const orig = (student.currencyCode && String(student.currencyCode).toUpperCase() !== 'PKR')
+    ? ' <span class="text-[10px] text-gray-400 font-normal">(' + (student.currency || '') + formatFeeAmount(fee) + ')</span>' : '';
+  return formatPKRAmount(conv.pkr) + orig;
+}
+
+function studentDuePKRHtml(student, balanceDue) {
+  if (!balanceDue || balanceDue <= 0) return 'Clear';
+  const conv = convertToPKR(balanceDue, student.currencyCode);
+  if (!conv.hasRate) return '-' + (student.currency || '$') + formatFeeAmount(balanceDue) + ' Due';
+  const orig = (student.currencyCode && String(student.currencyCode).toUpperCase() !== 'PKR')
+    ? ' <span class="text-[10px] font-normal">(' + (student.currency || '') + formatFeeAmount(balanceDue) + ')</span>' : '';
+  return '-' + formatPKRAmount(conv.pkr) + orig + ' Due';
+}
+
+function familyPackagePKRHtml(fam, pkgFee, pkgShare) {
+  const code = (fam.students && fam.students[0] && fam.students[0].currencyCode) || null;
+  const feeConv = convertToPKR(pkgFee, code);
+  const shareConv = convertToPKR(pkgShare, code);
+  if (!feeConv.hasRate || !shareConv.hasRate) {
+    return 'Package ' + (fam.currency || '$') + formatFeeAmount(pkgFee) + '/mo • ' + (fam.currency || '$') + formatFeeAmount(pkgShare) + ' per child';
+  }
+  const orig = (code && String(code).toUpperCase() !== 'PKR')
+    ? ' (' + (fam.currency || '') + formatFeeAmount(pkgFee) + '/mo • ' + (fam.currency || '') + formatFeeAmount(pkgShare) + ' per child)' : '';
+  return 'Package ' + formatPKRAmount(feeConv.pkr) + '/mo • ' + formatPKRAmount(shareConv.pkr) + ' per child' + orig;
+}
+
+function familyDuePKRHtml(fam) {
+  let pkr = 0;
+  let hasRate = true;
+  let orig = 0;
+  (fam.students || []).forEach(function (s) {
+    const due = Number(getStudentBalanceDue(s)) || 0;
+    orig += due;
+    const conv = convertToPKR(due, s.currencyCode);
+    if (conv.hasRate) pkr += conv.pkr; else if (due > 0) hasRate = false;
+  });
+  if (!hasRate) return '-' + (fam.currency || '$') + formatFeeAmount(fam.totalDue) + ' Due';
+  const code = (fam.students && fam.students[0] && fam.students[0].currencyCode) || null;
+  const origText = (code && String(code).toUpperCase() !== 'PKR')
+    ? ' (' + (fam.currency || '') + formatFeeAmount(orig) + ')' : '';
+  return '-' + formatPKRAmount(pkr) + origText + ' Due';
+}
+
+// Currency codes for the Ledger currency filter: every currency actually
+// used by a student, plus the common ones, so the filter never hides a
+// currency that exists in the data.
+function ledgerCurrencyFilterCodes() {
+  const used = {};
+  (AppState.students || []).forEach(function (s) { if (s.currencyCode) used[String(s.currencyCode).toUpperCase()] = true; });
+  ['USD', 'GBP', 'EUR', 'CAD', 'PKR'].forEach(function (c) { used[c] = true; });
+  return Object.keys(used).sort();
+}
+
+// Load currency settings: local cache first, then Firestore
+// settings/currency; seeded rates when nothing is stored yet. Then runs
+// the monthly auto-update check once per session.
+async function loadCurrencySettings() {
+  try {
+    const cached = loadCache(CURRENCY_SETTINGS_CACHE_KEY, null);
+    if (cached && typeof cached === 'object') {
+      AppState.currencySettings = {
+        base: 'PKR',
+        month: cached.month || currentMonthKey(),
+        updatedAt: cached.updatedAt || null,
+        source: cached.source || 'seed',
+        rates: Object.assign({}, cached.rates || {}),
+        manualOverrides: Object.assign({}, cached.manualOverrides || {})
+      };
+    }
+  } catch (e) {}
+  if (typeof db !== 'undefined' && db) {
+    try {
+      const snap = await firestoreGetWithTimeout(db.collection('settings').doc('currency').get());
+      if (snap && snap.exists && snap.data()) {
+        const d = snap.data();
+        AppState.currencySettings = {
+          base: 'PKR',
+          month: (typeof d.month === 'string' && d.month) ? d.month : currentMonthKey(),
+          updatedAt: d.updatedAt || null,
+          source: d.source || 'manual',
+          rates: Object.assign({}, d.rates || {}),
+          manualOverrides: Object.assign({}, d.manualOverrides || {})
+        };
+        saveCache(CURRENCY_SETTINGS_CACHE_KEY, AppState.currencySettings);
+      }
+    } catch (e) {
+      console.warn('[Currency] Could not load currency settings from cloud:', e.message);
+    }
+  }
+  try { await maybeUpdateCurrencyRates(false); } catch (e) {}
+}
+
+async function saveCurrencySettingsToCloud(settings) {
+  if (typeof db === 'undefined' || !db) {
+    firestoreSyncError = 'Firestore is not connected (database may not exist yet).';
+    return false;
+  }
+  try {
+    await db.collection('settings').doc('currency').set(
+      { base: 'PKR', month: settings.month, updatedAt: settings.updatedAt, source: settings.source, rates: settings.rates, manualOverrides: settings.manualOverrides || {} },
+      { merge: true }
+    );
+    return true;
+  } catch (e) {
+    firestoreSyncError = e.message;
+    console.warn('[Currency] Error saving currency settings:', e.message);
+    return false;
+  }
+}
+
+// Fetch PKR-per-unit rates from a free public API (no key). Primary:
+// open.er-api.com v6 (USD base, ~166 currencies). Fallback: the same
+// provider's v4 endpoint. Returns { CODE: pkrPerUnit } or null.
+async function fetchCurrencyRatesFromApi() {
+  const urls = [CURRENCY_RATE_API_PRIMARY, CURRENCY_RATE_API_FALLBACK];
+  for (let i = 0; i < urls.length; i++) {
+    try {
+      const res = await firestoreGetWithTimeout(fetch(urls[i]));
+      if (!res || !res.ok) continue;
+      const data = await res.json();
+      const rates = data && data.rates;
+      const pkrPerUsd = Number(rates && rates.PKR);
+      if (!rates || !isFinite(pkrPerUsd) || pkrPerUsd <= 0) continue;
+      const out = {};
+      Object.keys(rates).forEach(function (code) {
+        const perUsd = Number(rates[code]);
+        if (code === 'PKR' || !isFinite(perUsd) || perUsd <= 0) return;
+        out[code] = Math.round((pkrPerUsd / perUsd) * 100) / 100;
+      });
+      out.USD = Math.round(pkrPerUsd * 100) / 100;
+      return out;
+    } catch (e) { /* try the next source */ }
+  }
+  return null;
+}
+
+// Monthly auto-update: when the stored rates belong to an earlier month
+// (or have never been fetched), pull fresh rates and save them. Manual
+// overrides always win. Returns true when rates were refreshed.
+async function maybeUpdateCurrencyRates(force) {
+  const current = getCurrencySettings();
+  const thisMonth = currentMonthKey();
+  if (!force && current.month === thisMonth && current.source !== 'seed') return false;
+  const fetched = await fetchCurrencyRatesFromApi();
+  if (!fetched) {
+    currencyRatesStale = current.month !== thisMonth;
+    return false;
+  }
+  const next = {
+    base: 'PKR',
+    month: thisMonth,
+    updatedAt: new Date().toISOString(),
+    source: 'api',
+    rates: Object.assign({}, fetched, current.manualOverrides || {}),
+    manualOverrides: Object.assign({}, current.manualOverrides || {})
+  };
+  AppState.currencySettings = next;
+  currencyRatesStale = false;
+  try { saveCache(CURRENCY_SETTINGS_CACHE_KEY, next); } catch (e) {}
+  try { await saveCurrencySettingsToCloud(next); } catch (e) {}
+  return true;
+}
+
+function openCurrencySettingsModal() {
+  const modal = document.getElementById('currency-settings-modal');
+  if (!modal) return;
+  currencySettingsDraft = getCurrencySettings();
+  currencySettingsDraft.baseRates = Object.assign({}, currencySettingsDraft.rates);
+  renderCurrencySettingsInfo();
+  renderCurrencyRatesTable('');
+  renderCurrencyAddSelect();
+  modal.classList.add('active');
+}
+window.openCurrencySettingsModal = openCurrencySettingsModal;
+
+function closeCurrencySettingsModal() {
+  const modal = document.getElementById('currency-settings-modal');
+  if (modal) modal.classList.remove('active');
+  currencySettingsDraft = null;
+}
+window.closeCurrencySettingsModal = closeCurrencySettingsModal;
+
+function renderCurrencySettingsInfo() {
+  const s = currencySettingsDraft || getCurrencySettings();
+  const set = function (id, v) { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('currency-settings-month', currencyMonthLabel(s.month));
+  set('currency-settings-updated', s.updatedAt ? new Date(s.updatedAt).toLocaleString() : 'Not yet');
+  set('currency-settings-source', s.source === 'api' ? 'Automatic (monthly)' : (s.source === 'manual' ? 'Manual' : 'Seed rates'));
+  const note = document.getElementById('currency-settings-stale-note');
+  if (note) {
+    if (currencyRatesStale) {
+      note.textContent = 'Rates from ' + currencyMonthLabel(s.month) + ' — could not update. Previous rates are still in use.';
+      note.classList.remove('hidden');
+    } else {
+      note.classList.add('hidden');
+    }
+  }
+}
+
+function renderCurrencyRatesTable(filter) {
+  const body = document.getElementById('currency-rates-table-body');
+  if (!body) return;
+  const s = currencySettingsDraft || getCurrencySettings();
+  const q = String(filter || '').trim().toLowerCase();
+  const commonFirst = ['USD', 'GBP', 'CAD', 'EUR', 'AED', 'SAR'];
+  const codes = Object.keys(s.rates).sort(function (a, b) {
+    const ra = commonFirst.indexOf(a);
+    const rb = commonFirst.indexOf(b);
+    if (ra !== -1 || rb !== -1) return (ra === -1 ? 99 : ra) - (rb === -1 ? 99 : rb);
+    return a < b ? -1 : (a > b ? 1 : 0);
+  });
+  const rows = codes.filter(function (code) {
+    if (!q) return true;
+    const name = (ISO_CURRENCY_BY_CODE[code] || '').toLowerCase();
+    return code.toLowerCase().indexOf(q) !== -1 || name.indexOf(q) !== -1;
+  });
+  if (rows.length === 0) {
+    body.innerHTML = '<tr><td colspan="3" class="px-3 py-4 text-center text-[#7A8684]">No currency matches that search.</td></tr>';
+    return;
+  }
+  body.innerHTML = rows.map(function (code) {
+    const isManual = s.manualOverrides && s.manualOverrides[code] !== undefined;
+    return '<tr class="border-t border-[#ECEAE4]">' +
+      '<td class="px-3 py-2 font-bold text-[#141F1E]">' + code + (isManual ? ' <span class="ml-1 text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#E8EFEE] text-[#0E4D45]">MANUAL</span>' : '') + '</td>' +
+      '<td class="px-3 py-2 text-[#7A8684]">' + (ISO_CURRENCY_BY_CODE[code] || '') + '</td>' +
+      '<td class="px-3 py-2 text-right"><input type="number" min="0" step="any" data-currency-rate="' + code + '" value="' + s.rates[code] + '" class="w-28 bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-8 px-2 text-xs text-[#0E4D45] font-bold text-right outline-none focus:border-[#0E4D45] focus:bg-white transition-all"></td>' +
+      '</tr>';
+  }).join('');
+}
+window.renderCurrencyRatesTable = renderCurrencyRatesTable;
+
+function renderCurrencyAddSelect() {
+  const sel = document.getElementById('currency-add-select');
+  if (!sel) return;
+  const s = currencySettingsDraft || getCurrencySettings();
+  const have = s.rates || {};
+  const missing = ISO_CURRENCIES.filter(function (c) { return have[c.code] === undefined; });
+  sel.innerHTML = '<option value="" disabled selected>Add a currency…</option>' + missing.map(function (c) {
+    return '<option value="' + c.code + '">' + c.code + ' — ' + c.name + '</option>';
+  }).join('');
+}
+
+function handleAddCurrencyRate() {
+  const sel = document.getElementById('currency-add-select');
+  const input = document.getElementById('currency-add-rate');
+  if (!sel || !input) return;
+  const code = sel.value;
+  const rate = Number(input.value);
+  if (!code) { showToastNotification('Please choose a currency to add.', 'error'); return; }
+  if (!isFinite(rate) || rate <= 0) { showToastNotification('Please enter a valid rate (PKR per 1 ' + code + ').', 'error'); return; }
+  if (!currencySettingsDraft) currencySettingsDraft = getCurrencySettings();
+  currencySettingsDraft.rates[code] = Math.round(rate * 100) / 100;
+  currencySettingsDraft.manualOverrides = currencySettingsDraft.manualOverrides || {};
+  currencySettingsDraft.manualOverrides[code] = currencySettingsDraft.rates[code];
+  const filterEl = document.getElementById('currency-rates-filter');
+  if (filterEl) filterEl.value = '';
+  renderCurrencyRatesTable('');
+  renderCurrencyAddSelect();
+  input.value = '';
+}
+window.handleAddCurrencyRate = handleAddCurrencyRate;
+
+async function handleUpdateCurrencyRatesNow() {
+  const ok = await maybeUpdateCurrencyRates(true);
+  if (ok) {
+    currencySettingsDraft = getCurrencySettings();
+    currencySettingsDraft.baseRates = Object.assign({}, currencySettingsDraft.rates);
+    renderCurrencySettingsInfo();
+    renderCurrencyRatesTable('');
+    renderCurrencyAddSelect();
+    renderApp();
+    showToastNotification('✓ Exchange rates updated to the latest market rates.');
+  } else {
+    currencyRatesStale = true;
+    renderCurrencySettingsInfo();
+    showToastNotification('Could not fetch fresh rates — previous rates are still in use.', 'error');
+  }
+}
+window.handleUpdateCurrencyRatesNow = handleUpdateCurrencyRatesNow;
+
+async function handleSaveCurrencySettings() {
+  const draft = currencySettingsDraft || getCurrencySettings();
+  const baseRates = draft.baseRates || {};
+  const inputs = document.querySelectorAll('#currency-rates-table-body input[data-currency-rate]');
+  const nextRates = {};
+  const nextOverrides = Object.assign({}, draft.manualOverrides || {});
+  inputs.forEach(function (el) {
+    const code = el.getAttribute('data-currency-rate');
+    const n = Number(el.value);
+    if (!code || !isFinite(n) || n <= 0) return;
+    nextRates[code] = Math.round(n * 100) / 100;
+    const base = baseRates[code];
+    if (base === undefined || Math.abs(nextRates[code] - base) > 0.0001) nextOverrides[code] = nextRates[code];
+    else delete nextOverrides[code];
+  });
+  if (Object.keys(nextRates).length === 0) {
+    showToastNotification('Please set at least one exchange rate.', 'error');
+    return;
+  }
+  const next = {
+    base: 'PKR',
+    month: draft.month,
+    updatedAt: new Date().toISOString(),
+    source: 'manual',
+    rates: nextRates,
+    manualOverrides: nextOverrides
+  };
+  const ok = await saveCurrencySettingsToCloud(next);
+  if (!ok) {
+    showToastNotification('Could not save to cloud: ' + (firestoreSyncError || 'Firestore is not available') + ' — settings not saved.', 'error');
+    return;
+  }
+  AppState.currencySettings = next;
+  try { saveCache(CURRENCY_SETTINGS_CACHE_KEY, next); } catch (e) {}
+  closeCurrencySettingsModal();
+  renderApp();
+  showToastNotification('✓ Currency settings saved. PKR figures recalculated.');
+}
+window.handleSaveCurrencySettings = handleSaveCurrencySettings;
+// ==== PKR CURRENCY MODULE END ====
 
 // Quick per-teacher manual bonus for the displayed month. Saved to
 // Firestore on the teacher doc (awaited); Paid months are frozen and
@@ -14359,12 +15106,20 @@ function updateFIFOPreview() {
 
   const currency = result.studentSimulations[0]?.currency || '$';
   const isFamily = result.isFamily;
+  const previewCurrencyCode = result.studentSimulations[0]?.currencyCode || null;
+  let pkrPreviewHtml = '';
+  if (previewCurrencyCode && String(previewCurrencyCode).toUpperCase() !== 'PKR') {
+    const previewRate = getCurrencyRate(previewCurrencyCode);
+    pkrPreviewHtml = previewRate !== null
+      ? `<span class="text-[#0E4D45] font-semibold">≈ ${formatPKRAmount(amount)}</span><span class="text-[#7A8684] font-normal">(1 ${previewCurrencyCode} = ${formatPKRAmount(previewRate)})</span>`
+      : `<span class="text-amber-700 font-semibold">PKR equivalent not available — set the ${previewCurrencyCode} rate in Currency Settings.</span>`;
+  }
 
   let html = `
     <div class="rounded-2xl border border-[#ECEAE4] overflow-hidden">
       <div class="bg-[#F8F6F1] px-4 py-2.5 border-b border-[#ECEAE4] flex items-center justify-between text-xs">
         <span class="font-bold text-[#141F1E]">Allocation Breakdown ${isFamily ? '• Combined Family' : ''}</span>
-        <span class="text-[#0E4D45] font-semibold">${currency}${amount} Allocated</span>
+        <span class="text-right flex flex-col items-end leading-tight"><span class="text-[#0E4D45] font-semibold">${currency}${amount} Allocated</span>${pkrPreviewHtml ? `<span class="text-[11px] flex items-center gap-1">${pkrPreviewHtml}</span>` : ''}</span>
       </div>
       <table class="w-full text-xs text-left responsive-table-cards">
         <thead class="bg-[#FFFFFF] border-b border-[#ECEAE4] text-[10px] font-semibold text-[#7A8684]">
@@ -14445,7 +15200,7 @@ function handleSaveFeePayment() {
     if (res) {
       closeReceiveFeeModal();
       renderApp();
-      showToastNotification(`✓ Payment of ${res.currency}${amount} recorded successfully. Receipt ${res.txnId} generated.`);
+      showToastNotification(`✓ Payment of ${res.currency}${amount}${(typeof res.pkrAmount === 'number') ? ' (≈ ' + formatPKRAmount(res.pkrAmount) + ')' : ''} recorded successfully. Receipt ${res.txnId} generated.`);
     } else {
       showActionErrorModal({
         title: 'Payment Processing Failed',
@@ -15291,6 +16046,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   renderApp();
+  // Load exchange rates (local cache, then Firestore settings/currency)
+  // and run the monthly auto-update check once. PKR figures render from
+  // the seeded defaults meanwhile, so the Dashboard is never blocked.
+  if (!currencySettingsLoaded && !currencySettingsLoading) {
+    currencySettingsLoading = true;
+    loadCurrencySettings().catch(function () {}).finally(function () {
+      currencySettingsLoaded = true;
+      currencySettingsLoading = false;
+      renderApp();
+    });
+  }
   updateRolePillUI();
   renderNotificationsDropdownContent();
   // One-time repair of the two wrong teacher countries (Basit/Saad saved

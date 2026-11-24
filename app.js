@@ -119,9 +119,13 @@ try {
 // FIRESTORE CRUD & REAL-TIME REPOSITORY
 // ==========================================
 
-// Save student doc to Firestore
+// Save student doc to Firestore.
+// Returns true when the cloud write succeeded, false when it failed or
+// Firestore is not available. A failed cloud write must NEVER be silent:
+// callers await this and tell the user the record is local-only.
+// The local cache is always updated first, so a cloud failure never loses data.
 async function dbSaveStudent(student) {
-  if (!student || !student.id) return;
+  if (!student || !student.id) return false;
   const idx = AppState.students.findIndex(s => s.id === student.id);
   if (idx >= 0) {
     AppState.students[idx] = student;
@@ -130,13 +134,19 @@ async function dbSaveStudent(student) {
   }
   saveCache('lms_students', AppState.students);
 
-  if (db) {
-    try {
-      await db.collection('students').doc(String(student.id)).set(student, { merge: true });
-      console.log(`[Firestore] Student ${student.id} synced to Firestore`);
-    } catch (e) {
-      console.warn(`[Firestore] Error saving student ${student.id}:`, e.message);
-    }
+  if (!db) {
+    firestoreSyncError = 'Firestore is not connected (database may not exist yet).';
+    console.warn(`[Firestore] Student ${student.id} saved locally only: ${firestoreSyncError}`);
+    return false;
+  }
+  try {
+    await db.collection('students').doc(String(student.id)).set(student, { merge: true });
+    console.log(`[Firestore] Student ${student.id} synced to Firestore`);
+    return true;
+  } catch (e) {
+    firestoreSyncError = e.message;
+    console.warn(`[Firestore] Error saving student ${student.id}:`, e.message);
+    return false;
   }
 }
 
@@ -409,9 +419,13 @@ async function dbDeleteTeacher(teacherId) {
   return true;
 }
 
-// Save teacher doc to Firestore
+// Save teacher doc to Firestore.
+// Returns true when the cloud write succeeded, false when it failed or
+// Firestore is not available. A failed cloud write must NEVER be silent:
+// callers await this and tell the user the record is local-only.
+// The local cache is always updated first, so a cloud failure never loses data.
 async function dbSaveTeacher(teacher) {
-  if (!teacher || !teacher.id) return;
+  if (!teacher || !teacher.id) return false;
   const idx = AppState.teachers.findIndex(t => t.id === teacher.id);
   if (idx >= 0) {
     AppState.teachers[idx] = teacher;
@@ -420,13 +434,19 @@ async function dbSaveTeacher(teacher) {
   }
   saveCache('lms_teachers', AppState.teachers);
 
-  if (db) {
-    try {
-      await db.collection('teachers').doc(String(teacher.id)).set(teacher, { merge: true });
-      console.log(`[Firestore] Teacher ${teacher.id} synced to Firestore`);
-    } catch (e) {
-      console.warn(`[Firestore] Error saving teacher ${teacher.id}:`, e.message);
-    }
+  if (!db) {
+    firestoreSyncError = 'Firestore is not connected (database may not exist yet).';
+    console.warn(`[Firestore] Teacher ${teacher.id} saved locally only: ${firestoreSyncError}`);
+    return false;
+  }
+  try {
+    await db.collection('teachers').doc(String(teacher.id)).set(teacher, { merge: true });
+    console.log(`[Firestore] Teacher ${teacher.id} synced to Firestore`);
+    return true;
+  } catch (e) {
+    firestoreSyncError = e.message;
+    console.warn(`[Firestore] Error saving teacher ${teacher.id}:`, e.message);
+    return false;
   }
 }
 
@@ -616,10 +636,14 @@ async function dbDeleteLiveClass(clsId) {
 }
 
 // Generic sync router that maps state arrays directly to Firestore collections
-function syncCollectionToFirestore(key, data) {
+// Batch-sync a whole local collection to Firestore.
+// Returns a Promise resolving to true when the cloud write succeeded,
+// false when it failed or Firestore is not available. Callers that need
+// to know the outcome must await it — a failure must never be silent.
+async function syncCollectionToFirestore(key, data) {
   saveCache(key, data);
 
-  if (!db || !Array.isArray(data)) return;
+  if (!db || !Array.isArray(data)) return false;
 
   const collectionMap = {
     'lms_students': 'students',
@@ -632,7 +656,7 @@ function syncCollectionToFirestore(key, data) {
   };
 
   const colName = collectionMap[key];
-  if (!colName) return;
+  if (!colName) return false;
 
   try {
     const batch = db.batch();
@@ -642,17 +666,19 @@ function syncCollectionToFirestore(key, data) {
         batch.set(docRef, item, { merge: true });
       }
     });
-    batch.commit().catch(err => {
-      console.warn(`[Firestore] Batch sync warning for ${colName}:`, err.message);
-    });
+    await batch.commit();
+    return true;
   } catch (err) {
-    console.warn(`[Firestore] Sync error for ${colName}:`, err);
+    firestoreSyncError = err && err.message;
+    console.warn(`[Firestore] Batch sync failed for ${colName}:`, err);
+    return false;
   }
 }
 
-// Storage adapter functions routing directly to Firestore sync
+// Storage adapter functions routing directly to Firestore sync.
+// Returns the sync promise so callers can await the cloud outcome.
 function saveToStorage(key, data) {
-  syncCollectionToFirestore(key, data);
+  return syncCollectionToFirestore(key, data);
 }
 
 function loadFromStorage(key, defaultData) {
@@ -703,13 +729,11 @@ function setupFirestoreRealtimeListeners() {
         updateAttendanceVsPassChartSmoothly();
       }
     } else {
-      if (typeof isAcademyAlreadySeeded === 'function' && isAcademyAlreadySeeded()) {
-        AppState.students = [];
-        saveCache('lms_students', []);
-        try { localStorage.setItem('lms_students', JSON.stringify([])); } catch (e) {}
-        reconcileStudentsWithPaymentLedger();
-        renderApp();
-      }
+      // Empty cloud snapshot: NEVER wipe local data. An empty cloud can
+      // mean the database does not exist yet, the listener has not caught
+      // up, or the user is offline — none of those may delete the local
+      // records on this device. Keep the local cache exactly as it is.
+      console.warn('[Firestore] Students cloud snapshot is empty; keeping local data.');
     }
   }, (err) => {
     console.warn('[Firestore] Students listener warning:', err.code, err.message);
@@ -735,12 +759,8 @@ function setupFirestoreRealtimeListeners() {
       try { localStorage.setItem('lms_teachers', JSON.stringify(liveList)); } catch (e) {}
       renderApp();
     } else {
-      if (typeof isAcademyAlreadySeeded === 'function' && isAcademyAlreadySeeded()) {
-        AppState.teachers = [];
-        saveCache('lms_teachers', []);
-        try { localStorage.setItem('lms_teachers', JSON.stringify([])); } catch (e) {}
-        renderApp();
-      }
+      // Empty cloud snapshot: NEVER wipe local data (see students listener).
+      console.warn('[Firestore] Teachers cloud snapshot is empty; keeping local data.');
     }
   }, (err) => {
     console.warn('[Firestore] Teachers listener warning:', err.code, err.message);
@@ -761,14 +781,8 @@ function setupFirestoreRealtimeListeners() {
       if (AppState.activeNav === 'fee-matrix') renderFeeMatrixTab();
       else if (AppState.activeNav === 'dashboard') renderApp();
     } else {
-      if (typeof isAcademyAlreadySeeded === 'function' && isAcademyAlreadySeeded()) {
-        PAYMENT_LEDGER.length = 0;
-        saveCache('lms_payment_ledger', PAYMENT_LEDGER);
-        try { localStorage.setItem('lms_payment_ledger', JSON.stringify([])); } catch (e) {}
-        reconcileStudentsWithPaymentLedger();
-        if (AppState.activeNav === 'fee-matrix') renderFeeMatrixTab();
-        else if (AppState.activeNav === 'dashboard') renderApp();
-      }
+      // Empty cloud snapshot: NEVER wipe local data (see students listener).
+      console.warn('[Firestore] Payment ledger cloud snapshot is empty; keeping local data.');
     }
   }, (err) => {
     console.warn('[Firestore] Ledger listener warning:', err.code, err.message);
@@ -787,12 +801,8 @@ function setupFirestoreRealtimeListeners() {
       try { localStorage.setItem('lms_notices', JSON.stringify(ACADEMY_NOTICES)); } catch (e) {}
       if (AppState.activeNav === 'trials-notices') renderTrialsNoticesTab();
     } else {
-      if (typeof isAcademyAlreadySeeded === 'function' && isAcademyAlreadySeeded()) {
-        ACADEMY_NOTICES.length = 0;
-        saveCache('lms_notices', ACADEMY_NOTICES);
-        try { localStorage.setItem('lms_notices', JSON.stringify([])); } catch (e) {}
-        if (AppState.activeNav === 'trials-notices') renderTrialsNoticesTab();
-      }
+      // Empty cloud snapshot: NEVER wipe local data (see students listener).
+      console.warn('[Firestore] Notices cloud snapshot is empty; keeping local data.');
     }
   }, (err) => {
     console.warn('[Firestore] Notices listener warning:', err.code, err.message);
@@ -1141,15 +1151,64 @@ function firestoreGetWithTimeout(getPromise) {
   ]);
 }
 
+// Upload whatever real data this browser holds in its local cache to the
+// cloud once, when the cloud is empty. Used when records were saved while
+// Firestore was unreachable or did not exist yet, so other browsers and
+// devices can see them. Additive only (merge:true) — it never deletes or
+// overwrites cloud records, and it does nothing when the cloud already
+// holds data or cannot be read.
+async function uploadLocalCacheToCloud() {
+  if (!db) return false;
+  try {
+    const existing = await firestoreGetWithTimeout(db.collection('students').limit(1).get());
+    if (!existing.empty) return true; // cloud already has data; nothing to do
+  } catch (e) {
+    console.warn('[Sync] Local-to-cloud upload skipped; cloud check failed:', e.message);
+    return false;
+  }
+  const uploads = [];
+  const pushAll = (items, collection) => {
+    if (!Array.isArray(items)) return;
+    items.forEach(item => {
+      if (item && item.id) uploads.push(db.collection(collection).doc(String(item.id)).set(item, { merge: true }));
+    });
+  };
+  pushAll(loadFromStorage('lms_students', []), 'students');
+  pushAll(loadFromStorage('lms_teachers', []), 'teachers');
+  pushAll(loadFromStorage('lms_payment_ledger', []), 'payment_ledger');
+  pushAll(loadFromStorage('lms_notices', []), 'notices');
+  if (!uploads.length) return true;
+  try {
+    await Promise.race([
+      Promise.all(uploads),
+      new Promise((resolve) => setTimeout(() => {
+        console.warn('[Sync] Local-to-cloud upload timed out after 15s; continuing with local cache.');
+        resolve();
+      }, 15000))
+    ]);
+    console.log('[Sync] Local cache uploaded to Firestore.');
+    return true;
+  } catch (e) {
+    console.warn('[Sync] Local-to-cloud upload failed:', e.message);
+    return false;
+  }
+}
+
 async function checkAndSeedInitialAcademyData() {
   if (isAcademyAlreadySeeded()) {
     console.log('[Seed] Academy already seeded. Skipping seed check.');
+    // Background, best-effort: if this browser holds real local data but
+    // the cloud is still empty, push it up once so other devices can see it.
+    uploadLocalCacheToCloud().catch(() => {});
     return;
   }
 
   // True when the cloud check timed out: the cloud may still hold data, so
   // in that case we must NOT seed blindly and must NOT block startup.
   let cloudCheckTimedOut = false;
+  // True when the cloud check itself failed (e.g. permission denied, API
+  // not enabled): the cloud state is unknown, so we must NOT seed either.
+  let cloudCheckFailed = false;
 
   if (db) {
     try {
@@ -1174,7 +1233,8 @@ async function checkAndSeedInitialAcademyData() {
         cloudCheckTimedOut = true;
         console.warn('[Seed] Firestore check timed out after 8s; using local cache only.');
       } else {
-        console.warn('[Seed] Firestore check warning:', e.message);
+        cloudCheckFailed = true;
+        console.warn('[Seed] Firestore check failed:', e.message);
       }
     }
   }
@@ -1185,10 +1245,23 @@ async function checkAndSeedInitialAcademyData() {
     return;
   }
 
+  if (cloudCheckFailed) {
+    // The cloud check itself failed (e.g. permission denied, Firestore API
+    // not enabled). The cloud state is unknown, so do NOT fall through to
+    // writing baseline seed data locally. Local cache only.
+    console.warn('[Seed] Firestore check failed; not seeding baseline data.');
+    return;
+  }
+
   const cachedStudents = loadFromStorage('lms_students', null);
-  if (Array.isArray(cachedStudents) && cachedStudents.length > 0) {
+  const cachedTeachers = loadFromStorage('lms_teachers', null);
+  if ((Array.isArray(cachedStudents) && cachedStudents.length > 0) ||
+      (Array.isArray(cachedTeachers) && cachedTeachers.length > 0)) {
+    // Real local data exists but the cloud is empty: upload the local
+    // records to the cloud instead of overwriting them with baseline seed.
     localStorage.setItem(SEEDED_FLAG_KEY, 'true');
     if (db) {
+      uploadLocalCacheToCloud().catch(() => {});
       db.collection('settings').doc('academy_meta').set({
         is_seeded: true,
         seeded_at: new Date().toISOString()
@@ -5519,7 +5592,7 @@ function handlePhotoDrop(event, type) {
   reader.readAsDataURL(file);
 }
 
-function handleSaveNewStudent() {
+async function handleSaveNewStudent() {
   const studentId = document.getElementById('add-student-id')?.value?.trim();
   const fullName = document.getElementById('add-student-full-name')?.value?.trim();
   const guardianName = document.getElementById('add-student-guardian-name')?.value?.trim();
@@ -5643,8 +5716,12 @@ function handleSaveNewStudent() {
 
   saveToStorage('lms_students', AppState.students);
   saveToStorage('lms_teachers', AppState.teachers);
-  dbSaveStudent(newStudent);
-  if (teacherObj) dbSaveTeacher(teacherObj);
+  // Await the cloud save and tell the truth: the success toast shows ONLY
+  // when Firestore confirms the write. A cloud failure leaves the record
+  // saved on this device only, and the user must know that.
+  const cloudSaved = await dbSaveStudent(newStudent);
+  let teacherCloudSaved = true;
+  if (teacherObj) teacherCloudSaved = await dbSaveTeacher(teacherObj);
 
   addSystemNotification({
     title: 'Student Enrolled',
@@ -5654,7 +5731,11 @@ function handleSaveNewStudent() {
 
   closeAddStudentModal();
   renderApp();
-  showToastNotification(`✓ Student ${fullName} (${studentId}) successfully enrolled and registered!`);
+  if (cloudSaved && teacherCloudSaved) {
+    showToastNotification(`✓ Student ${fullName} (${studentId}) successfully enrolled and registered!`);
+  } else {
+    showToastNotification(`Could not save to cloud: ${firestoreSyncError || 'Firestore is not available'} — saved on this device only.`, 'error');
+  }
 }
 
 // Tracks whether the user picked a country by hand in the Add Teacher
@@ -5791,7 +5872,7 @@ function autoDetectTeacherCountry(phone) {
 }
 window.autoDetectTeacherCountry = autoDetectTeacherCountry;
 
-function handleSaveNewTeacher() {
+async function handleSaveNewTeacher() {
   const teacherId = document.getElementById('add-teacher-id')?.value?.trim();
   const name = document.getElementById('add-teacher-name')?.value?.trim();
   const fatherName = document.getElementById('add-teacher-father-name')?.value?.trim();
@@ -5855,7 +5936,10 @@ function handleSaveNewTeacher() {
 
   AppState.teachers.push(newTeacher);
   saveToStorage('lms_teachers', AppState.teachers);
-  dbSaveTeacher(newTeacher);
+  // Await the cloud save and tell the truth: the success toast shows ONLY
+  // when Firestore confirms the write. A cloud failure leaves the record
+  // saved on this device only, and the user must know that.
+  const cloudSaved = await dbSaveTeacher(newTeacher);
 
   addSystemNotification({
     title: 'Faculty Onboarded',
@@ -5866,7 +5950,11 @@ function handleSaveNewTeacher() {
   clearFormDraft('new_teacher');
   closeAddTeacherModal();
   renderApp();
-  showToastNotification(`✓ Teacher ${name} (${teacherId}) successfully added to Academy faculty!`);
+  if (cloudSaved) {
+    showToastNotification(`✓ Teacher ${name} (${teacherId}) successfully added to Academy faculty!`);
+  } else {
+    showToastNotification(`Could not save to cloud: ${firestoreSyncError || 'Firestore is not available'} — saved on this device only.`, 'error');
+  }
 }
 
 // ==========================================

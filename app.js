@@ -2302,9 +2302,9 @@ function openSharedConfirmationModal({
   if (confirmBtn) {
     confirmBtn.textContent = confirmText;
     if (isDestructive) {
-      confirmBtn.className = 'px-5 py-2.5 text-xs font-semibold rounded-xl bg-[#DC2626] hover:bg-red-700 text-white transition-colors shadow-2xs cursor-pointer';
+      confirmBtn.className = 'px-5 py-2.5 text-xs font-semibold rounded-full bg-[#DC2626] hover:bg-red-700 text-white transition-colors shadow-2xs cursor-pointer';
     } else {
-      confirmBtn.className = 'px-5 py-2.5 text-xs font-semibold rounded-xl bg-[#0E4D45] hover:bg-[#14534B] text-white transition-colors shadow-2xs cursor-pointer';
+      confirmBtn.className = 'px-5 py-2.5 text-xs font-semibold rounded-full bg-[#0E4D45] hover:bg-[#14534B] text-white transition-colors shadow-2xs cursor-pointer';
     }
     confirmBtn.onclick = function() {
       closeDeleteConfirmationModal();
@@ -2318,7 +2318,7 @@ window.openSharedConfirmationModal = openSharedConfirmationModal;
 
 // 8. Command Palette Controller (Ctrl+K / Cmd+K)
 function openCommandPalette() {
-  const modal = document.getElementById('shared-command-palette-modal');
+  const modal = document.getElementById('command-palette');
   if (!modal) return;
   modal.classList.add('active');
   const input = document.getElementById('command-palette-input');
@@ -2332,13 +2332,13 @@ function openCommandPalette() {
 window.openCommandPalette = openCommandPalette;
 
 function closeCommandPalette() {
-  const modal = document.getElementById('shared-command-palette-modal');
+  const modal = document.getElementById('command-palette');
   if (modal) modal.classList.remove('active');
 }
 window.closeCommandPalette = closeCommandPalette;
 
 function handleCommandPaletteBackdrop(event) {
-  if (event.target.id === 'shared-command-palette-modal') {
+  if (event.target.id === 'command-palette') {
     closeCommandPalette();
   }
 }
@@ -2744,7 +2744,7 @@ window.addEventListener('keydown', (event) => {
   // Ctrl+K / Cmd+K -> Toggle Command Palette
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
     event.preventDefault();
-    const modal = document.getElementById('shared-command-palette-modal');
+    const modal = document.getElementById('command-palette');
     if (modal && modal.classList.contains('active')) {
       closeCommandPalette();
     } else {
@@ -3576,11 +3576,11 @@ function closeViewWeeklyScheduleModal() {
   if (modal) modal.classList.remove('active');
 }
 
-function openEditScheduleFromView() {
+function openEditStudentFromView() {
   const studentId = currentViewingStudentId;
   closeViewWeeklyScheduleModal();
   if (studentId) {
-    openEditScheduleModal(studentId);
+    openEditStudentModal(studentId);
   }
 }
 
@@ -5038,8 +5038,8 @@ function applySelectedAvatar() {
   showToastNotification('✓ Profile photo / avatar applied! Remember to save student changes.');
 }
 
-function openEditScheduleModal(studentId) {
-  const modal = document.getElementById('edit-schedule-modal');
+function openEditStudentModal(studentId) {
+  const modal = document.getElementById('edit-student-modal');
   if (!modal) return;
 
   const student = AppState.students.find(s => s.id === studentId);
@@ -5198,8 +5198,8 @@ function openEditScheduleModal(studentId) {
   modal.classList.add('active');
 }
 
-function closeEditScheduleModal() {
-  const modal = document.getElementById('edit-schedule-modal');
+function closeEditStudentModal() {
+  const modal = document.getElementById('edit-student-modal');
   if (modal) modal.classList.remove('active');
 }
 
@@ -5350,7 +5350,7 @@ function handleSaveEditSchedule() {
   saveToStorage('lms_teachers', AppState.teachers);
   dbSaveStudent(student);
 
-  closeEditScheduleModal();
+  closeEditStudentModal();
   renderApp();
 
   showToastNotification(`✓ Student record & ID (${student.id}) updated successfully!`);
@@ -6132,7 +6132,7 @@ async function handleSaveNewTeacher() {
 
 // ==========================================
 // EDIT TEACHER
-// Mirrors the Edit Student flow (edit-schedule modal): the modal is
+// Mirrors the Edit Student flow (edit-student modal): the modal is
 // pre-filled with the teacher's current values, Teacher ID is shown but
 // never editable (it links students to this teacher), and saving updates
 // AppState, localStorage AND Firestore — with the success toast shown
@@ -7181,9 +7181,9 @@ function setActivityLogFilter(filter) {
   const buttons = document.querySelectorAll('.activity-filter-btn');
   buttons.forEach(btn => {
     if (btn.getAttribute('data-filter') === filter) {
-      btn.className = 'activity-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#0E4D45] text-white shadow-2xs transition-colors cursor-pointer';
+      btn.className = 'activity-filter-btn px-3 py-1.5 rounded-full text-xs font-semibold bg-[#0E4D45] text-white shadow-2xs transition-colors cursor-pointer';
     } else {
-      btn.className = 'activity-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#F8F6F1] text-[#7A8684] hover:text-[#141F1E] transition-colors cursor-pointer';
+      btn.className = 'activity-filter-btn px-3 py-1.5 rounded-full text-xs font-semibold bg-[#F8F6F1] text-[#7A8684] hover:text-[#141F1E] transition-colors cursor-pointer';
     }
   });
   renderFullActivityLogContent();
@@ -11401,7 +11401,7 @@ function updateFeeFilterBottomSheetUI() {
         <button 
           type="button" 
           onclick="setFeeFilter('${s.id}'); updateFeeFilterBottomSheetUI();" 
-          class="${idx < 3 ? 'col-span-2' : 'col-span-3'} py-2 px-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer border text-center whitespace-nowrap ${active ? 'bg-[#0E4D45] text-white border-[#0E4D45] shadow-xs' : 'bg-white text-gray-700 border-[#ECEAE4] hover:bg-[#F8F6F1]'}"
+          class="${idx < 3 ? 'col-span-2' : 'col-span-3'} py-2 px-2.5 rounded-full text-xs font-semibold transition-all cursor-pointer border text-center whitespace-nowrap ${active ? 'bg-[#0E4D45] text-white border-[#0E4D45] shadow-xs' : 'bg-white text-gray-700 border-[#ECEAE4] hover:bg-[#F8F6F1]'}"
         >
           ${s.label}
         </button>
@@ -11430,7 +11430,7 @@ function updateFeeFilterBottomSheetUI() {
         <button 
           type="button" 
           onclick="setCurrencyFilter('${c.id}'); updateFeeFilterBottomSheetUI();" 
-          class="py-2 px-2 rounded-xl text-xs font-semibold transition-all cursor-pointer border text-center ${active ? 'bg-[#0E4D45] text-white border-[#0E4D45] shadow-xs' : 'bg-white text-gray-700 border-[#ECEAE4] hover:bg-[#F8F6F1]'}"
+          class="py-2 px-2 rounded-full text-xs font-semibold transition-all cursor-pointer border text-center ${active ? 'bg-[#0E4D45] text-white border-[#0E4D45] shadow-xs' : 'bg-white text-gray-700 border-[#ECEAE4] hover:bg-[#F8F6F1]'}"
         >
           ${c.label}
         </button>
@@ -11928,7 +11928,7 @@ function renderStudentDirectoryRows(students) {
                 <svg class="w-4 h-4 text-[#7A8684] shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
                 <span>Filter Family (${s.familyId || s.familyTag})</span>
               </button>
-              <button onclick="closeStudentActionMenu(); openEditScheduleModal('${s.id}')" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer whitespace-nowrap">
+              <button onclick="closeStudentActionMenu(); openEditStudentModal('${s.id}')" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer whitespace-nowrap">
                 <svg class="w-4 h-4 text-[#7A8684] shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                   <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
@@ -15501,7 +15501,7 @@ function openMonthDetailModal(studentId, monthIndex) {
             <p class="text-xs text-[#7A8684] mt-0.5 truncate">${student.course || 'Quran Studies'} • ${student.country} • Family: <span class="font-semibold text-[#141F1E]">${student.familyId}</span></p>
           </div>
         </div>
-        <button type="button" onclick="closeMonthDetailModal()" class="w-8 h-8 rounded-xl border border-[#ECEAE4] bg-white flex items-center justify-center text-[#7A8684] hover:text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer shrink-0" title="Close">
+        <button type="button" onclick="closeMonthDetailModal()" class="modal-close" title="Close">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
@@ -15510,7 +15510,7 @@ function openMonthDetailModal(studentId, monthIndex) {
       <div class="py-4">
         <div class="flex items-center justify-between p-3 bg-[#F8F6F1] rounded-2xl border border-[#ECEAE4] mb-4">
           <div class="flex items-center gap-2">
-            <span class="w-7 h-7 rounded-lg bg-white border border-[#ECEAE4] flex items-center justify-center text-[#0E4D45]">
+            <span class="w-7 h-7 rounded-xl bg-white border border-[#ECEAE4] flex items-center justify-center text-[#0E4D45]">
               <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
             </span>
             <div>
@@ -15582,7 +15582,7 @@ function openMonthDetailModal(studentId, monthIndex) {
             <!-- Action 1: Settle / Record Payment -->
             <button onclick="quickRecordMonthPayment('${student.id}', ${monthIndex})" 
               class="w-full p-3 rounded-xl border border-[#ECEAE4] hover:border-[#0E4D45] bg-[#FFFFFF] hover:bg-[#F8F6F1] transition-all text-left flex items-center gap-3 cursor-pointer group shadow-2xs">
-              <div class="w-9 h-9 rounded-lg bg-[#E8EFEE] group-hover:bg-[#0E4D45] text-[#0E4D45] group-hover:text-white flex items-center justify-center transition-colors shrink-0">
+              <div class="w-9 h-9 rounded-xl bg-[#E8EFEE] group-hover:bg-[#0E4D45] text-[#0E4D45] group-hover:text-white flex items-center justify-center transition-colors shrink-0">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
               </div>
               <div class="min-w-0">
@@ -15594,7 +15594,7 @@ function openMonthDetailModal(studentId, monthIndex) {
             <!-- Action 2: Waive Fee / Scholarship -->
             <button onclick="waiveStudentMonthFee('${student.id}', ${monthIndex})" 
               class="w-full p-3 rounded-xl border border-[#ECEAE4] hover:border-[#065F46] bg-[#FFFFFF] hover:bg-[#F8F6F1] transition-all text-left flex items-center gap-3 cursor-pointer group shadow-2xs">
-              <div class="w-9 h-9 rounded-lg bg-[#D1FAE5] group-hover:bg-[#065F46] text-[#065F46] group-hover:text-white flex items-center justify-center transition-colors shrink-0">
+              <div class="w-9 h-9 rounded-xl bg-[#D1FAE5] group-hover:bg-[#065F46] text-[#065F46] group-hover:text-white flex items-center justify-center transition-colors shrink-0">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
               </div>
               <div class="min-w-0">
@@ -15606,7 +15606,7 @@ function openMonthDetailModal(studentId, monthIndex) {
             <!-- Action 3: Send WhatsApp Reminder -->
             <button onclick="sendSpecificMonthWhatsApp('${student.id}', ${monthIndex})" 
               class="w-full p-3 rounded-xl border border-[#ECEAE4] hover:border-[#25D366] bg-[#FFFFFF] hover:bg-[#F8F6F1] transition-all text-left flex items-center gap-3 cursor-pointer group shadow-2xs">
-              <div class="w-9 h-9 rounded-lg bg-[#DCFCE7] group-hover:bg-[#15803D] text-[#15803D] group-hover:text-white flex items-center justify-center transition-colors shrink-0">
+              <div class="w-9 h-9 rounded-xl bg-[#DCFCE7] group-hover:bg-[#15803D] text-[#15803D] group-hover:text-white flex items-center justify-center transition-colors shrink-0">
                 <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
               </div>
               <div class="min-w-0">
@@ -15618,7 +15618,7 @@ function openMonthDetailModal(studentId, monthIndex) {
             <!-- Action 4: Reset Month State -->
             <button onclick="resetStudentMonthFee('${student.id}', ${monthIndex})" 
               class="w-full p-3 rounded-xl border border-[#ECEAE4] hover:border-[#EF4444] bg-[#FFFFFF] hover:bg-[#F8F6F1] transition-all text-left flex items-center gap-3 cursor-pointer group shadow-2xs">
-              <div class="w-9 h-9 rounded-lg bg-[#FEE2E2] group-hover:bg-[#EF4444] text-[#991B1B] group-hover:text-white flex items-center justify-center transition-colors shrink-0">
+              <div class="w-9 h-9 rounded-xl bg-[#FEE2E2] group-hover:bg-[#EF4444] text-[#991B1B] group-hover:text-white flex items-center justify-center transition-colors shrink-0">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
               </div>
               <div class="min-w-0">
@@ -15633,7 +15633,7 @@ function openMonthDetailModal(studentId, monthIndex) {
 
       <!-- Modal Footer -->
       <div class="pt-4 border-t border-[#ECEAE4] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
-        <button type="button" onclick="closeMonthDetailModal(); openReceiveFeeModal('${student.id}');" class="w-full sm:w-auto order-1 sm:order-2 py-3 px-5 rounded-lg bg-[#0e4f3f] text-white font-medium text-xs sm:text-sm hover:bg-[#0b3e32] transition-colors shadow-sm cursor-pointer text-center">
+        <button type="button" onclick="closeMonthDetailModal(); openReceiveFeeModal('${student.id}');" class="w-full sm:w-auto order-1 sm:order-2 py-3 px-5 rounded-full bg-[#0E4D45] text-white font-bold text-xs sm:text-sm hover:bg-[#14534B] transition-colors shadow-sm cursor-pointer text-center">
           Open Full FIFO Modal
         </button>
         <button type="button" onclick="closeMonthDetailModal()" class="w-full sm:w-auto order-2 sm:order-1 px-4 py-2.5 text-xs font-semibold rounded-lg bg-[#FFFFFF] border border-[#ECEAE4] text-[#7A8684] hover:text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer text-center">
@@ -15856,7 +15856,7 @@ function openReceiptModal(txnId = 'TXN-9021') {
       <div class="flex items-start justify-between pb-6 border-b border-[#ECEAE4]">
         <div>
           <div class="flex items-center gap-2.5 mb-1">
-            <div class="w-8 h-8 rounded-lg bg-[#0E4D45] text-white flex items-center justify-center">
+            <div class="w-8 h-8 rounded-xl bg-[#0E4D45] text-white flex items-center justify-center">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
             </div>
             <span class="font-bold text-[#141F1E] text-base">Quranic Skills Academy</span>

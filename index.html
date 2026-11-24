@@ -39,7 +39,7 @@
   </script>
 
   <!-- Custom CSS -->
-  <link rel="stylesheet" href="styles.css?v=20261125-pkr-fix">
+  <link rel="stylesheet" href="styles.css?v=20261125-popups">
 
   <!-- Inline Sparkline Attendance Trend Styles -->
   <style>
@@ -253,23 +253,24 @@
        ========================================================================== -->
   <div id="receive-fee-modal" class="modal-backdrop">
     <div class="modal-content">
-      <div class="px-5 py-4 sm:p-6 border-b border-[#ECEAE4] flex items-start justify-between gap-3 bg-[#F8F6F1]">
+      <div class="px-6 py-5 border-b border-[#ECEAE4] flex items-start justify-between gap-3 bg-white">
         <div class="flex-1 min-w-0 pr-3">
           <div class="flex items-center gap-2.5">
-            <div class="w-8 h-8 rounded-xl bg-[#E8EFEE] text-[#0E4D45] flex items-center justify-center font-bold text-xs shrink-0">
+            <div class="modal-icon-tile">
               <svg class="w-4 h-4 text-[#0E4D45]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
             </div>
-            <h3 class="text-sm sm:text-base font-bold text-[#141F1E] leading-snug">Receive Tuition Fee</h3>
+            <h3 class="text-base font-bold text-[#141F1E] leading-snug">Receive Tuition Fee</h3>
           </div>
           <p class="text-xs text-[#7A8684] mt-1.5 leading-relaxed break-words pl-0.5">Chronologically allocates payment starting from the oldest overdue/partial month.</p>
         </div>
-        <button type="button" onclick="closeReceiveFeeModal()" class="w-8 h-8 rounded-xl border border-[#ECEAE4] bg-white text-[#7A8684] hover:text-[#141F1E] hover:bg-[#F8F6F1] flex items-center justify-center shrink-0 transition-colors cursor-pointer" title="Close Modal">
+        <button type="button" onclick="closeReceiveFeeModal()" class="modal-close" title="Close Modal">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
 
-      <div class="p-6 space-y-5">
-        
+      <div class="p-6">
+        <div class="modal-section">
+          <h4 class="modal-section-title">1. Student / Family Account</h4>
         <!-- Student Selection -->
         <div>
           <label class="block text-xs font-bold text-[#141F1E] mb-1">Select Student / Family Account</label>
@@ -277,9 +278,11 @@
             <!-- Injected by app.js -->
           </select>
         </div>
-
+        </div>
+        <div class="modal-section">
+          <h4 class="modal-section-title">2. Payment Details</h4>
         <!-- Payment Amount, Target Month & Payment Method -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label class="block text-xs font-bold text-[#141F1E] mb-1">Payment Amount Received *</label>
             <div class="relative">
@@ -325,7 +328,9 @@
             </button>
           </div>
         </div>
-
+        </div>
+        <div class="modal-section">
+          <h4 class="modal-section-title">3. Allocation Breakdown</h4>
         <!-- Payment Allocation Breakdown Container -->
         <div>
           <label class="block text-xs font-bold text-[#141F1E] mb-1.5">Payment Allocation Breakdown</label>
@@ -333,12 +338,13 @@
             <!-- Dynamically calculated table generated in app.js -->
           </div>
         </div>
+        </div>
 
       </div>
 
       <!-- Modal Footer -->
-      <div class="p-4 sm:p-5 bg-[#F8F6F1] border-t border-[#ECEAE4] flex flex-col gap-3">
-        <button type="button" onclick="handleSaveFeePayment()" class="w-full py-3 rounded-lg bg-[#0e4f3f] text-white font-medium text-xs sm:text-sm hover:bg-[#0b3e32] shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-2">
+      <div class="p-4 sm:p-5 bg-[#F9F8F5] border-t border-[#E8E6DF] flex flex-col gap-3">
+        <button type="button" onclick="handleSaveFeePayment()" class="w-full py-3 rounded-full bg-[#0E4D45] text-white font-bold text-xs sm:text-sm hover:bg-[#14534B] shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-2">
           <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
           <span>Confirm & Commit Payment</span>
         </button>
@@ -355,22 +361,22 @@
        ========================================================================== -->
   <div id="family-package-modal" class="modal-backdrop">
     <div class="modal-content">
-      <div class="px-5 py-4 sm:p-6 border-b border-[#ECEAE4] flex items-start justify-between gap-3 bg-[#F8F6F1]">
+      <div class="px-6 py-5 border-b border-[#ECEAE4] flex items-start justify-between gap-3 bg-white">
         <div class="flex-1 min-w-0 pr-3">
           <div class="flex items-center gap-2.5">
-            <div class="w-8 h-8 rounded-xl bg-[#E8EFEE] text-[#0E4D45] flex items-center justify-center font-bold text-xs shrink-0">
+            <div class="modal-icon-tile">
               <svg class="w-4 h-4 text-[#0E4D45]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
             </div>
-            <h3 id="family-package-modal-title" class="text-sm sm:text-base font-bold text-[#141F1E] leading-snug">Family Package</h3>
+            <h3 id="family-package-modal-title" class="text-base font-bold text-[#141F1E] leading-snug">Family Package</h3>
           </div>
           <p class="text-xs text-[#7A8684] mt-1.5 leading-relaxed break-words pl-0.5">One flat monthly fee for the whole family, split equally across the children.</p>
         </div>
-        <button type="button" onclick="closeFamilyPackageModal()" class="w-8 h-8 rounded-xl border border-[#ECEAE4] bg-white text-[#7A8684] hover:text-[#141F1E] hover:bg-[#F8F6F1] flex items-center justify-center shrink-0 transition-colors cursor-pointer" title="Close Modal">
+        <button type="button" onclick="closeFamilyPackageModal()" class="modal-close" title="Close Modal">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
 
-      <div class="p-6 space-y-5">
+      <div class="p-6">
         <div>
           <label class="block text-xs font-bold text-[#141F1E] mb-1">Flat Monthly Fee *</label>
           <div class="relative">
@@ -384,8 +390,8 @@
       </div>
 
       <!-- Modal Footer -->
-      <div class="p-4 sm:p-5 bg-[#F8F6F1] border-t border-[#ECEAE4] flex flex-col gap-3">
-        <button type="button" onclick="saveFamilyPackage()" class="w-full py-3 rounded-lg bg-[#0e4f3f] text-white font-medium text-xs sm:text-sm hover:bg-[#0b3e32] shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-2">
+      <div class="p-4 sm:p-5 bg-[#F9F8F5] border-t border-[#E8E6DF] flex flex-col gap-3">
+        <button type="button" onclick="saveFamilyPackage()" class="w-full py-3 rounded-full bg-[#0E4D45] text-white font-bold text-xs sm:text-sm hover:bg-[#14534B] shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-2">
           <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
           <span>Save Package</span>
         </button>
@@ -402,21 +408,22 @@
        ========================================================================== -->
   <div id="sabaq-logger-modal" class="modal-backdrop">
     <div class="modal-content">
-      <div class="p-6 border-b border-[#ECEAE4] flex items-center justify-between bg-[#F8F6F1]">
+      <div class="px-6 py-5 border-b border-[#ECEAE4] flex items-center justify-between bg-white">
         <div>
           <div class="flex items-center gap-2.5">
-            <div class="w-7 h-7 rounded-lg bg-[#E8EFEE] text-[#0E4D45] flex items-center justify-center shrink-0">
+            <div class="modal-icon-tile">
               <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
             </div>
             <h3 class="text-base font-bold text-[#141F1E]">30-Second Post-Class Sabaq Logger</h3>
           </div>
           <p class="text-xs text-[#7A8684] mt-0.5">Zero-typing workflow: select pills and save in under 30 seconds.</p>
         </div>
-        <button onclick="closeSabaqLoggerModal()" class="w-8 h-8 rounded-full border border-[#ECEAE4] bg-white text-[#7A8684] hover:text-[#141F1E] flex items-center justify-center text-sm font-bold">✕</button>
+        <button onclick="closeSabaqLoggerModal()" class="modal-close"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
       </div>
 
-      <div class="p-6 space-y-4">
-        
+      <div class="p-6">
+        <div class="modal-section">
+          <h4 class="modal-section-title">1. Student</h4>
         <!-- Student Selector -->
         <div>
           <label class="block text-xs font-bold text-[#141F1E] mb-1">Select Student</label>
@@ -424,7 +431,9 @@
             <!-- Injected by app.js -->
           </select>
         </div>
-
+        </div>
+        <div class="modal-section">
+          <h4 class="modal-section-title">2. Attendance</h4>
         <!-- 1-Click Attendance Pills -->
         <div>
           <label class="block text-xs font-bold text-[#141F1E] mb-1.5">Class Attendance (1-Click)</label>
@@ -435,7 +444,9 @@
             <button type="button" onclick="selectAttendancePill(this)" data-status="Excused" class="attendance-pill pill-choice">Excused</button>
           </div>
         </div>
-
+        </div>
+        <div class="modal-section">
+          <h4 class="modal-section-title">3. Lesson</h4>
         <!-- Lesson Selection -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
@@ -458,7 +469,9 @@
               class="w-full text-xs bg-[#FFFFFF] border border-[#ECEAE4] rounded-xl px-3 py-2 text-[#141F1E] font-medium outline-none focus:border-[#0E4D45]">
           </div>
         </div>
-
+        </div>
+        <div class="modal-section">
+          <h4 class="modal-section-title">4. Remarks &amp; Rating</h4>
         <!-- 1-Click Fast Remark Tags -->
         <div>
           <label class="block text-xs font-bold text-[#141F1E] mb-1.5">Quick Remark Tags (Click to Toggle)</label>
@@ -484,15 +497,16 @@
             <span class="text-xs text-[#7A8684] ml-2 font-medium">(5/5 Excellent)</span>
           </div>
         </div>
+        </div>
 
       </div>
 
       <!-- Modal Footer -->
-      <div class="p-4 bg-[#F8F6F1] border-t border-[#ECEAE4] flex items-center justify-between">
+      <div class="px-6 py-4 bg-[#F9F8F5] border-t border-[#E8E6DF] flex items-center justify-between">
         <span class="text-[11px] text-[#7A8684]">Takes under 30 seconds per student</span>
         <div class="flex items-center gap-2">
-          <button onclick="closeSabaqLoggerModal()" class="px-4 py-2 text-xs font-semibold rounded-lg bg-white border border-[#ECEAE4] text-[#7A8684] hover:bg-[#F8F6F1] cursor-pointer">Cancel</button>
-          <button onclick="handleSaveSabaq()" class="px-6 py-2 text-xs font-semibold rounded-lg bg-[#0E4D45] text-white hover:bg-[#14534B] cursor-pointer">Save Sabaq & Attendance</button>
+          <button onclick="closeSabaqLoggerModal()" class="text-xs font-semibold text-[#7A8684] hover:text-[#141F1E] transition-colors cursor-pointer">Cancel</button>
+          <button onclick="handleSaveSabaq()" class="px-6 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] cursor-pointer">Save Sabaq & Attendance</button>
         </div>
       </div>
     </div>
@@ -503,14 +517,14 @@
        ========================================================================== -->
   <div id="substitute-modal" class="modal-backdrop">
     <div class="modal-content">
-      <div class="p-6 border-b border-[#ECEAE4] flex items-center justify-between bg-[#F8F6F1]">
+      <div class="px-6 py-5 border-b border-[#ECEAE4] flex items-center justify-between bg-white">
         <div class="flex items-center gap-2.5">
-          <div class="w-8 h-8 rounded-full bg-[#E8EFEE] text-[#0E4D45] flex items-center justify-center">
+          <div class="modal-icon-tile">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
           </div>
           <h3 class="text-base font-bold text-[#141F1E]">Substitute Teacher Assignment</h3>
         </div>
-        <button onclick="closeSubstituteModal()" class="w-8 h-8 rounded-full border border-[#ECEAE4] bg-white text-[#7A8684] hover:text-[#141F1E] flex items-center justify-center text-sm font-bold">✕</button>
+        <button onclick="closeSubstituteModal()" class="modal-close"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
       </div>
 
       <div class="p-6 space-y-4 text-xs">
@@ -528,13 +542,13 @@
           </select>
         </div>
 
-        <div class="p-3 bg-[#E8EFEE] rounded-xl border border-[#CBD5E1] text-[#334E4B] flex items-start gap-2.5">
+        <div class="p-3 bg-[#F8F6F1] rounded-xl border border-[#E8E6DF] text-[#334E4B] flex items-start gap-2.5">
           <svg class="w-4 h-4 text-[#0E4D45] shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
           <span>System will automatically update the classroom link and dispatch an encrypted alert to the substitute teacher without exposing student contact information.</span>
         </div>
       </div>
 
-      <div class="p-4 bg-[#F8F6F1] border-t border-[#ECEAE4] flex items-center justify-end gap-2">
+      <div class="px-6 py-4 bg-[#F9F8F5] border-t border-[#E8E6DF] flex items-center justify-end gap-2">
         <button onclick="closeSubstituteModal()" class="px-4 py-2 text-xs font-bold rounded-full bg-white border border-[#ECEAE4] text-[#7A8684]">Cancel</button>
         <button onclick="handleAssignSubstitute()" class="px-6 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B]">Confirm Assignment</button>
       </div>
@@ -568,7 +582,7 @@
       <!-- Modal Header -->
       <div class="px-6 py-5 border-b border-[#ECEAE4] flex items-center justify-between bg-white">
         <div class="flex items-center gap-3">
-          <div class="w-9 h-9 rounded-xl bg-[#0E4D45] text-white flex items-center justify-center shrink-0 shadow-xs">
+          <div class="modal-icon-tile">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
           </div>
           <div>
@@ -579,26 +593,26 @@
             <p class="text-xs text-[#7A8684] mt-0.5">Enroll new student into the academy with automated ledger setup.</p>
           </div>
         </div>
-        <button onclick="closeAddStudentModal()" class="w-8 h-8 rounded-full border border-[#ECEAE4] bg-[#F8F6F1] text-[#7A8684] hover:text-[#141F1E] hover:bg-[#ECEAE4] flex items-center justify-center text-sm font-bold transition-colors cursor-pointer">✕</button>
+        <button onclick="closeAddStudentModal()" class="modal-close"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
       </div>
 
       <!-- Modal Body (2-Column Grid) -->
-      <div class="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
-        
-        <!-- Top Section (Full Width): Clean Blank Photo Upload Zone -->
+      <div class="p-6 max-h-[75vh] overflow-y-auto">
+        <div class="modal-section">
+          <h4 class="modal-section-title">1. Student Photo</h4>
+        <!-- Photo Upload Zone -->
         <div>
-          <label class="block text-xs font-semibold text-[#141F1E] mb-1.5">Official Student Photo</label>
           <div 
             id="add-student-dropzone" 
             onclick="document.getElementById('add-student-photo-file').click()"
             ondragover="event.preventDefault(); this.classList.add('border-[#0E4D45]', 'bg-[#E8EFEE]/30');"
             ondragleave="this.classList.remove('border-[#0E4D45]', 'bg-[#E8EFEE]/30');"
             ondrop="handlePhotoDrop(event, 'student'); this.classList.remove('border-[#0E4D45]', 'bg-[#E8EFEE]/30');"
-            class="flex items-center gap-4 p-3.5 bg-[#F8F6F1] border border-dashed border-[#CBD5E1] rounded-xl hover:border-[#0E4D45] transition-all cursor-pointer group"
+            class="flex items-center gap-4 p-3.5 bg-white border border-dashed border-[#E8E6DF] rounded-xl hover:border-[#0E4D45] transition-all cursor-pointer group"
           >
             <div class="relative shrink-0">
               <!-- Empty state placeholder: dashed circular border with subtle camera icon -->
-              <div id="add-student-photo-placeholder" class="w-14 h-14 rounded-full border-2 border-dashed border-[#CBD5E1] bg-white flex items-center justify-center text-[#7A8684] group-hover:border-[#0E4D45] group-hover:text-[#0E4D45] transition-colors shadow-2xs">
+              <div id="add-student-photo-placeholder" class="w-14 h-14 rounded-full border-2 border-dashed border-[#E8E6DF] bg-white flex items-center justify-center text-[#7A8684] group-hover:border-[#0E4D45] group-hover:text-[#0E4D45] transition-colors shadow-2xs">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z"/></svg>
               </div>
               <!-- Uploaded preview: hidden by default until user uploads a photo -->
@@ -620,9 +634,12 @@
             <input type="hidden" id="add-student-avatar" value="">
           </div>
         </div>
+        </div>
 
+        <div class="modal-section">
+          <h4 class="modal-section-title">2. Student Identity</h4>
         <!-- 2-Column Grid Fields -->
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           
           <!-- Manual Student ID -->
           <div>
@@ -645,7 +662,11 @@
               class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#141F1E] outline-none focus:border-[#0E4D45] focus:bg-white transition-all"
             >
           </div>
-
+        </div>
+        </div>
+        <div class="modal-section">
+          <h4 class="modal-section-title">3. Guardian &amp; Contact</h4>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <!-- Father / Guardian Name -->
           <div>
             <label class="block text-xs font-semibold text-[#141F1E] mb-1">Father / Guardian Name *</label>
@@ -702,7 +723,11 @@
               class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#141F1E] outline-none focus:border-[#0E4D45] focus:bg-white transition-all"
             >
           </div>
-
+        </div>
+        </div>
+        <div class="modal-section">
+          <h4 class="modal-section-title">4. Address &amp; Family</h4>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <!-- Residential Street Address -->
           <div class="col-span-2">
             <label class="block text-xs font-semibold text-[#141F1E] mb-1">Residential Street Address</label>
@@ -729,7 +754,11 @@
               <!-- Injected dynamically -->
             </datalist>
           </div>
-
+        </div>
+        </div>
+        <div class="modal-section">
+          <h4 class="modal-section-title">5. Enrolment</h4>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <!-- Course / Track -->
           <div>
             <label class="block text-xs font-semibold text-[#141F1E] mb-1">Course / Track *</label>
@@ -967,7 +996,7 @@
             <div id="add-student-package-raise" class="hidden mt-2">
               <label class="block text-[11px] font-semibold text-[#141F1E] mb-1">Family Package fee</label>
               <div class="flex items-center gap-2">
-                <span id="add-student-package-currency" class="shrink-0 w-10 h-10 flex items-center justify-center bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg text-xs font-bold text-[#0E4D45]">$</span>
+                <span id="add-student-package-currency" class="shrink-0 w-10 h-10 flex items-center justify-center bg-white border border-[#E8E6DF] rounded-full text-xs font-bold text-[#0E4D45]">$</span>
                 <input
                   type="number"
                   id="add-student-package-fee"
@@ -981,12 +1010,12 @@
               <p id="add-student-package-raise-hint" class="text-[11px] text-[#7A8684] mt-1"></p>
             </div>
           </div>
-
+        </div>
         </div>
       </div>
 
       <!-- Modal Footer -->
-      <div class="px-6 py-4 bg-white border-t border-[#ECEAE4] flex items-center justify-end gap-4">
+      <div class="px-6 py-4 bg-[#F9F8F5] border-t border-[#E8E6DF] flex items-center justify-end gap-4">
         <p id="add-student-draft-note" class="hidden text-[11px] text-[#7A8684] mr-auto">Draft restored. <button type="button" onclick="clearStudentDraft()" class="font-bold text-[#0E4D45] underline cursor-pointer">Clear draft</button></p>
         <button 
           type="button" 
@@ -998,7 +1027,7 @@
         <button 
           type="button" 
           onclick="handleSaveNewStudent()" 
-          class="px-6 py-2.5 text-xs font-bold rounded-lg bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
+          class="px-6 py-2.5 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
         >
           <span>Save & Enroll</span>
         </button>
@@ -1016,17 +1045,17 @@
       <!-- Cropper Header -->
       <div class="px-5 py-4 border-b border-[#ECEAE4] flex items-center justify-between bg-white">
         <div class="flex items-center gap-3">
-          <div class="w-8 h-8 rounded-lg bg-[#0E4D45] text-white flex items-center justify-center shrink-0 shadow-xs">
+          <div class="modal-icon-tile">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 3.75H6A2.25 2.25 0 003.75 6v1.5M3.75 16.5V18A2.25 2.25 0 006 20.25h1.5m9-16.5H18A2.25 2.25 0 0120.25 6v1.5m0 9V18A2.25 2.25 0 0118 20.25h-1.5M9 9h6v6H9z" />
             </svg>
           </div>
           <div>
-            <h3 class="text-sm font-bold text-[#141F1E]">Crop & Frame Photo</h3>
+            <h3 class="text-base font-bold text-[#141F1E]">Crop & Frame Photo</h3>
             <p class="text-[11px] text-[#7A8684] mt-0.5">Drag to reposition, slider to zoom into 1:1 circular portrait</p>
           </div>
         </div>
-        <button onclick="closeImageCropper()" class="w-7 h-7 rounded-full border border-[#ECEAE4] bg-[#F8F6F1] text-[#7A8684] hover:text-[#141F1E] hover:bg-[#ECEAE4] flex items-center justify-center text-xs font-bold transition-colors cursor-pointer">✕</button>
+        <button onclick="closeImageCropper()" class="modal-close"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
       </div>
 
       <!-- Cropper Viewport / Canvas Container -->
@@ -1045,7 +1074,7 @@
             <span id="cropper-zoom-level" class="text-[10px] font-mono text-[#0E4D45] bg-[#E8EFEE] px-1.5 py-0.5 rounded">1.0x</span>
           </div>
           <div class="flex items-center gap-2.5">
-            <button type="button" onclick="cropperStepZoom(-0.1)" class="w-7 h-7 rounded-lg bg-white border border-[#ECEAE4] text-[#141F1E] hover:bg-[#ECEAE4] flex items-center justify-center text-xs font-bold cursor-pointer transition-colors">−</button>
+            <button type="button" onclick="cropperStepZoom(-0.1)" class="w-7 h-7 rounded-full bg-white border border-[#ECEAE4] text-[#141F1E] hover:bg-[#ECEAE4] flex items-center justify-center text-xs font-bold cursor-pointer transition-colors">−</button>
             <input 
               type="range" 
               id="cropper-zoom-slider" 
@@ -1056,17 +1085,17 @@
               oninput="cropperSetZoom(parseFloat(this.value))"
               class="flex-1 accent-[#0E4D45] cursor-pointer h-1.5 bg-[#E2E8F0] rounded-lg"
             >
-            <button type="button" onclick="cropperStepZoom(0.1)" class="w-7 h-7 rounded-lg bg-white border border-[#ECEAE4] text-[#141F1E] hover:bg-[#ECEAE4] flex items-center justify-center text-xs font-bold cursor-pointer transition-colors">+</button>
-            <button type="button" onclick="cropperRotate()" title="Rotate 90° clockwise" class="w-7 h-7 rounded-lg bg-white border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#ECEAE4] flex items-center justify-center text-xs font-bold cursor-pointer transition-colors">
+            <button type="button" onclick="cropperStepZoom(0.1)" class="w-7 h-7 rounded-full bg-white border border-[#ECEAE4] text-[#141F1E] hover:bg-[#ECEAE4] flex items-center justify-center text-xs font-bold cursor-pointer transition-colors">+</button>
+            <button type="button" onclick="cropperRotate()" title="Rotate 90° clockwise" class="w-7 h-7 rounded-full bg-white border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#ECEAE4] flex items-center justify-center text-xs font-bold cursor-pointer transition-colors">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
             </button>
-            <button type="button" onclick="cropperReset()" title="Reset Alignment" class="w-7 h-7 rounded-lg bg-white border border-[#ECEAE4] text-[#7A8684] hover:text-[#141F1E] hover:bg-[#ECEAE4] flex items-center justify-center text-xs font-bold cursor-pointer transition-colors">↺</button>
+            <button type="button" onclick="cropperReset()" title="Reset Alignment" class="w-7 h-7 rounded-full bg-white border border-[#ECEAE4] text-[#7A8684] hover:text-[#141F1E] hover:bg-[#ECEAE4] flex items-center justify-center text-xs font-bold cursor-pointer transition-colors">↺</button>
           </div>
         </div>
       </div>
 
       <!-- Cropper Footer -->
-      <div class="px-5 py-3.5 bg-white border-t border-[#ECEAE4] flex items-center justify-between">
+      <div class="px-5 py-3.5 bg-[#F9F8F5] border-t border-[#E8E6DF] flex items-center justify-between">
         <button 
           type="button" 
           onclick="closeImageCropper()" 
@@ -1077,7 +1106,7 @@
         <button 
           type="button" 
           onclick="applyImageCrop()" 
-          class="px-5 py-2 text-xs font-bold rounded-lg bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
+          class="px-5 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
         >
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
           <span>Apply Crop</span>
@@ -1092,31 +1121,31 @@
        ========================================================================== -->
   <div id="view-weekly-schedule-modal" class="modal-backdrop">
     <div class="modal-content max-w-2xl sm:max-w-3xl">
-      <div class="p-6 border-b border-[#ECEAE4] flex items-center justify-between bg-[#F8F6F1]">
+      <div class="px-6 py-5 border-b border-[#ECEAE4] flex items-center justify-between bg-white">
         <div>
           <div class="flex items-center gap-2.5">
-            <div class="w-8 h-8 rounded-full bg-[#0E4D45] text-white flex items-center justify-center">
+            <div class="modal-icon-tile">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
             </div>
             <h3 class="text-base font-bold text-[#141F1E]">Weekly Class Timetable & Dual Timezone</h3>
           </div>
           <p class="text-xs text-[#7A8684] mt-0.5">Day-by-day class schedule with live Pakistan Time (PKT) synchronization.</p>
         </div>
-        <button onclick="closeViewWeeklyScheduleModal()" class="w-8 h-8 rounded-full border border-[#ECEAE4] bg-white text-[#7A8684] hover:text-[#141F1E] flex items-center justify-center text-sm font-bold cursor-pointer">✕</button>
+        <button onclick="closeViewWeeklyScheduleModal()" class="modal-close"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
       </div>
 
       <div id="view-weekly-schedule-body" class="p-6 space-y-4 max-h-[calc(88vh-140px)] overflow-y-auto text-xs">
         <!-- Injected dynamically by openViewWeeklyScheduleModal(studentId) -->
       </div>
 
-      <div class="p-4 bg-[#F8F6F1] border-t border-[#ECEAE4] flex items-center justify-between">
+      <div class="px-6 py-4 bg-[#F9F8F5] border-t border-[#E8E6DF] flex items-center justify-between">
         <span class="text-[11px] text-[#7A8684]">Times automatically synchronized with Academy Master Calendar</span>
         <div class="flex items-center gap-2">
-          <button id="view-schedule-copy-btn" onclick="copyWeeklyScheduleToClipboard()" class="px-4 py-2 text-xs font-semibold rounded-lg bg-white border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#E8EFEE] cursor-pointer flex items-center gap-1.5">
+          <button id="view-schedule-copy-btn" onclick="copyWeeklyScheduleToClipboard()" class="px-4 py-2 text-xs font-semibold rounded-full bg-white border border-[#E8E6DF] text-[#0E4D45] hover:bg-[#E8EFEE] cursor-pointer flex items-center gap-1.5">
             <svg class="w-3.5 h-3.5 text-[#0E4D45]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
             <span>Copy Timetable</span>
           </button>
-          <button id="view-schedule-edit-btn" onclick="openEditScheduleFromView()" class="px-5 py-2 text-xs font-semibold rounded-lg bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-xs cursor-pointer flex items-center gap-1.5">
+          <button id="view-schedule-edit-btn" onclick="openEditStudentFromView()" class="px-5 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-xs cursor-pointer flex items-center gap-1.5">
             <svg class="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
             <span>Edit Record &amp; Schedule</span>
           </button>
@@ -1128,31 +1157,37 @@
   <!-- ==========================================================================
        MODAL: EDIT STUDENT RECORD (APPLE / STRIPE MINIMALIST STANDARD)
        ========================================================================== -->
-  <div id="edit-schedule-modal" class="modal-backdrop">
+  <div id="edit-student-modal" class="modal-backdrop">
     <div class="modal-content max-w-2xl w-full mx-auto bg-white rounded-3xl shadow-2xl border border-[#ECEAE4] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150">
       
       <!-- Modal Header (Apple/Stripe Clean Typography, No Heavy Green Icon Badge) -->
-      <div class="px-6 py-4 border-b border-[#ECEAE4] flex items-center justify-between bg-white">
-        <div>
-          <h3 class="text-[18px] font-bold text-[#141F1E] leading-tight">Edit Student Record</h3>
-          <p id="edit-schedule-subtitle" class="text-xs text-[#7A8684] mt-0.5">Update personal details, contact information, tuition fee, and weekly timetable.</p>
+      <div class="px-6 py-5 border-b border-[#ECEAE4] flex items-center justify-between bg-white">
+        <div class="flex items-center gap-3">
+          <div class="modal-icon-tile">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-[#141F1E] leading-tight">Edit Student Record</h3>
+            <p id="edit-schedule-subtitle" class="text-xs text-[#7A8684] mt-0.5">Update personal details, contact information, tuition fee, and weekly timetable.</p>
+          </div>
         </div>
         <button 
-          onclick="closeEditScheduleModal()" 
-          class="w-8 h-8 rounded-full border border-[#E5E7EB] bg-white text-[#7A8684] hover:text-[#141F1E] hover:bg-[#F8F6F1] flex items-center justify-center text-sm font-bold transition-colors cursor-pointer"
+          onclick="closeEditStudentModal()" 
+          class="modal-close"
           title="Close"
-        >✕</button>
+        ><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
       </div>
 
       <!-- Scrollable Modal Body -->
-      <div class="px-6 py-5 space-y-4 max-h-[calc(88vh-140px)] overflow-y-auto text-xs">
+      <div class="px-6 py-5 max-h-[calc(88vh-140px)] overflow-y-auto text-xs">
         <input type="hidden" id="edit-schedule-original-id" />
         <input type="hidden" id="edit-schedule-avatar" value="" />
         <!-- Hidden diff badge to preserve any script references without visual noise -->
         <span id="edit-schedule-tz-diff" class="hidden"></span>
 
-        <!-- 1. Profile Photo & ID Bar -->
-        <div class="p-3 bg-[#F8F6F1]/60 rounded-2xl border border-[#E5E7EB] flex items-center justify-between">
+        <div class="modal-section">
+          <h4 class="modal-section-title">1. Profile Photo &amp; ID</h4>
+        <div class="p-3 bg-white rounded-2xl border border-[#E8E6DF] flex items-center justify-between">
           <div class="flex items-center gap-3">
             <div class="relative shrink-0">
               <img 
@@ -1167,7 +1202,7 @@
               <button 
                 type="button" 
                 onclick="openAvatarPickerModal('edit')" 
-                class="px-3 py-1.5 rounded-lg bg-white hover:bg-[#F8F6F1] text-[#0E4D45] border border-[#CBD5E1] text-xs font-semibold transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                class="px-3 py-1.5 rounded-full bg-white hover:bg-[#F8F6F1] text-[#0E4D45] border border-[#E8E6DF] text-xs font-semibold transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
               >
                 <svg class="w-3.5 h-3.5 text-[#0E4D45]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
                 <span>Change Photo / Avatar</span>
@@ -1175,14 +1210,17 @@
             </div>
           </div>
           <div class="flex items-center gap-2">
-            <span id="edit-schedule-student-id-badge" class="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-white text-[#475569] border border-[#E2E8F0]">ID: QA-1008</span>
-            <span id="edit-schedule-family-badge" class="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-[#E8EFEE] text-[#0E4D45] border border-[#CBD5E1]">FAM-108</span>
+            <span id="edit-schedule-student-id-badge" class="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-white text-[#475569] border border-[#E8E6DF]">ID: QA-1008</span>
+            <span id="edit-schedule-family-badge" class="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-[#E8EFEE] text-[#0E4D45] border border-[#E8E6DF]">FAM-108</span>
           </div>
         </div>
+        </div>
 
-        <!-- 2. Student Identity (2-Column Grids) -->
+        <div class="modal-section">
+          <h4 class="modal-section-title">2. Student Identity</h4>
+        <!-- 2. Student Identity -->
         <div class="space-y-3">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-xs font-semibold text-[#141F1E] mb-1">Student ID / Roll No *</label>
               <input 
@@ -1207,7 +1245,7 @@
             </div>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-xs font-semibold text-[#141F1E] mb-1">Student First Name *</label>
               <input 
@@ -1228,10 +1266,12 @@
             </div>
           </div>
         </div>
+        </div>
 
-        <!-- 3. Guardian & Contact Details (2-Column Grids) -->
-        <div class="pt-2 border-t border-[#E5E7EB] space-y-3">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+        <div class="modal-section">
+          <h4 class="modal-section-title">3. Guardian &amp; Contact</h4>
+        <div class="space-y-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-xs font-semibold text-[#141F1E] mb-1">Guardian Full Name *</label>
               <input 
@@ -1252,7 +1292,7 @@
             </div>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-xs font-semibold text-[#141F1E] mb-1">WhatsApp Number</label>
               <input 
@@ -1283,10 +1323,12 @@
             >
           </div>
         </div>
+        </div>
 
-        <!-- 4. Location & Academic Track (2-Column Grids) -->
-        <div class="pt-2 border-t border-[#E5E7EB] space-y-3">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+        <div class="modal-section">
+          <h4 class="modal-section-title">4. Location &amp; Academic Track</h4>
+        <div class="space-y-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-xs font-semibold text-[#141F1E] mb-1">Country *</label>
               <select 
@@ -1313,7 +1355,7 @@
             </div>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-xs font-semibold text-[#141F1E] mb-1">Assigned Teacher *</label>
               <select 
@@ -1339,10 +1381,8 @@
               </select>
             </div>
           </div>
-        </div>
-
         <!-- Class Duration (drives teacher payroll units) -->
-        <div class="pt-2 border-t border-[#E5E7EB]">
+        <div class="pt-3">
           <label class="block text-xs font-semibold text-[#141F1E] mb-1">Class Duration *</label>
           <select
             id="edit-schedule-class-duration"
@@ -1353,10 +1393,13 @@
             <option value="60">60 Minutes (2 units)</option>
           </select>
         </div>
+        </div>
+        </div>
 
-        <!-- 5. Monthly Fee & Family Tag (2-Column Grid) -->
-        <div class="pt-2 border-t border-[#E5E7EB] space-y-3">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+        <div class="modal-section">
+          <h4 class="modal-section-title">5. Monthly Fee &amp; Family Tag</h4>
+        <div class="space-y-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-xs font-semibold text-[#141F1E] mb-1">Monthly Tuition Fee *</label>
               <div class="flex items-center gap-2">
@@ -1555,9 +1598,11 @@
             </div>
           </div>
         </div>
+        </div>
 
-        <!-- 6. Streamlined 7-Day Timetable Matrix with Timezone Context -->
-        <div class="pt-2 border-t border-[#E5E7EB] space-y-3">
+        <div class="modal-section">
+          <h4 class="modal-section-title">6. Weekly Timetable</h4>
+        <div class="space-y-3">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 pb-0.5">
             <div>
               <div class="flex items-center gap-2 flex-wrap">
@@ -1578,15 +1623,16 @@
             <!-- Populated dynamically by app.js -->
           </div>
         </div>
+        </div>
 
       </div>
 
       <!-- Modal Footer (Right Aligned: Cancel & Save Changes) -->
-      <div class="px-6 py-4 bg-[#F8F6F1]/50 border-t border-[#ECEAE4] flex items-center justify-end gap-3">
+      <div class="px-6 py-4 bg-[#F9F8F5] border-t border-[#E8E6DF] flex items-center justify-end gap-3">
         <button 
           type="button" 
-          onclick="closeEditScheduleModal()" 
-          class="px-5 py-2 text-xs font-semibold rounded-full bg-white border border-[#CBD5E1] text-[#475569] hover:bg-[#F8F6F1] transition-colors cursor-pointer shadow-2xs"
+          onclick="closeEditStudentModal()" 
+          class="text-xs font-semibold text-[#7A8684] hover:text-[#141F1E] transition-colors cursor-pointer"
         >
           Cancel
         </button>
@@ -1609,9 +1655,9 @@
     <div class="modal-content max-w-2xl w-full bg-white rounded-3xl border border-[#ECEAE4] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
       
       <!-- Modal Header -->
-      <div class="px-6 py-3.5 border-b border-[#ECEAE4] flex items-center justify-between bg-[#F8F6F1]">
+      <div class="px-6 py-5 border-b border-[#ECEAE4] flex items-center justify-between bg-white">
         <div class="flex items-center gap-2.5">
-          <div class="w-8 h-8 rounded-lg bg-[#0E4D45] text-white flex items-center justify-center font-semibold text-sm shadow-2xs">
+          <div class="modal-icon-tile">
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           </div>
           <div>
@@ -1619,7 +1665,7 @@
             <p class="text-[11px] text-[#7A8684]">Snapchat-style cartoon avatar creator, device image cropper, &amp; presets</p>
           </div>
         </div>
-        <button onclick="closeAvatarPickerModal()" class="w-8 h-8 rounded-full border border-[#ECEAE4] bg-white text-[#7A8684] hover:text-[#141F1E] flex items-center justify-center text-sm font-bold cursor-pointer">✕</button>
+        <button onclick="closeAvatarPickerModal()" class="modal-close"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
       </div>
 
       <!-- Navigation Tabs (Studio, Crop & Upload, Presets, Initials) -->
@@ -1928,7 +1974,7 @@
       </div>
 
       <!-- Modal Footer -->
-      <div class="px-6 py-3 border-t border-[#ECEAE4] bg-[#F8F6F1] flex items-center justify-between">
+      <div class="px-6 py-3 border-t border-[#E8E6DF] bg-[#F9F8F5] flex items-center justify-between">
         <div class="flex items-center gap-2.5">
           <span class="text-[11px] text-[#7A8684] font-medium">Selected:</span>
           <img id="avatar-modal-current-selection-thumb" src="" alt="Selected Preview" class="w-9 h-9 rounded-full object-cover border-2 border-[#0E4D45] bg-white shadow-2xs" />
@@ -1956,7 +2002,7 @@
       <!-- Modal Header -->
       <div class="px-6 py-5 border-b border-[#ECEAE4] flex items-center justify-between bg-white">
         <div class="flex items-center gap-3">
-          <div class="w-9 h-9 rounded-xl bg-[#0E4D45] text-white flex items-center justify-center shrink-0 shadow-xs">
+          <div class="modal-icon-tile">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
           </div>
           <div>
@@ -1967,7 +2013,7 @@
             <p class="text-xs text-[#7A8684] mt-0.5">Onboard certified Quran faculty into academy payroll and teaching roster.</p>
           </div>
         </div>
-        <button onclick="closeAddTeacherModal()" class="w-8 h-8 rounded-full border border-[#ECEAE4] bg-[#F8F6F1] text-[#7A8684] hover:text-[#141F1E] hover:bg-[#ECEAE4] flex items-center justify-center text-sm font-bold transition-colors cursor-pointer">✕</button>
+        <button onclick="closeAddTeacherModal()" class="modal-close"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
       </div>
 
       <!-- Modal Body (2-Column Grid) -->
@@ -1982,11 +2028,11 @@
             ondragover="event.preventDefault(); this.classList.add('border-[#0E4D45]', 'bg-[#E8EFEE]/30');"
             ondragleave="this.classList.remove('border-[#0E4D45]', 'bg-[#E8EFEE]/30');"
             ondrop="handlePhotoDrop(event, 'teacher'); this.classList.remove('border-[#0E4D45]', 'bg-[#E8EFEE]/30');"
-            class="flex items-center gap-4 p-3.5 bg-[#F8F6F1] border border-dashed border-[#CBD5E1] rounded-xl hover:border-[#0E4D45] transition-all cursor-pointer group"
+            class="flex items-center gap-4 p-3.5 bg-white border border-dashed border-[#E8E6DF] rounded-xl hover:border-[#0E4D45] transition-all cursor-pointer group"
           >
             <div class="relative shrink-0">
               <!-- Empty state placeholder: dashed circular border with subtle camera icon -->
-              <div id="add-teacher-photo-placeholder" class="w-14 h-14 rounded-full border-2 border-dashed border-[#CBD5E1] bg-white flex items-center justify-center text-[#7A8684] group-hover:border-[#0E4D45] group-hover:text-[#0E4D45] transition-colors shadow-2xs">
+              <div id="add-teacher-photo-placeholder" class="w-14 h-14 rounded-full border-2 border-dashed border-[#E8E6DF] bg-white flex items-center justify-center text-[#7A8684] group-hover:border-[#0E4D45] group-hover:text-[#0E4D45] transition-colors shadow-2xs">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z"/></svg>
               </div>
               <!-- Uploaded preview: hidden by default until user uploads a photo -->
@@ -2010,7 +2056,7 @@
         </div>
 
         <!-- 2-Column Grid Fields -->
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           
           <!-- Manual Teacher ID -->
           <div>
@@ -2081,7 +2127,7 @@
       </div>
 
       <!-- Modal Footer -->
-      <div class="px-6 py-4 bg-white border-t border-[#ECEAE4] flex items-center justify-end gap-4">
+      <div class="px-6 py-4 bg-[#F9F8F5] border-t border-[#E8E6DF] flex items-center justify-end gap-4">
         <p id="add-teacher-draft-note" class="hidden text-[11px] text-[#7A8684] mr-auto">Draft restored. <button type="button" onclick="clearTeacherDraft()" class="font-bold text-[#0E4D45] underline cursor-pointer">Clear draft</button></p>
         <button 
           type="button" 
@@ -2093,7 +2139,7 @@
         <button 
           type="button" 
           onclick="handleSaveNewTeacher()" 
-          class="px-6 py-2.5 text-xs font-bold rounded-lg bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
+          class="px-6 py-2.5 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
         >
           <span>Save & Register Teacher</span>
         </button>
@@ -2113,7 +2159,7 @@
       <!-- Modal Header -->
       <div class="px-6 py-5 border-b border-[#ECEAE4] flex items-center justify-between bg-white">
         <div class="flex items-center gap-3">
-          <div class="w-9 h-9 rounded-xl bg-[#0E4D45] text-white flex items-center justify-center shrink-0 shadow-xs">
+          <div class="modal-icon-tile">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
           </div>
           <div>
@@ -2124,7 +2170,7 @@
             <p class="text-xs text-[#7A8684] mt-0.5">Update faculty details.</p>
           </div>
         </div>
-        <button onclick="closeEditTeacherModal()" class="w-8 h-8 rounded-full border border-[#ECEAE4] bg-[#F8F6F1] text-[#7A8684] hover:text-[#141F1E] hover:bg-[#ECEAE4] flex items-center justify-center text-sm font-bold transition-colors cursor-pointer">✕</button>
+        <button onclick="closeEditTeacherModal()" class="modal-close"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
       </div>
 
       <!-- Modal Body (2-Column Grid) -->
@@ -2132,7 +2178,7 @@
         <input type="hidden" id="edit-teacher-original-id" value="">
 
         <!-- 2-Column Grid Fields -->
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
           <!-- Teacher ID (not editable — it links students to this teacher) -->
           <div>
@@ -2141,7 +2187,7 @@
               type="text"
               id="edit-teacher-id"
               disabled
-              class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#7A8684] font-mono font-bold outline-none cursor-not-allowed"
+              class="w-full bg-white border border-[#E8E6DF] rounded-full h-10 px-3 text-xs text-[#7A8684] font-mono font-bold outline-none cursor-not-allowed"
             >
           </div>
 
@@ -2203,7 +2249,7 @@
       </div>
 
       <!-- Modal Footer -->
-      <div class="px-6 py-4 bg-white border-t border-[#ECEAE4] flex items-center justify-end gap-4">
+      <div class="px-6 py-4 bg-[#F9F8F5] border-t border-[#E8E6DF] flex items-center justify-end gap-4">
         <button
           type="button"
           onclick="closeEditTeacherModal()"
@@ -2214,7 +2260,7 @@
         <button
           type="button"
           onclick="handleSaveEditTeacher()"
-          class="px-6 py-2.5 text-xs font-bold rounded-lg bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
+          class="px-6 py-2.5 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
         >
           <span>Save Changes</span>
         </button>
@@ -2231,7 +2277,7 @@
     <div class="modal-content max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden border border-[#ECEAE4] transition-all">
       <div class="px-6 py-5 border-b border-[#ECEAE4] flex items-center justify-between bg-white">
         <div class="flex items-center gap-3">
-          <div class="w-9 h-9 rounded-xl bg-[#0E4D45] text-white flex items-center justify-center shrink-0 shadow-xs">
+          <div class="modal-icon-tile">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
           </div>
           <div>
@@ -2239,9 +2285,10 @@
             <p class="text-xs text-[#7A8684] mt-0.5">Global salary rules for all teachers (PKR).</p>
           </div>
         </div>
-        <button onclick="closePayrollSettingsModal()" class="w-8 h-8 rounded-full border border-[#ECEAE4] bg-[#F8F6F1] text-[#7A8684] hover:text-[#141F1E] hover:bg-[#ECEAE4] flex items-center justify-center text-sm font-bold transition-colors cursor-pointer">✕</button>
+        <button onclick="closePayrollSettingsModal()" class="modal-close"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
       </div>
       <div class="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label class="block text-xs font-semibold text-[#141F1E] mb-1">Basic Salary (PKR)</label>
           <input type="number" id="payroll-setting-basic-salary" min="0" step="any" class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#0E4D45] font-bold outline-none focus:border-[#0E4D45] focus:bg-white transition-all">
@@ -2263,11 +2310,12 @@
           <label class="block text-xs font-semibold text-[#141F1E] mb-1">Monthly Deduction (PKR)</label>
           <input type="number" id="payroll-setting-deduction" min="0" step="any" class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#0E4D45] font-bold outline-none focus:border-[#0E4D45] focus:bg-white transition-all">
         </div>
+        </div>
         <p class="text-[11px] text-[#7A8684]">Saving recalculates all unpaid payroll figures. Months already marked Paid stay exactly as recorded.</p>
       </div>
-      <div class="px-6 py-4 bg-white border-t border-[#ECEAE4] flex items-center justify-end gap-4">
+      <div class="px-6 py-4 bg-[#F9F8F5] border-t border-[#E8E6DF] flex items-center justify-end gap-4">
         <button type="button" onclick="closePayrollSettingsModal()" class="text-xs font-semibold text-[#7A8684] hover:text-[#141F1E] transition-colors cursor-pointer">Cancel</button>
-        <button type="button" onclick="handleSavePayrollSettings()" class="px-6 py-2.5 text-xs font-bold rounded-lg bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-sm transition-all cursor-pointer flex items-center gap-1.5"><span>Save Settings</span></button>
+        <button type="button" onclick="handleSavePayrollSettings()" class="px-6 py-2.5 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-sm transition-all cursor-pointer flex items-center gap-1.5"><span>Save Settings</span></button>
       </div>
     </div>
   </div>
@@ -2280,7 +2328,7 @@
     <div class="modal-content max-w-lg w-full bg-white rounded-2xl shadow-xl overflow-hidden border border-[#ECEAE4] transition-all">
       <div class="px-6 py-5 border-b border-[#ECEAE4] flex items-center justify-between bg-white">
         <div class="flex items-center gap-3">
-          <div class="w-9 h-9 rounded-xl bg-[#0E4D45] text-white flex items-center justify-center shrink-0 shadow-xs">
+          <div class="modal-icon-tile">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
           </div>
           <div>
@@ -2288,7 +2336,7 @@
             <p class="text-xs text-[#7A8684] mt-0.5">Base currency PKR — rates update automatically every month.</p>
           </div>
         </div>
-        <button onclick="closeCurrencySettingsModal()" class="w-8 h-8 rounded-full border border-[#ECEAE4] bg-[#F8F6F1] text-[#7A8684] hover:text-[#141F1E] hover:bg-[#ECEAE4] flex items-center justify-center text-sm font-bold transition-colors cursor-pointer">✕</button>
+        <button onclick="closeCurrencySettingsModal()" class="modal-close"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
       </div>
       <div class="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
         <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[#7A8684]">
@@ -2298,13 +2346,13 @@
         </div>
         <p id="currency-settings-stale-note" class="hidden text-[11px] font-medium text-[#92400E] bg-[#FFFBEB] border border-[#FDE68A] rounded-lg px-3 py-2"></p>
         <div class="flex flex-wrap items-center gap-2">
-          <button type="button" onclick="handleUpdateCurrencyRatesNow()" class="px-4 py-2 text-xs font-bold rounded-lg bg-white border border-[#0E4D45] text-[#0E4D45] hover:bg-[#E8EFEE] transition-all cursor-pointer">Update rates now</button>
+          <button type="button" onclick="handleUpdateCurrencyRatesNow()" class="px-4 py-2 text-xs font-bold rounded-full bg-white border border-[#0E4D45] text-[#0E4D45] hover:bg-[#E8EFEE] transition-all cursor-pointer">Update rates now</button>
           <input type="text" id="currency-rates-filter" placeholder="Search currency…" oninput="renderCurrencyRatesTable(this.value)" class="flex-1 min-w-[140px] bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-9 px-3 text-xs text-[#141F1E] outline-none focus:border-[#0E4D45] focus:bg-white transition-all">
         </div>
         <div class="border border-[#ECEAE4] rounded-xl overflow-hidden">
           <div class="max-h-64 overflow-y-auto">
             <table class="w-full text-xs text-left">
-              <thead class="bg-[#F8F6F1] text-[10px] font-semibold text-[#7A8684] sticky top-0">
+              <thead class="bg-[#F8F6F1] text-[11px] font-semibold text-[#7A8684] sticky top-0">
                 <tr><th class="px-3 py-2">Currency</th><th class="px-3 py-2">Name</th><th class="px-3 py-2 text-right">PKR per 1 unit</th><th class="px-3 py-2"></th></tr>
               </thead>
               <tbody id="currency-rates-table-body"></tbody>
@@ -2314,13 +2362,13 @@
         <div class="flex items-center gap-2">
           <select id="currency-add-select" class="flex-1 min-w-0 bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-9 px-2 text-xs text-[#141F1E] font-semibold outline-none focus:border-[#0E4D45] focus:bg-white transition-all cursor-pointer"></select>
           <input type="number" id="currency-add-rate" min="0" step="any" placeholder="Rate (PKR per 1 unit)" class="w-40 bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-9 px-3 text-xs text-[#0E4D45] font-bold outline-none focus:border-[#0E4D45] focus:bg-white transition-all">
-          <button type="button" onclick="handleAddCurrencyRate()" class="px-4 py-2 text-xs font-bold rounded-lg bg-[#0E4D45] text-white hover:bg-[#14534B] transition-all cursor-pointer shrink-0">Add</button>
+          <button type="button" onclick="handleAddCurrencyRate()" class="px-4 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-all cursor-pointer shrink-0">Add</button>
         </div>
         <p class="text-[11px] text-[#7A8684]">Rates refresh automatically on the 1st of each month. A rate you edit by hand is kept even after the monthly update. Payments already recorded keep the PKR value from the day they were paid.</p>
       </div>
-      <div class="px-6 py-4 bg-white border-t border-[#ECEAE4] flex items-center justify-end gap-4">
+      <div class="px-6 py-4 bg-[#F9F8F5] border-t border-[#E8E6DF] flex items-center justify-end gap-4">
         <button type="button" onclick="closeCurrencySettingsModal()" class="text-xs font-semibold text-[#7A8684] hover:text-[#141F1E] transition-colors cursor-pointer">Cancel</button>
-        <button type="button" id="currency-settings-save-btn" onclick="handleSaveCurrencySettings()" class="px-6 py-2.5 text-xs font-bold rounded-lg bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-sm transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-60"><span id="currency-settings-save-label">Save Settings</span></button>
+        <button type="button" id="currency-settings-save-btn" onclick="handleSaveCurrencySettings()" class="px-6 py-2.5 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-sm transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-60"><span id="currency-settings-save-label">Save Settings</span></button>
       </div>
     </div>
   </div>
@@ -2331,9 +2379,9 @@
   <div id="settings-modal" class="modal-backdrop">
     <div class="modal-content max-w-2xl max-h-[94vh] sm:max-h-[94vh] flex flex-col overflow-hidden">
       <!-- Modal Header -->
-      <div class="p-4 border-b border-[#ECEAE4] flex items-center justify-between bg-[#F8F6F1] flex-shrink-0">
+      <div class="px-6 py-5 border-b border-[#ECEAE4] flex items-center justify-between bg-white flex-shrink-0">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-2xl bg-[#0E4D45] text-white flex items-center justify-center shadow-sm">
+          <div class="modal-icon-tile">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
           </div>
           <div>
@@ -2341,18 +2389,15 @@
             <p class="text-xs text-[#7A8684] mt-0.5">Global policies, fee rules, privacy controls & WhatsApp notifications.</p>
           </div>
         </div>
-        <button onclick="closeSettingsModal()" class="w-8 h-8 rounded-full border border-[#ECEAE4] bg-white text-[#7A8684] hover:text-[#141F1E] flex items-center justify-center text-sm font-bold cursor-pointer">✕</button>
+        <button onclick="closeSettingsModal()" class="modal-close"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
       </div>
 
       <!-- Modal Body (Scrollable) -->
-      <div class="p-4 pb-4 overflow-y-auto space-y-3 text-xs flex-1 min-h-0">
+      <div class="p-6 overflow-y-auto text-xs flex-1 min-h-0">
         
         <!-- SECTION 1: ACADEMY PROFILE & GATEWAY -->
-        <div class="bg-[#F8F6F1] p-3 rounded-2xl border border-[#ECEAE4] space-y-2">
-          <div class="flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full bg-[#0E4D45]"></span>
-            <h4 class="font-bold text-[#141F1E] text-xs">1. Academy Identity & WhatsApp Gateway</h4>
-          </div>
+        <div class="modal-section space-y-2">
+          <h4 class="modal-section-title">1. Academy Identity & WhatsApp Gateway</h4>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
             <div>
               <label class="block font-semibold text-[#141F1E] mb-1">Academy Title</label>
@@ -2382,11 +2427,8 @@
         </div>
 
         <!-- SECTION 2: FEE POLICY & FIFO WATERFALL RULES -->
-        <div class="bg-[#F8F6F1] p-3 rounded-2xl border border-[#ECEAE4] space-y-2">
-          <div class="flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full bg-[#0E4D45]"></span>
-            <h4 class="font-bold text-[#141F1E] text-xs">2. Fee Management & Ledger Automation</h4>
-          </div>
+        <div class="modal-section space-y-2">
+          <h4 class="modal-section-title">2. Fee Management & Ledger Automation</h4>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
             <div>
               <label class="block font-semibold text-[#141F1E] mb-1">Monthly Due Day</label>
@@ -2432,11 +2474,8 @@
         </div>
 
         <!-- SECTION 3: PRIVACY & STUDENT CONTACT LOCK -->
-        <div class="bg-[#F8F6F1] p-3 rounded-2xl border border-[#ECEAE4] space-y-2">
-          <div class="flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full bg-[#0E4D45]"></span>
-            <h4 class="font-bold text-[#141F1E] text-xs">3. Student Privacy & Contact Lock</h4>
-          </div>
+        <div class="modal-section space-y-2">
+          <h4 class="modal-section-title">3. Student Privacy & Contact Lock</h4>
           <div class="p-3 bg-white rounded-xl border border-[#ECEAE4] space-y-2">
             <div class="flex items-center justify-between">
               <div>
@@ -2457,11 +2496,8 @@
         </div>
 
         <!-- SECTION 4: CLASS & SABAQ SCHEDULE POLICY -->
-        <div class="bg-[#F8F6F1] p-3 rounded-2xl border border-[#ECEAE4] space-y-2">
-          <div class="flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full bg-[#0E4D45]"></span>
-            <h4 class="font-bold text-[#141F1E] text-xs">4. Academic & Faculty Regulations</h4>
-          </div>
+        <div class="modal-section space-y-2">
+          <h4 class="modal-section-title">4. Academic & Faculty Regulations</h4>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
             <div>
               <label class="block font-semibold text-[#141F1E] mb-1">Standard Class Slot Duration</label>
@@ -2485,13 +2521,13 @@
       </div>
 
       <!-- Modal Footer -->
-      <div class="p-3 bg-[#F8F6F1] border-t border-[#ECEAE4] flex items-center justify-between flex-shrink-0">
+      <div class="px-6 py-4 bg-[#F9F8F5] border-t border-[#E8E6DF] flex items-center justify-between flex-shrink-0">
         <div class="flex items-center gap-1.5 text-[11px] text-[#7A8684]">
           <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
           <span>Academic Year <strong>2026</strong> Active System</span>
         </div>
         <div class="flex items-center gap-2">
-          <button onclick="closeSettingsModal()" class="px-4 py-2 text-xs font-bold rounded-full bg-white border border-[#ECEAE4] text-[#7A8684] hover:bg-[#F8F6F1] transition-colors cursor-pointer">Cancel</button>
+          <button onclick="closeSettingsModal()" class="text-xs font-semibold text-[#7A8684] hover:text-[#141F1E] transition-colors cursor-pointer">Cancel</button>
           <button onclick="saveAcademySettings()" class="px-6 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors shadow-sm cursor-pointer">Save Academy Settings</button>
         </div>
       </div>
@@ -2503,9 +2539,9 @@
        ========================================================================== -->
   <div id="notifications-modal" class="modal-backdrop">
     <div class="modal-content max-w-lg">
-      <div class="p-6 border-b border-[#ECEAE4] flex items-center justify-between bg-[#F8F6F1]">
+      <div class="px-6 py-5 border-b border-[#ECEAE4] flex items-center justify-between bg-white">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-2xl bg-[#0E4D45] text-white flex items-center justify-center shadow-sm">
+          <div class="modal-icon-tile">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
           </div>
           <div>
@@ -2513,7 +2549,7 @@
             <p class="text-xs text-[#7A8684] mt-0.5">Live operational logs, automated fee alerts & trial requests.</p>
           </div>
         </div>
-        <button onclick="closeNotificationsModal()" class="w-8 h-8 rounded-full border border-[#ECEAE4] bg-white text-[#7A8684] hover:text-[#141F1E] flex items-center justify-center text-sm font-bold cursor-pointer">✕</button>
+        <button onclick="closeNotificationsModal()" class="modal-close"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
       </div>
 
       <div id="notifications-modal-list" class="p-6 space-y-3 max-h-[60vh] overflow-y-auto text-xs">
@@ -2526,9 +2562,9 @@
         </div>
       </div>
 
-      <div class="p-4 bg-[#F8F6F1] border-t border-[#ECEAE4] flex items-center justify-between">
+      <div class="px-6 py-4 bg-[#F9F8F5] border-t border-[#E8E6DF] flex items-center justify-between">
         <span class="text-[11px] text-[#7A8684]">All gateways operational</span>
-        <button onclick="closeNotificationsModal()" class="px-5 py-2 text-xs font-semibold rounded-lg bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-2xs cursor-pointer">Mark All Read</button>
+        <button onclick="closeNotificationsModal()" class="px-5 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-2xs cursor-pointer">Mark All Read</button>
       </div>
     </div>
   </div>
@@ -2549,10 +2585,10 @@
           Are you sure you want to delete this record? This action cannot be undone.
         </p>
         <div class="mt-6 flex items-center justify-end gap-2.5">
-          <button type="button" id="delete-modal-cancel-btn" onclick="closeDeleteConfirmationModal()" class="px-4 py-2.5 text-xs font-semibold rounded-xl bg-white border border-[#ECEAE4] text-[#7A8684] hover:text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer">
+          <button type="button" id="delete-modal-cancel-btn" onclick="closeDeleteConfirmationModal()" class="px-4 py-2.5 text-xs font-semibold rounded-full bg-white border border-[#ECEAE4] text-[#7A8684] hover:text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer">
             Cancel
           </button>
-          <button type="button" id="delete-modal-confirm-btn" class="px-5 py-2.5 text-xs font-semibold rounded-xl bg-[#DC2626] hover:bg-red-700 text-white transition-colors shadow-2xs cursor-pointer">
+          <button type="button" id="delete-modal-confirm-btn" class="px-5 py-2.5 text-xs font-semibold rounded-full bg-[#DC2626] hover:bg-red-700 text-white transition-colors shadow-2xs cursor-pointer">
             Delete Record
           </button>
         </div>
@@ -2566,9 +2602,9 @@
   <div id="full-activity-log-modal" class="modal-backdrop">
     <div class="modal-content max-w-4xl w-full bg-white rounded-2xl shadow-2xl overflow-hidden border border-[#ECEAE4] flex flex-col max-h-[90vh]">
       <!-- Header -->
-      <div class="px-6 py-5 border-b border-[#ECEAE4] flex items-center justify-between bg-[#F8F6F1]">
+      <div class="px-6 py-5 border-b border-[#ECEAE4] flex items-center justify-between bg-white">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-2xl bg-[#0E4D45] text-white flex items-center justify-center shadow-sm">
+          <div class="modal-icon-tile">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
           </div>
           <div>
@@ -2576,26 +2612,26 @@
             <p class="text-xs text-[#7A8684] mt-0.5">Comprehensive audit trail of tuition settlements, student enrollments, faculty updates, and notices.</p>
           </div>
         </div>
-        <button type="button" onclick="closeFullActivityLogModal()" class="w-8 h-8 rounded-full border border-[#ECEAE4] bg-white text-[#7A8684] hover:text-[#141F1E] flex items-center justify-center text-sm font-bold cursor-pointer transition-colors" title="Close">✕</button>
+        <button type="button" onclick="closeFullActivityLogModal()" class="modal-close" title="Close"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
       </div>
 
       <!-- Filter Tabs & Search Bar -->
       <div class="px-6 py-3.5 bg-white border-b border-[#ECEAE4] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         <!-- Filter Tabs -->
         <div id="activity-log-filter-tabs" class="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-          <button type="button" onclick="setActivityLogFilter('all')" data-filter="all" class="activity-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#0E4D45] text-white shadow-2xs transition-colors cursor-pointer">
+          <button type="button" onclick="setActivityLogFilter('all')" data-filter="all" class="activity-filter-btn px-3 py-1.5 rounded-full text-xs font-semibold bg-[#0E4D45] text-white shadow-2xs transition-colors cursor-pointer">
             All (<span id="activity-count-all">0</span>)
           </button>
-          <button type="button" onclick="setActivityLogFilter('fee')" data-filter="fee" class="activity-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#F8F6F1] text-[#7A8684] hover:text-[#141F1E] transition-colors cursor-pointer">
+          <button type="button" onclick="setActivityLogFilter('fee')" data-filter="fee" class="activity-filter-btn px-3 py-1.5 rounded-full text-xs font-semibold bg-[#F8F6F1] text-[#7A8684] hover:text-[#141F1E] transition-colors cursor-pointer">
             Tuition Fees (<span id="activity-count-fee">0</span>)
           </button>
-          <button type="button" onclick="setActivityLogFilter('student')" data-filter="student" class="activity-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#F8F6F1] text-[#7A8684] hover:text-[#141F1E] transition-colors cursor-pointer">
+          <button type="button" onclick="setActivityLogFilter('student')" data-filter="student" class="activity-filter-btn px-3 py-1.5 rounded-full text-xs font-semibold bg-[#F8F6F1] text-[#7A8684] hover:text-[#141F1E] transition-colors cursor-pointer">
             Enrollments (<span id="activity-count-student">0</span>)
           </button>
-          <button type="button" onclick="setActivityLogFilter('teacher')" data-filter="teacher" class="activity-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#F8F6F1] text-[#7A8684] hover:text-[#141F1E] transition-colors cursor-pointer">
+          <button type="button" onclick="setActivityLogFilter('teacher')" data-filter="teacher" class="activity-filter-btn px-3 py-1.5 rounded-full text-xs font-semibold bg-[#F8F6F1] text-[#7A8684] hover:text-[#141F1E] transition-colors cursor-pointer">
             Faculty (<span id="activity-count-teacher">0</span>)
           </button>
-          <button type="button" onclick="setActivityLogFilter('notice')" data-filter="notice" class="activity-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#F8F6F1] text-[#7A8684] hover:text-[#141F1E] transition-colors cursor-pointer">
+          <button type="button" onclick="setActivityLogFilter('notice')" data-filter="notice" class="activity-filter-btn px-3 py-1.5 rounded-full text-xs font-semibold bg-[#F8F6F1] text-[#7A8684] hover:text-[#141F1E] transition-colors cursor-pointer">
             Notices (<span id="activity-count-notice">0</span>)
           </button>
         </div>
@@ -2613,9 +2649,9 @@
       </div>
 
       <!-- Footer -->
-      <div class="px-6 py-3.5 bg-[#F8F6F1] border-t border-[#ECEAE4] flex items-center justify-between">
+      <div class="px-6 py-3.5 bg-[#F9F8F5] border-t border-[#E8E6DF] flex items-center justify-between">
         <span id="activity-log-footer-summary" class="text-xs text-[#7A8684]">Showing 0 entries</span>
-        <button type="button" onclick="closeFullActivityLogModal()" class="px-5 py-2 text-xs font-semibold rounded-lg bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-2xs cursor-pointer transition-colors">
+        <button type="button" onclick="closeFullActivityLogModal()" class="px-5 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-2xs cursor-pointer transition-colors">
           Close Audit Log
         </button>
       </div>
@@ -2629,9 +2665,9 @@
     <div class="modal-content max-w-lg w-full bg-white rounded-3xl border border-[#ECEAE4] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
       
       <!-- Modal Header -->
-      <div class="px-6 py-4 border-b border-[#ECEAE4] flex items-center justify-between bg-[#F8F6F1]">
+      <div class="px-6 py-5 border-b border-[#ECEAE4] flex items-center justify-between bg-white">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-2xl bg-[#0E4D45] text-white flex items-center justify-center shadow-xs">
+          <div class="modal-icon-tile">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
           </div>
           <div>
@@ -2639,13 +2675,14 @@
             <p class="text-xs text-[#7A8684] mt-0.5">Broadcast official announcements to students, parents, and faculty.</p>
           </div>
         </div>
-        <button onclick="closePublishNoticeModal()" class="w-8 h-8 rounded-full border border-[#ECEAE4] bg-white text-[#7A8684] hover:text-[#141F1E] flex items-center justify-center text-sm font-bold cursor-pointer transition-colors">✕</button>
+        <button onclick="closePublishNoticeModal()" class="modal-close"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
       </div>
 
       <!-- Modal Body -->
-      <div class="p-6 space-y-4 text-xs">
+      <div class="p-6 text-xs">
         <input type="hidden" id="notice-edit-id" value="" />
-        
+        <div class="modal-section">
+          <h4 class="modal-section-title">1. Notice Details</h4>
         <div>
           <label class="block font-bold text-[#141F1E] mb-1.5">Notice Headline / Title *</label>
           <input 
@@ -2656,7 +2693,7 @@
           >
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block font-bold text-[#141F1E] mb-1.5">Target Audience *</label>
             <select 
@@ -2680,7 +2717,9 @@
             >
           </div>
         </div>
-
+        </div>
+        <div class="modal-section">
+          <h4 class="modal-section-title">2. Message</h4>
         <div>
           <label class="block font-bold text-[#141F1E] mb-1.5">Announcement Message Body *</label>
           <textarea 
@@ -2690,16 +2729,17 @@
             class="w-full bg-white border border-[#ECEAE4] rounded-xl p-3 text-xs text-[#141F1E] outline-none focus:border-[#0E4D45] focus:ring-1 focus:ring-[#0E4D45] leading-relaxed resize-none"
           ></textarea>
         </div>
+        </div>
       </div>
 
       <!-- Modal Footer -->
-      <div class="px-6 py-4 bg-[#F8F6F1] border-t border-[#ECEAE4] flex items-center justify-between">
+      <div class="px-6 py-4 bg-[#F9F8F5] border-t border-[#E8E6DF] flex items-center justify-between">
         <span class="text-[11px] text-[#7A8684]">Notice updates display live across portals</span>
         <div class="flex items-center gap-2">
           <button 
             type="button" 
             onclick="closePublishNoticeModal()" 
-            class="px-4 py-2 text-xs font-semibold rounded-lg bg-white border border-[#CBD5E1] text-[#475569] hover:bg-[#F8F6F1] transition-colors cursor-pointer"
+            class="text-xs font-semibold text-[#7A8684] hover:text-[#141F1E] transition-colors cursor-pointer"
           >
             Cancel
           </button>
@@ -2707,7 +2747,7 @@
             type="button" 
             onclick="handleSaveNotice()" 
             id="publish-notice-submit-btn" 
-            class="px-5 py-2 text-xs font-semibold rounded-lg bg-[#0E4D45] hover:bg-[#14534B] text-white transition-all shadow-xs cursor-pointer flex items-center gap-1.5"
+            class="px-5 py-2 text-xs font-bold rounded-full bg-[#0E4D45] hover:bg-[#14534B] text-white transition-all shadow-xs cursor-pointer flex items-center gap-1.5"
           >
             <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
             <span>Publish Notice</span>
@@ -2725,9 +2765,9 @@
     <div class="modal-content max-w-lg w-full bg-white rounded-3xl border border-[#ECEAE4] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
       
       <!-- Modal Header -->
-      <div class="px-6 py-4 border-b border-[#ECEAE4] flex items-center justify-between bg-[#F8F6F1]">
+      <div class="px-6 py-5 border-b border-[#ECEAE4] flex items-center justify-between bg-white">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-2xl bg-[#0E4D45] text-white flex items-center justify-center shadow-xs">
+          <div class="modal-icon-tile">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
           </div>
           <div>
@@ -2735,11 +2775,12 @@
             <p class="text-xs text-[#7A8684] mt-0.5">Schedule and register an incoming student trial assessment.</p>
           </div>
         </div>
-        <button onclick="closeAddTrialModal()" class="w-8 h-8 rounded-full border border-[#ECEAE4] bg-white text-[#7A8684] hover:text-[#141F1E] flex items-center justify-center text-sm font-bold cursor-pointer transition-colors">✕</button>
+        <button onclick="closeAddTrialModal()" class="modal-close"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
       </div>
 
       <!-- Modal Body -->
       <div class="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <!-- Student Name -->
         <div>
           <label class="block text-xs font-semibold text-[#141F1E] mb-1">Candidate Student Name *</label>
@@ -2791,6 +2832,7 @@
             class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#141F1E] font-medium outline-none focus:border-[#0E4D45] focus:bg-white transition-all"
           >
         </div>
+        </div>
 
         <!-- Location / Country -->
         <div>
@@ -2805,7 +2847,7 @@
       </div>
 
       <!-- Modal Footer -->
-      <div class="px-6 py-4 bg-[#F8F6F1] border-t border-[#ECEAE4] flex items-center justify-end gap-3">
+      <div class="px-6 py-4 bg-[#F9F8F5] border-t border-[#E8E6DF] flex items-center justify-end gap-3">
         <button 
           type="button" 
           onclick="closeAddTrialModal()" 
@@ -2816,7 +2858,7 @@
         <button 
           type="button" 
           onclick="handleSaveNewTrial()" 
-          class="px-5 py-2 text-xs font-bold rounded-lg bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
+          class="px-5 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
         >
           <span>Schedule & Add Trial</span>
         </button>
@@ -2830,9 +2872,9 @@
        ========================================================================== -->
   <div id="add-live-class-modal" class="modal-backdrop">
     <div class="modal-content max-w-lg bg-white rounded-3xl border border-[#ECEAE4] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-      <div class="p-6 border-b border-[#ECEAE4] flex items-center justify-between bg-[#F8F6F1]">
+      <div class="px-6 py-5 border-b border-[#ECEAE4] flex items-center justify-between bg-white">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-2xl bg-[#0E4D45] text-white flex items-center justify-center shadow-xs">
+          <div class="modal-icon-tile">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
           </div>
           <div>
@@ -2840,7 +2882,7 @@
             <p class="text-xs text-[#7A8684] mt-0.5">Schedule a live or ad-hoc class monitoring session.</p>
           </div>
         </div>
-        <button type="button" onclick="closeAddLiveClassModal()" class="w-8 h-8 rounded-full border border-[#ECEAE4] bg-white text-[#7A8684] hover:text-[#141F1E] flex items-center justify-center text-sm font-bold cursor-pointer transition-colors">✕</button>
+        <button type="button" onclick="closeAddLiveClassModal()" class="modal-close"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
       </div>
 
       <div class="p-6 space-y-4 text-xs">
@@ -2858,7 +2900,7 @@
           </select>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block font-semibold text-[#141F1E] mb-1">Class Date *</label>
             <input type="date" id="add-class-date" class="w-full bg-white border border-[#ECEAE4] rounded-xl px-3 py-2 text-xs font-medium text-[#141F1E] outline-none focus:border-[#0E4D45]" />
@@ -2869,7 +2911,7 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block font-semibold text-[#141F1E] mb-1">Duration</label>
             <select id="add-class-duration" class="w-full bg-white border border-[#ECEAE4] rounded-xl px-3 py-2 text-xs font-medium text-[#141F1E] outline-none focus:border-[#0E4D45]">
@@ -2889,9 +2931,9 @@
         </div>
       </div>
 
-      <div class="p-4 bg-[#F8F6F1] border-t border-[#ECEAE4] flex items-center justify-end gap-2">
-        <button type="button" onclick="closeAddLiveClassModal()" class="px-4 py-2 text-xs font-semibold rounded-lg bg-white border border-[#CBD5E1] text-[#7A8684] hover:bg-[#F8F6F1] transition-colors cursor-pointer">Cancel</button>
-        <button type="button" onclick="handleSaveLiveClass()" class="px-5 py-2 text-xs font-semibold rounded-lg bg-[#0E4D45] hover:bg-[#14534B] text-white transition-all shadow-xs cursor-pointer">Save Class</button>
+      <div class="px-6 py-4 bg-[#F9F8F5] border-t border-[#E8E6DF] flex items-center justify-end gap-2">
+        <button type="button" onclick="closeAddLiveClassModal()" class="text-xs font-semibold text-[#7A8684] hover:text-[#141F1E] transition-colors cursor-pointer">Cancel</button>
+        <button type="button" onclick="handleSaveLiveClass()" class="px-5 py-2 text-xs font-bold rounded-full bg-[#0E4D45] hover:bg-[#14534B] text-white transition-all shadow-xs cursor-pointer">Save Class</button>
       </div>
     </div>
   </div>
@@ -2910,7 +2952,7 @@
           <svg class="w-5 h-5 text-[#0E4D45]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.539.092.917.56.917 1.107v1.86a2.25 2.25 0 01-.659 1.59l-5.433 5.433a2.25 2.25 0 00-.659 1.59v3.427a1.5 1.5 0 01-.44 1.06l-2.25 2.25A1.125 1.125 0 0110 21.375V15.25a2.25 2.25 0 00-.659-1.59L3.908 8.227A2.25 2.25 0 013.25 6.645V4.785c0-.547.378-1.015.917-1.107A48.507 48.507 0 0112 3z"></path></svg>
           <h3 class="text-base font-bold text-[#141F1E]">Filter Fee Ledger</h3>
         </div>
-        <button type="button" onclick="closeFeeFilterBottomSheet()" class="w-8 h-8 rounded-full border border-[#ECEAE4] bg-[#F8F6F1] text-[#7A8684] hover:text-[#141F1E] flex items-center justify-center text-sm font-bold cursor-pointer">✕</button>
+        <button type="button" onclick="closeFeeFilterBottomSheet()" class="modal-close"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
       </div>
 
       <div class="space-y-4 text-xs">
@@ -2951,9 +2993,9 @@
         <div>
           <label class="block text-xs font-semibold text-[#141F1E] mb-2">Active Ledger Month</label>
           <div class="flex items-center justify-between p-2.5 rounded-xl border border-[#ECEAE4] bg-white shadow-2xs">
-            <button type="button" onclick="stepAcademicMonth(-1); updateFeeFilterBottomSheetUI();" class="w-8 h-8 rounded-lg border border-[#ECEAE4] bg-[#F8F6F1] flex items-center justify-center font-bold text-gray-600 hover:text-[#0E4D45] cursor-pointer">‹</button>
+            <button type="button" onclick="stepAcademicMonth(-1); updateFeeFilterBottomSheetUI();" class="w-8 h-8 rounded-full border border-[#ECEAE4] bg-[#F8F6F1] flex items-center justify-center font-bold text-gray-600 hover:text-[#0E4D45] cursor-pointer">‹</button>
             <span id="bottom-sheet-month-label" class="text-xs font-bold text-[#141F1E]"></span>
-            <button type="button" onclick="stepAcademicMonth(1); updateFeeFilterBottomSheetUI();" class="w-8 h-8 rounded-lg border border-[#ECEAE4] bg-[#F8F6F1] flex items-center justify-center font-bold text-gray-600 hover:text-[#0E4D45] cursor-pointer">›</button>
+            <button type="button" onclick="stepAcademicMonth(1); updateFeeFilterBottomSheetUI();" class="w-8 h-8 rounded-full border border-[#ECEAE4] bg-[#F8F6F1] flex items-center justify-center font-bold text-gray-600 hover:text-[#0E4D45] cursor-pointer">›</button>
           </div>
         </div>
 
@@ -2972,8 +3014,8 @@
 
       <!-- Action Buttons -->
       <div class="flex items-center gap-2 pt-4 mt-4 border-t border-[#ECEAE4]">
-        <button type="button" onclick="resetFeeFilters(); updateFeeFilterBottomSheetUI();" class="flex-1 py-2.5 text-xs font-semibold rounded-xl bg-[#F8F6F1] hover:bg-[#ECEAE4] text-gray-700 border border-[#ECEAE4] transition-colors cursor-pointer">Reset All</button>
-        <button type="button" onclick="closeFeeFilterBottomSheet()" class="flex-1 py-2.5 text-xs font-bold rounded-xl bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-sm transition-colors cursor-pointer">Apply Filters</button>
+        <button type="button" onclick="resetFeeFilters(); updateFeeFilterBottomSheetUI();" class="flex-1 py-2.5 text-xs font-semibold rounded-full bg-[#F8F6F1] hover:bg-[#ECEAE4] text-gray-700 border border-[#ECEAE4] transition-colors cursor-pointer">Reset All</button>
+        <button type="button" onclick="closeFeeFilterBottomSheet()" class="flex-1 py-2.5 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-sm transition-colors cursor-pointer">Apply Filters</button>
       </div>
     </div>
   </div>
@@ -3118,19 +3160,19 @@
   <script src="chart.min.js"></script>
 
   <!-- Application Logic -->
-  <script src="app.js?v=20261125-manual-fix"></script>
+  <script src="app.js?v=20261125-popups"></script>
   <!-- ==========================================================================
        COMMAND PALETTE (Ctrl+K) — shared across all portals
        ========================================================================== -->
   <div id="command-palette" class="modal-backdrop">
     <div class="modal-content max-w-lg w-full bg-white rounded-2xl shadow-2xl overflow-hidden border border-[#ECEAE4]">
-      <div class="flex items-center gap-3 px-4 py-3 border-b border-[#ECEAE4] bg-[#F8F6F1]">
+      <div class="flex items-center gap-3 px-4 py-3 border-b border-[#ECEAE4] bg-white">
         <svg class="w-4 h-4 text-[#7A8684] shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
         <input id="command-palette-input" type="text" placeholder="Search students, teachers, pages..." class="flex-1 bg-transparent outline-none text-sm text-[#141F1E] placeholder-[#94A3B8]" oninput="renderCommandPaletteResults(this.value)" />
         <kbd class="text-[10px] font-bold text-[#7A8684] border border-[#ECEAE4] rounded px-1.5 py-0.5 bg-white">Esc</kbd>
       </div>
       <div id="command-palette-results" class="max-h-80 overflow-y-auto p-2"></div>
-      <div class="px-4 py-2 border-t border-[#ECEAE4] bg-[#F8F6F1] text-[11px] text-[#7A8684] flex flex-wrap items-center gap-x-4 gap-y-1">
+      <div class="px-4 py-2 border-t border-[#E8E6DF] bg-[#F9F8F5] text-[11px] text-[#7A8684] flex flex-wrap items-center gap-x-4 gap-y-1">
         <span><kbd class="font-bold text-[#141F1E]">↑↓</kbd> Navigate</span>
         <span><kbd class="font-bold text-[#141F1E]">Enter</kbd> Open</span>
         <span><kbd class="font-bold text-[#141F1E]">Esc</kbd> Close</span>

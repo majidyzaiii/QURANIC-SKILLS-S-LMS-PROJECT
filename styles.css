@@ -295,8 +295,8 @@ body {
 .modal-content {
   position: relative !important;
   background: #FFFFFF !important;
-  border-radius: 24px;
-  border: 1px solid #ECEAE4;
+  border-radius: 16px !important;
+  border: 1px solid #E8E6DF;
   box-shadow: 0 20px 40px -10px rgba(14, 77, 69, 0.15);
   max-width: 680px;
   width: 100%;
@@ -311,7 +311,7 @@ body {
   transform: translateY(0);
 }
 
-#edit-schedule-modal .modal-content,
+#edit-student-modal .modal-content,
 #settings-modal .modal-content {
   overflow: hidden;
   display: flex;
@@ -327,12 +327,12 @@ body {
 /* Zero Typing Quick Logger Pills */
 .pill-choice {
   padding: 6px 12px;
-  border-radius: 8px;
+  border-radius: 9999px;
   border: 1px solid #ECEAE4;
   background: #FFFFFF;
   color: #334E4B;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: border-color 150ms ease, background-color 150ms ease;
 }
@@ -349,9 +349,9 @@ body {
 /* Sub-nav Pill Filter */
 .tab-filter-pill {
   padding: 6px 12px;
-  border-radius: 8px;
+  border-radius: 9999px;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   color: #7A8684;
   cursor: pointer;
   background: transparent;
@@ -766,3 +766,96 @@ html, body {
   table.responsive-table-cards { min-width: 640px; }
   #command-palette .modal-content { margin-top: 6vh; margin-bottom: auto; }
 }
+
+/* ==========================================================================
+   SHARED MODAL SHELL — Calm, Exact, Scholarly (popup redesign 2026-11-25)
+   One header / section / label / input / button language for every modal.
+   ========================================================================== */
+
+/* One close-button style everywhere: 32px, pill, white, SVG X. */
+.modal-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 9999px;
+  border: 1px solid #ECEAE4;
+  background: #FFFFFF;
+  color: #7A8684;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: color 150ms ease, background-color 150ms ease;
+}
+.modal-close:hover { color: #141F1E; background: #F8F6F1; }
+.modal-close svg { width: 16px; height: 16px; }
+
+/* Icon tile used in modal headers: 36px, rounded-xl, pale teal. */
+.modal-icon-tile {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: #E8EFEE;
+  color: #0E4D45;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.modal-icon-tile svg { width: 20px; height: 20px; }
+
+/* Numbered section header (admission-form pattern). */
+.modal-section { margin-top: 24px; }
+.modal-section:first-of-type { margin-top: 0; }
+.modal-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0E4D45;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #E8E6DF;
+  margin: 0 0 12px;
+}
+
+/* One label language inside modals and the bottom sheet. */
+.modal-content label,
+.mobile-bottom-sheet-content label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #141F1E;
+}
+
+/* One input language inside modals: white, hairline border, pill, 40px.
+   Specificity (0,7,1) beats the inline Tailwind utilities (0,1,0), so the
+   per-field classes stay but the look is unified. The :focus rules below
+   are more specific, so the teal focus border keeps working. */
+.modal-content input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]):not([type=hidden]):not([disabled]),
+.modal-content select {
+  background: #FFFFFF;
+  border: 1px solid #E8E6DF;
+  border-radius: 9999px;
+  height: 40px;
+  font-size: 12px;
+  color: #141F1E;
+}
+.modal-content textarea {
+  background: #FFFFFF;
+  border: 1px solid #E8E6DF;
+  border-radius: 12px;
+  font-size: 12px;
+  color: #141F1E;
+}
+.modal-content input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]):not([type=hidden]):not([disabled]):focus,
+.modal-content select:focus,
+.modal-content textarea:focus { border-color: #0E4D45; outline: none; }
+
+/* Exceptions: keep the command-palette search borderless, the rates-table
+   inputs compact, and the initials input small. */
+#command-palette input {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  height: auto;
+  font-size: 14px;
+}
+#currency-settings-modal input[data-currency-rate] { height: 32px; }
+#initials-custom-text { height: 28px; }

@@ -1431,13 +1431,233 @@ function getStudentEnrollmentMonth(student) {
 window.getStudentEnrollmentMonth = getStudentEnrollmentMonth;
 
 /**
+ * Repairs stored payments whose allocations add up to MORE than the amount
+ * actually received. A payment record is a historical fact: the allocations
+ * recorded against it must never exceed what was paid. If a doc is
+ * over-allocated, allocations are trimmed from the newest one backward
+ * until the sum equals the received amount, and the human-readable summary
+ * is rebuilt from what remains. Docs that already add up are left exactly
+ * as they are, no payment record is ever deleted, and running this again is
+ * a no-op — so it is safe to run on every reconcile. The corrected doc is
+ * persisted through the existing Firestore doc-set path (never through
+ * dbSavePaymentTransaction, which unshifts a NEW transaction).
+ */
+function repairOverAllocatedPayments() {
+  if (!Array.isArray(PAYMENT_LEDGER)) return 0;
+  let repaired = 0;
+  PAYMENT_LEDGER.forEach(p => {
+    if (!p || !Array.isArray(p.allocations) || p.allocations.length === 0) return;
+    const received = Number(p.amount) || 0;
+    let total = 0;
+    p.allocations.forEach(a => { total += Number(a.allocatedAmount) || 0; });
+    if (total <= received) return;
+    let excess = Math.round((total - received) * 100) / 100;
+    // Trim from the newest allocation backward until the sum equals received.
+    for (let i = p.allocations.length - 1; i >= 0 && excess > 0; i--) {
+      const a = p.allocations[i];
+      const alloc = Number(a.allocatedAmount) || 0;
+      if (alloc <= 0) continue;
+      const cut = Math.min(alloc, excess);
+      const next = Math.round((alloc - cut) * 100) / 100;
+      excess = Math.round((excess - cut) * 100) / 100;
+      if (next <= 0) {
+        p.allocations.splice(i, 1);
+      } else {
+        a.allocatedAmount = next;
+        a.newAmountPaid = Math.round(((Number(a.previouslyPaid) || 0) + next) * 100) / 100;
+        a.newRemainingDue = Math.max(0, Math.round(((Number(a.feeDue) || 0) - a.newAmountPaid) * 100) / 100);
+        a.newStatus = a.newRemainingDue === 0 ? 'paid' : 'partial';
+      }
+    }
+    // Rebuild the human-readable summary from the remaining allocations.
+    const isFamilyDoc = String(p.type || '') === 'Family Combined Invoice' ||
+      (AppState.students || []).some(s => String(s.familyId || s.familyTag || '').trim().toLowerCase() === String(p.studentId || '').trim().toLowerCase());
+    p.allocatedTo = p.allocations.map(a => {
+      const amt = Number(a.allocatedAmount) || 0;
+      const st = String(a.newStatus || 'paid').toUpperCase();
+      const cur = a.currency || p.currency || '$';
+      return isFamilyDoc
+        ? `${String(a.studentName || '').split(' ')[0]} ${a.month} (${cur}${amt} ➔ ${st})`
+        : `${a.month} (${cur}${amt} ➔ ${st})`;
+    }).join(', ');
+    repaired++;
+    // Persist the corrected record through the existing Firestore doc path.
+    try {
+      if (typeof db !== 'undefined' && db) {
+        db.collection('payment_ledger').doc(String(p.id)).set(p, { merge: true }).catch(e => console.warn('[Repair] Could not persist trimmed payment', p.id, e && e.message));
+      }
+    } catch (e) {
+      console.warn('[Repair] Could not persist trimmed payment', p.id, e && e.message);
+    }
+  });
+  if (repaired > 0) {
+    try { saveCache('lms_payment_ledger', PAYMENT_LEDGER); } catch (e) {}
+    console.log(`[Repair] Trimmed ${repaired} over-allocated payment(s) back to the amount received.`);
+  }
+  return repaired;
+}
+window.repairOverAllocatedPayments = repairOverAllocatedPayments;
+
+/**
+ * What ONE student paid on their own for one month, from payment docs
+ * addressed to that student. An allocation counts for a student ONLY when
+ * it carries their exact student id (or carries no id at all on a payment
+ * addressed to them). The old loose check — allocation studentName
+ * containing the student's first name — is gone: firstName is only the
+ * first word of the name (e.g. "PKG"), so every allocation of a family
+ * matched every child and each child was credited with the whole family
+ * payment. Family payment docs are never counted here; they are spread by
+ * computeFamilyPoolCredits below.
+ */
+function getIndividualPaidForMonth(student, idx, familyKeys) {
+  const shortM = MONTHS_LIST[idx];
+  const fullM = FULL_MONTHS_LIST[idx];
+  const sId = String(student.id || '').trim().toLowerCase();
+  const fullName = `${student.firstName} ${student.lastName || ''}`.trim().toLowerCase();
+  let paid = 0;
+  let doc = null;
+  (PAYMENT_LEDGER || []).forEach(p => {
+    if (!p) return;
+    const pId = String(p.studentId || '').trim().toLowerCase();
+    if (familyKeys && familyKeys.has(pId)) return; // family doc: handled by the pool
+    const pName = String(p.studentName || '').trim().toLowerCase();
+    // Individual doc: addressed to this student by id, or (legacy docs with
+    // no id at all) by full name. A first-name-only match is NOT enough.
+    const isIndividualDoc = (pId !== '' && pId === sId) || (pId === '' && fullName !== '' && pName.includes(fullName));
+    if (!isIndividualDoc) return;
+    if (Array.isArray(p.allocations) && p.allocations.length > 0) {
+      p.allocations.forEach(a => {
+        if (a.monthIndex === idx || a.month === shortM || a.month === fullM) {
+          if (!a.studentId || String(a.studentId).trim().toLowerCase() === sId) {
+            paid += Number(a.allocatedAmount) || 0;
+            doc = p;
+          }
+        }
+      });
+    } else if (p.allocatedTo && (p.allocatedTo.includes(shortM) || p.allocatedTo.includes(fullM))) {
+      paid += Number(p.amount) || 0;
+      doc = p;
+    } else if (p.date) {
+      const d = new Date(p.date);
+      if (!isNaN(d.getTime()) && d.getMonth() === idx) {
+        paid += Number(p.amount) || 0;
+        doc = p;
+      }
+    }
+  });
+  return { paid: Math.round(paid * 100) / 100, doc };
+}
+
+/**
+ * Spreads what each family RECEIVED for a month across its children in list
+ * order, capped at the received total. A family payment is one pool of
+ * money, not one payment per child: the pool covers the first children in
+ * order (each up to their current share, less anything they already paid on
+ * their own), and whatever is left short stays due on the newest member(s).
+ * Example: 6 children x $10 owed, $50 received -> five children Paid $10,
+ * the newest child due $10. With $50 received for 5 children x $10, all
+ * five stay Paid. Months before a child's enrolment consume nothing.
+ * Returns Map: `${familyKey}|${monthIdx}` -> Map(studentId -> { credit, doc }).
+ */
+function computeFamilyPoolCredits(individualPaid, familyKeys) {
+  const credits = new Map();
+  const families = {};
+  (AppState.students || []).forEach(s => {
+    const key = String(s.familyId || s.familyTag || '').trim().toLowerCase();
+    if (!key) return;
+    (families[key] = families[key] || []).push(s);
+  });
+  Object.keys(families).forEach(famKey => {
+    const members = families[famKey];
+    const famDocs = (PAYMENT_LEDGER || []).filter(p => p && String(p.studentId || '').trim().toLowerCase() === famKey);
+    if (famDocs.length === 0) return;
+    for (let idx = 0; idx < 12; idx++) {
+      const shortM = MONTHS_LIST[idx];
+      const fullM = FULL_MONTHS_LIST[idx];
+      let pool = 0;
+      let poolDoc = null;
+      famDocs.forEach(p => {
+        if (Array.isArray(p.allocations) && p.allocations.length > 0) {
+          let docMonthSum = 0;
+          p.allocations.forEach(a => {
+            if (a.monthIndex === idx || a.month === shortM || a.month === fullM) docMonthSum += Number(a.allocatedAmount) || 0;
+          });
+          if (docMonthSum > 0) {
+            // One doc can never credit more than was received for it.
+            pool += Math.min(docMonthSum, Number(p.amount) || docMonthSum);
+            poolDoc = p;
+          }
+        } else if (p.allocatedTo && (p.allocatedTo.includes(shortM) || p.allocatedTo.includes(fullM))) {
+          pool += Number(p.amount) || 0;
+          poolDoc = p;
+        } else if (p.date) {
+          const d = new Date(p.date);
+          if (!isNaN(d.getTime()) && d.getMonth() === idx) {
+            pool += Number(p.amount) || 0;
+            poolDoc = p;
+          }
+        }
+      });
+      if (pool <= 0) continue;
+      let remaining = Math.round(pool * 100) / 100;
+      const creditMap = new Map();
+      members.forEach(s => {
+        if (remaining <= 0) return;
+        if (idx < getStudentEnrollmentMonth(s)) return; // not enrolled yet: owes nothing, consumes nothing
+        const share = Number(s.monthlyFee) || 0;
+        const indiv = individualPaid.get(s.id + '|' + idx);
+        const alreadyPaid = indiv ? (indiv.paid || 0) : 0;
+        const need = Math.max(0, Math.round((share - alreadyPaid) * 100) / 100);
+        if (need <= 0) return;
+        const credit = Math.min(remaining, need);
+        remaining = Math.round((remaining - credit) * 100) / 100;
+        if (credit > 0) creditMap.set(s.id, { credit, doc: poolDoc });
+      });
+      if (creditMap.size > 0) credits.set(famKey + '|' + idx, creditMap);
+    }
+  });
+  return credits;
+}
+
+/**
  * Reconciles each student's 12-month billing records with actual ledger payments.
  * A month is ONLY marked as 'paid' or 'partial' if a verified payment transaction exists in PAYMENT_LEDGER.
  * Months prior to student enrollment are marked 'not_enrolled' with 0 balance due.
  * Unpaid past/current enrolled months are marked 'defaulter' with balance due; future months remain 'upcoming'.
+ * Allocation rule: a recorded payment is never credited for more than was
+ * actually received. Individual payments are matched by exact student id;
+ * family payments are one pool spread across the children in list order and
+ * capped at the received total, so a new child joining a family whose month
+ * is already paid stays due for their share until the family pays the
+ * difference.
  */
 function reconcileStudentsWithPaymentLedger() {
   if (!AppState || !Array.isArray(AppState.students)) return;
+
+  // Fix any stored payment whose allocations exceed what was received,
+  // before deriving months from it.
+  repairOverAllocatedPayments();
+
+  // Family keys, for telling family payment docs apart from individual ones.
+  const familyKeys = new Set();
+  AppState.students.forEach(s => {
+    const key = String(s.familyId || s.familyTag || '').trim().toLowerCase();
+    if (key) familyKeys.add(key);
+  });
+
+  // 1) What each student paid on their own (exact allocation match only).
+  const individualPaid = new Map();
+  AppState.students.forEach(student => {
+    for (let idx = 0; idx < 12; idx++) {
+      const entry = getIndividualPaidForMonth(student, idx, familyKeys);
+      if (entry.paid > 0) individualPaid.set(student.id + '|' + idx, entry);
+    }
+  });
+
+  // 2) What each family received, spread across its children in list order
+  // and capped at the received total — the shortfall stays due on the
+  // newest member(s).
+  const familyCredits = computeFamilyPoolCredits(individualPaid, familyKeys);
 
   AppState.students.forEach(student => {
     // Reconcile faculty assignment if teacherId exists but teacherName missing
@@ -1465,45 +1685,21 @@ function reconcileStudentsWithPaymentLedger() {
       }));
     }
 
-    const studentPayments = (PAYMENT_LEDGER || []).filter(p => {
-      if (!p) return false;
-      const sId = String(student.id || '').trim().toLowerCase();
-      const pId = String(p.studentId || '').trim().toLowerCase();
-      if (pId === sId) return true;
-      if (student.familyId && String(p.studentId || '').trim().toLowerCase() === String(student.familyId).trim().toLowerCase()) return true;
-      const fullName = `${student.firstName} ${student.lastName || ''}`.trim().toLowerCase();
-      const pName = String(p.studentName || '').trim().toLowerCase();
-      return pName.includes(fullName) || pName.includes(student.firstName.toLowerCase());
-    });
-
     student.months.forEach((m, idx) => {
-      const shortM = MONTHS_LIST[idx];
-      const fullM = FULL_MONTHS_LIST[idx];
       const monthlyFee = Number(student.monthlyFee || 50);
 
-      let totalPaidForMonth = 0;
+      // What this student paid on their own, plus their share of the
+      // family's received pool for this month (capped at what was received;
+      // the pool is spread in list order, so any shortfall lands on the
+      // newest member).
+      const indiv = individualPaid.get(student.id + '|' + idx);
+      const famKey = String(student.familyId || student.familyTag || '').trim().toLowerCase();
+      const famMap = famKey ? familyCredits.get(famKey + '|' + idx) : null;
+      const famEntry = famMap ? famMap.get(student.id) : null;
+      let totalPaidForMonth = Math.round(((indiv ? indiv.paid : 0) + (famEntry ? famEntry.credit : 0)) * 100) / 100;
       let matchedPayDoc = null;
-      studentPayments.forEach(p => {
-        if (Array.isArray(p.allocations) && p.allocations.length > 0) {
-          p.allocations.forEach(a => {
-            if (a.monthIndex === idx || a.month === shortM || a.month === fullM) {
-              if (!a.studentId || a.studentId === student.id || a.studentName?.includes(student.firstName)) {
-                totalPaidForMonth += Number(a.allocatedAmount || 0);
-                matchedPayDoc = p;
-              }
-            }
-          });
-        } else if (p.allocatedTo && (p.allocatedTo.includes(shortM) || p.allocatedTo.includes(fullM))) {
-          totalPaidForMonth += Number(p.amount || 0);
-          matchedPayDoc = p;
-        } else if (p.date) {
-          const d = new Date(p.date);
-          if (!isNaN(d.getTime()) && d.getMonth() === idx) {
-            totalPaidForMonth += Number(p.amount || 0);
-            matchedPayDoc = p;
-          }
-        }
-      });
+      if (famEntry && famEntry.credit > 0) matchedPayDoc = famEntry.doc;
+      else if (indiv && indiv.paid > 0) matchedPayDoc = indiv.doc;
 
       if (idx < enrollMonth && totalPaidForMonth === 0) {
         // Enrolment starts from actual enrolment month; no backdated months are owed

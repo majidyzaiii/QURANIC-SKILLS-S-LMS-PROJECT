@@ -1721,6 +1721,162 @@
   </div>
 
   <!-- ==========================================================================
+       MODAL 7B: EDIT TEACHER MODAL
+       Same layout as the Add Teacher modal. Teacher ID is shown but never
+       editable — changing it would break student assignments.
+       ========================================================================== -->
+  <div id="edit-teacher-modal" class="modal-backdrop">
+    <div class="modal-content max-w-xl w-full bg-white rounded-2xl shadow-xl overflow-hidden border border-[#ECEAE4] transition-all">
+
+      <!-- Modal Header -->
+      <div class="px-6 py-5 border-b border-[#ECEAE4] flex items-center justify-between bg-white">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-[#0E4D45] text-white flex items-center justify-center shrink-0 shadow-xs">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="text-base font-bold text-[#141F1E]">Edit Teacher</h3>
+              <span id="edit-teacher-id-badge" class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-[#F8F6F1] text-[#7A8684] border border-[#ECEAE4]"></span>
+            </div>
+            <p class="text-xs text-[#7A8684] mt-0.5">Update faculty details, country and honorarium rate.</p>
+          </div>
+        </div>
+        <button onclick="closeEditTeacherModal()" class="w-8 h-8 rounded-full border border-[#ECEAE4] bg-[#F8F6F1] text-[#7A8684] hover:text-[#141F1E] hover:bg-[#ECEAE4] flex items-center justify-center text-sm font-bold transition-colors cursor-pointer">✕</button>
+      </div>
+
+      <!-- Modal Body (2-Column Grid) -->
+      <div class="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+        <input type="hidden" id="edit-teacher-original-id" value="">
+
+        <!-- 2-Column Grid Fields -->
+        <div class="grid grid-cols-2 gap-4">
+
+          <!-- Teacher ID (not editable — it links students to this teacher) -->
+          <div>
+            <label class="block text-xs font-semibold text-[#141F1E] mb-1">Teacher ID</label>
+            <input
+              type="text"
+              id="edit-teacher-id"
+              disabled
+              class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#7A8684] font-mono font-bold outline-none cursor-not-allowed"
+            >
+          </div>
+
+          <!-- Full Name -->
+          <div>
+            <label class="block text-xs font-semibold text-[#141F1E] mb-1">Full Name *</label>
+            <input
+              type="text"
+              id="edit-teacher-name"
+              placeholder=""
+              class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#141F1E] outline-none focus:border-[#0E4D45] focus:bg-white transition-all"
+            >
+          </div>
+
+          <!-- Father Name -->
+          <div>
+            <label class="block text-xs font-semibold text-[#141F1E] mb-1">Father Name *</label>
+            <input
+              type="text"
+              id="edit-teacher-father-name"
+              placeholder=""
+              class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#141F1E] outline-none focus:border-[#0E4D45] focus:bg-white transition-all"
+            >
+          </div>
+
+          <!-- CNIC (National ID) -->
+          <div>
+            <label class="block text-xs font-semibold text-[#141F1E] mb-1">CNIC (National ID) *</label>
+            <input
+              type="text"
+              id="edit-teacher-cnic"
+              placeholder=""
+              class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#141F1E] font-mono outline-none focus:border-[#0E4D45] focus:bg-white transition-all"
+            >
+          </div>
+
+          <!-- Gmail / Email Address -->
+          <div>
+            <label class="block text-xs font-semibold text-[#141F1E] mb-1">Gmail / Email Address *</label>
+            <input
+              type="email"
+              id="edit-teacher-email"
+              placeholder=""
+              class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#141F1E] outline-none focus:border-[#0E4D45] focus:bg-white transition-all"
+            >
+          </div>
+
+          <!-- WhatsApp Number -->
+          <div>
+            <label class="block text-xs font-semibold text-[#141F1E] mb-1">WhatsApp Number *</label>
+            <input
+              type="text"
+              id="edit-teacher-phone"
+              placeholder=""
+              class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#141F1E] outline-none focus:border-[#0E4D45] focus:bg-white transition-all"
+            >
+          </div>
+
+          <!-- Country (same list as Add Teacher; defaults to the teacher's current country) -->
+          <div>
+            <label class="block text-xs font-semibold text-[#141F1E] mb-1">Country *</label>
+            <select
+              id="edit-teacher-country"
+              class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#141F1E] font-medium outline-none focus:border-[#0E4D45] focus:bg-white transition-all cursor-pointer"
+            >
+              <option value="" disabled>Select country</option>
+              <option value="United Kingdom">United Kingdom</option>
+              <option value="United States">United States</option>
+              <option value="Canada">Canada</option>
+              <option value="Australia">Australia</option>
+              <option value="United Arab Emirates">United Arab Emirates</option>
+              <option value="Saudi Arabia">Saudi Arabia</option>
+              <option value="Pakistan">Pakistan</option>
+              <option value="Egypt">Egypt</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <!-- Hourly Rate / Salary -->
+          <div>
+            <label class="block text-xs font-semibold text-[#141F1E] mb-1">Hourly Honorarium Rate ($/hr) *</label>
+            <input
+              type="number"
+              id="edit-teacher-rate"
+              value=""
+              min="5"
+              step="1"
+              placeholder=""
+              class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#0E4D45] font-bold outline-none focus:border-[#0E4D45] focus:bg-white transition-all"
+            >
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-6 py-4 bg-white border-t border-[#ECEAE4] flex items-center justify-end gap-4">
+        <button
+          type="button"
+          onclick="closeEditTeacherModal()"
+          class="text-xs font-semibold text-[#7A8684] hover:text-[#141F1E] transition-colors cursor-pointer"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onclick="handleSaveEditTeacher()"
+          class="px-6 py-2.5 text-xs font-bold rounded-lg bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
+        >
+          <span>Save Changes</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==========================================================================
        MODAL 8: ACADEMY CONFIGURATION & SYSTEM SETTINGS MODAL
        ========================================================================== -->
   <div id="settings-modal" class="modal-backdrop">
@@ -2513,7 +2669,7 @@
   <script src="chart.min.js"></script>
 
   <!-- Application Logic -->
-  <script src="app.js?v=20261124-sync"></script>
+  <script src="app.js?v=20261124-edit-teacher"></script>
   <!-- ==========================================================================
        COMMAND PALETTE (Ctrl+K) — shared across all portals
        ========================================================================== -->

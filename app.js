@@ -758,6 +758,10 @@ function setupFirestoreRealtimeListeners() {
       saveCache('lms_teachers', liveList);
       try { localStorage.setItem('lms_teachers', JSON.stringify(liveList)); } catch (e) {}
       renderApp();
+      // Cloud data replaces local on arrival: repair any wrong country
+      // (Basit/Saad saved as Pakistan) in the fresh cloud copy too, and
+      // write the correction back to Firestore.
+      repairTeacherCountries();
     } else {
       // Empty cloud snapshot: NEVER wipe local data (see students listener).
       console.warn('[Firestore] Teachers cloud snapshot is empty; keeping local data.');
@@ -1023,7 +1027,7 @@ const BASELINE_SEED_TEACHERS = [
     cnic: '35201-2222222-2',
     isHafiz: true,
     certifiedHafiz: true,
-    country: 'Pakistan',
+    country: 'United Kingdom',
     activeStudents: 1,
     hourlyRate: 25,
     rating: 5.0,
@@ -1057,7 +1061,7 @@ const BASELINE_SEED_TEACHERS = [
     cnic: '35201-4444444-4',
     isHafiz: true,
     certifiedHafiz: true,
-    country: 'Pakistan',
+    country: 'United Arab Emirates',
     activeStudents: 0,
     hourlyRate: 20,
     rating: 5.0,
@@ -2557,6 +2561,7 @@ window.addEventListener('keydown', (event) => {
     closeDeleteConfirmationModal();
     closeAddStudentModal();
     closeAddTeacherModal();
+    closeEditTeacherModal();
     closeReceiveFeeModal();
     closeSettingsModal();
     closeFullActivityLogModal();
@@ -5956,6 +5961,197 @@ async function handleSaveNewTeacher() {
     showToastNotification(`Could not save to cloud: ${firestoreSyncError || 'Firestore is not available'} — saved on this device only.`, 'error');
   }
 }
+
+// ==========================================
+// EDIT TEACHER
+// Mirrors the Edit Student flow (edit-schedule modal): the modal is
+// pre-filled with the teacher's current values, Teacher ID is shown but
+// never editable (it links students to this teacher), and saving updates
+// AppState, localStorage AND Firestore — with the success toast shown
+// only when Firestore confirms the write (see b9b20fe).
+// ==========================================
+
+// One-time data repair: Qari Abdul Basit and Qari Saad Ahmed were saved
+// with country "Pakistan" although they are based in the United Kingdom /
+// United Arab Emirates. Matches by name (live ids differ between the
+// seed TCH-101/TCH-103 and later adds), corrects the record in AppState,
+// local cache AND Firestore, and only when the country is still
+// "Pakistan" — so it never runs twice and never touches any other teacher.
+const TEACHER_COUNTRY_REPAIRS = [
+  { name: 'Qari Abdul Basit', country: 'United Kingdom' },
+  { name: 'Qari Saad Ahmed', country: 'United Arab Emirates' }
+];
+
+async function repairTeacherCountries() {
+  let repaired = false;
+  for (const fix of TEACHER_COUNTRY_REPAIRS) {
+    const teacher = (AppState.teachers || []).find(t =>
+      t && t.name && String(t.name).trim().toLowerCase() === fix.name.toLowerCase() &&
+      t.country && String(t.country).trim().toLowerCase() === 'pakistan'
+    );
+    if (!teacher) continue;
+    teacher.country = fix.country;
+    repaired = true;
+    console.log(`[Repair] Corrected country for ${teacher.name} (${teacher.id}) to ${fix.country}.`);
+  }
+  if (!repaired) return false;
+  saveToStorage('lms_teachers', AppState.teachers);
+  for (const fix of TEACHER_COUNTRY_REPAIRS) {
+    const teacher = (AppState.teachers || []).find(t =>
+      t && t.name && String(t.name).trim().toLowerCase() === fix.name.toLowerCase() &&
+      t.country === fix.country
+    );
+    if (teacher) await dbSaveTeacher(teacher);
+  }
+  renderApp();
+  return true;
+}
+window.repairTeacherCountries = repairTeacherCountries;
+
+function openEditTeacherModal(teacherId) {
+  const modal = document.getElementById('edit-teacher-modal');
+  if (!modal) return;
+  const teacher = (AppState.teachers || []).find(t =>
+    t.id === teacherId ||
+    String(t.id).trim().toLowerCase() === String(teacherId).trim().toLowerCase()
+  );
+  if (!teacher) return;
+
+  const originalIdInput = document.getElementById('edit-teacher-original-id');
+  if (originalIdInput) originalIdInput.value = teacher.id;
+
+  const idBadge = document.getElementById('edit-teacher-id-badge');
+  if (idBadge) idBadge.textContent = `ID: ${teacher.id}`;
+
+  const idInput = document.getElementById('edit-teacher-id');
+  if (idInput) idInput.value = teacher.id;
+
+  const nameInput = document.getElementById('edit-teacher-name');
+  if (nameInput) nameInput.value = teacher.name || '';
+
+  const fatherInput = document.getElementById('edit-teacher-father-name');
+  if (fatherInput) fatherInput.value = teacher.fatherName || '';
+
+  const cnicInput = document.getElementById('edit-teacher-cnic');
+  if (cnicInput) cnicInput.value = teacher.cnic || '';
+
+  const emailInput = document.getElementById('edit-teacher-email');
+  if (emailInput) emailInput.value = teacher.email || '';
+
+  const phoneInput = document.getElementById('edit-teacher-phone');
+  if (phoneInput) phoneInput.value = teacher.phone || teacher.whatsapp || '';
+
+  const rateInput = document.getElementById('edit-teacher-rate');
+  if (rateInput) rateInput.value = (teacher.hourlyRate !== undefined && teacher.hourlyRate !== null) ? teacher.hourlyRate : '';
+
+  // Country defaults to the teacher's CURRENT country — never pre-select
+  // Pakistan (or any country) on its own. If the stored country is not
+  // one of the list options, keep it as a selected option so the admin
+  // sees the real value instead of a blank field.
+  const countrySelect = document.getElementById('edit-teacher-country');
+  if (countrySelect) {
+    const currentCountry = teacher.country || '';
+    if (currentCountry && ![...countrySelect.options].some(o => o.value === currentCountry)) {
+      const extraOption = document.createElement('option');
+      extraOption.value = currentCountry;
+      extraOption.textContent = currentCountry;
+      countrySelect.appendChild(extraOption);
+    }
+    countrySelect.value = currentCountry;
+  }
+
+  clearAllFormErrors('edit-teacher-modal');
+  modal.classList.add('active');
+}
+
+function closeEditTeacherModal() {
+  const modal = document.getElementById('edit-teacher-modal');
+  if (modal) modal.classList.remove('active');
+}
+window.openEditTeacherModal = openEditTeacherModal;
+window.closeEditTeacherModal = closeEditTeacherModal;
+
+async function handleSaveEditTeacher() {
+  const originalId = document.getElementById('edit-teacher-original-id')?.value;
+  const teacher = (AppState.teachers || []).find(t => t.id === originalId);
+  if (!teacher) return;
+
+  const name = document.getElementById('edit-teacher-name')?.value?.trim();
+  const fatherName = document.getElementById('edit-teacher-father-name')?.value?.trim();
+  const cnic = document.getElementById('edit-teacher-cnic')?.value?.trim();
+  const email = document.getElementById('edit-teacher-email')?.value?.trim();
+  const phone = document.getElementById('edit-teacher-phone')?.value?.trim();
+  const rawRate = document.getElementById('edit-teacher-rate')?.value;
+  const hourlyRate = Number(rawRate);
+
+  clearAllFormErrors('edit-teacher-modal');
+
+  // Same validation as Add Teacher, minus Teacher ID (not editable).
+  const validationRules = [
+    { id: 'edit-teacher-name', required: true, minLength: 2, label: 'Teacher Full Name' },
+    { id: 'edit-teacher-father-name', required: true, label: 'Father Name' },
+    { id: 'edit-teacher-cnic', required: true, minLength: 5, label: 'CNIC (National ID)' },
+    { id: 'edit-teacher-email', required: true, label: 'Gmail / Email Address' },
+    { id: 'edit-teacher-phone', required: true, minLength: 7, label: 'WhatsApp Number' },
+    { id: 'edit-teacher-country', required: true, label: 'Country' },
+    { id: 'edit-teacher-rate', required: true, minNumber: 1, label: 'Hourly Honorarium Rate' }
+  ];
+
+  if (!validateSharedForm(validationRules)) {
+    return;
+  }
+
+  const country = document.getElementById('edit-teacher-country')?.value;
+  const oldName = teacher.name;
+
+  teacher.name = name;
+  teacher.fatherName = fatherName;
+  teacher.cnic = cnic;
+  teacher.email = email;
+  teacher.phone = phone;
+  teacher.whatsapp = phone;
+  teacher.country = country;
+  teacher.hourlyRate = hourlyRate;
+  // Keep avatar initials in step with the name (only for generated
+  // avatars — a custom uploaded photo is left alone).
+  if (name !== oldName && (!teacher.avatar || String(teacher.avatar).includes('ui-avatars.com'))) {
+    teacher.avatar = getAvatarUrl(name);
+  }
+
+  // Student assignments stay intact (teacherId never changes), but the
+  // display name stored on each assigned student must follow a rename.
+  if (name !== oldName) {
+    const assignedStudents = (AppState.students || []).filter(s => s.teacherId === teacher.id);
+    assignedStudents.forEach(s => {
+      s.teacherName = name;
+      s.assignedTeacher = name;
+      dbSaveStudent(s);
+    });
+    if (assignedStudents.length > 0) {
+      saveToStorage('lms_students', AppState.students);
+    }
+  }
+
+  saveToStorage('lms_teachers', AppState.teachers);
+  // Await the cloud save and tell the truth: the success toast shows ONLY
+  // when Firestore confirms the write.
+  const cloudSaved = await dbSaveTeacher(teacher);
+
+  addSystemNotification({
+    title: 'Faculty Updated',
+    desc: `Updated faculty member ${name} (${teacher.id}).`,
+    type: 'teacher'
+  });
+
+  closeEditTeacherModal();
+  renderApp();
+  if (cloudSaved) {
+    showToastNotification(`✓ Teacher ${name} (${teacher.id}) updated successfully!`);
+  } else {
+    showToastNotification(`Could not save to cloud: ${firestoreSyncError || 'Firestore is not available'} — saved on this device only.`, 'error');
+  }
+}
+window.handleSaveEditTeacher = handleSaveEditTeacher;
 
 // ==========================================
 // TEACHER PAYROLL & SALARY ACTIONS
@@ -11955,7 +12151,7 @@ function renderAdminTeacherPayrollView() {
                         class="w-7 h-7 rounded-full object-cover shrink-0 ring-1 ring-[#0E4D45]/20"
                         onerror="this.onerror=null; this.src='${getAvatarUrl(t.name)}';"
                       />
-                      <span>${t.name}</span>
+                      <span class="cursor-pointer hover:text-[#0E4D45] hover:underline" onclick="openEditTeacherModal('${t.id}')" title="Edit Teacher">${t.name}</span>
                     </div>
                   </td>
                   <td class="py-3.5 text-[#7A8684]" data-label="Country">${t.country}</td>
@@ -11970,6 +12166,11 @@ function renderAdminTeacherPayrollView() {
                   </td>
                   <td class="py-3.5 text-right pl-2" data-label="Action">
                     <div class="flex items-center justify-end gap-1.5 whitespace-nowrap">
+                      <button onclick="openEditTeacherModal('${t.id}')"
+                        class="px-3 py-1 text-[11px] font-semibold rounded-lg bg-white border border-[#ECEAE4] text-[#141F1E] hover:bg-[#F8F6F1] hover:border-[#0E4D45] hover:text-[#0E4D45] transition-colors whitespace-nowrap cursor-pointer"
+                        title="Edit Teacher">
+                        Edit
+                      </button>
                       <button onclick="toggleTeacherSalaryStatus('${t.id}')"
                         class="px-3 py-1 text-[11px] font-semibold rounded-lg ${isPaid ? 'bg-[#E8EFEE] text-[#0E4D45] hover:bg-[#FEE2E2] hover:text-[#991B1B]' : 'bg-[#0E4D45] text-white hover:bg-[#14534B]'} transition-colors whitespace-nowrap shadow-2xs cursor-pointer">
                         ${isPaid ? 'Mark Pending' : 'Pay Salary'}
@@ -14243,6 +14444,10 @@ document.addEventListener('DOMContentLoaded', () => {
   renderApp();
   updateRolePillUI();
   renderNotificationsDropdownContent();
+  // One-time repair of the two wrong teacher countries (Basit/Saad saved
+  // as Pakistan) in the local cache; the teachers listener repairs the
+  // cloud copy again when it arrives.
+  repairTeacherCountries();
   setupFirestoreRealtimeListeners();
   if (typeof checkAndSeedInitialAcademyData === 'function') {
     checkAndSeedInitialAcademyData()

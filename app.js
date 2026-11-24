@@ -8142,21 +8142,168 @@ function quranSetJuzFilter(value) {
 }
 window.quranSetJuzFilter = quranSetJuzFilter;
 
+// --- Surah search: normalize spelling variants so "Fatiha" finds
+// "Al-Faatiha", "Yaseen" finds "Ya-Sin", "Kahaf" finds "Al-Kahf", etc.
+// Normalization: lowercase, strip diacritics, drop punctuation/spaces,
+// map long-vowel spellings to one form (oo->u, ee->i, aa->a, ou->u, so
+// Nooh/Nuh, Yaseen/Yasin and Faatiha/Fatiha all match), then collapse
+// any remaining repeated letters — letters only, so Surah numbers
+// like 11 or 114 are never mangled. ---
+function quranNormalizeSearchText(text) {
+  return (text || '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '')
+    .replace(/oo/g, 'u')
+    .replace(/ee/g, 'i')
+    .replace(/aa/g, 'a')
+    .replace(/ou/g, 'u')
+    .replace(/([a-z])\1+/g, '$1');
+}
+
+// Common alternate spellings / English meanings, keyed by Surah number.
+// Only variants normalization alone cannot catch (e.g. Kahaf vs Kahf,
+// Yousuf vs Yusuf, Mohammad vs Muhammad). Entries are already in the
+// normalized compact form used by quranNormalizeSearchText.
+const QURAN_NAME_ALIASES = {
+  2: ['baqarah', 'cow'],
+  3: ['aleimran', 'aaleimran', 'familyofimran'],
+  4: ['anisa', 'women'],
+  5: ['maidah', 'table'],
+  6: ['anaam', 'cattle'],
+  7: ['araf', 'heights'],
+  9: ['taubah', 'baraat', 'repentance'],
+  10: ['younus', 'jonah'],
+  11: ['hood'],
+  12: ['yousuf', 'joseph'],
+  13: ['raad', 'thunder'],
+  14: ['abraham'],
+  17: ['baniisrail', 'israel'],
+  18: ['kahaf', 'cave'],
+  19: ['mary'],
+  22: ['haj', 'pilgrimage'],
+  23: ['muminoon', 'believers'],
+  24: ['noor', 'light'],
+  25: ['furqaan', 'criterion'],
+  26: ['shuara', 'poets'],
+  27: ['naml', 'ants'],
+  28: ['qasas', 'stories'],
+  29: ['ankabut', 'spider'],
+  30: ['rum', 'romans'],
+  31: ['luqmaan'],
+  32: ['sajdah', 'prostration'],
+  33: ['ahzaab', 'clans'],
+  35: ['faatir', 'originator'],
+  36: ['yaseen'],
+  38: ['saad'],
+  39: ['zumar', 'groups'],
+  40: ['ghaafir', 'forgiver'],
+  41: ['fusilat'],
+  42: ['shura', 'consultation'],
+  43: ['zukhruf', 'gold'],
+  44: ['dukhaan', 'smoke'],
+  45: ['jathiyah', 'kneeling'],
+  46: ['ahqaf', 'dunes'],
+  47: ['mohammad', 'mohammed', 'mohamed'],
+  48: ['fatah', 'victory'],
+  49: ['hujuraat', 'rooms'],
+  50: ['qaaf'],
+  51: ['dhariyaat', 'winds'],
+  52: ['toor', 'mount'],
+  53: ['najm', 'star'],
+  54: ['qamar', 'moon'],
+  55: ['rehman', 'beneficent'],
+  56: ['waqiah', 'event'],
+  57: ['hadeed', 'iron'],
+  58: ['mujadilah', 'pleading'],
+  59: ['hashr', 'gathering'],
+  60: ['mumtahinah'],
+  62: ['jumuah', 'jummah', 'friday'],
+  63: ['munafiqoon', 'hypocrites'],
+  64: ['taghaabun'],
+  65: ['talaaq', 'divorce'],
+  66: ['tahreem', 'prohibition'],
+  67: ['mulk', 'kingdom'],
+  68: ['qalam', 'pen'],
+  69: ['haaqah', 'reality'],
+  70: ['maarij', 'ascension'],
+  71: ['nooh', 'noah'],
+  73: ['muzamil'],
+  74: ['mudathir'],
+  75: ['qiyamah', 'resurrection'],
+  76: ['insaan', 'man'],
+  77: ['mursalat'],
+  78: ['naba', 'tidings'],
+  79: ['naziath'],
+  80: ['abasa'],
+  81: ['takwir'],
+  82: ['infitaar'],
+  83: ['mutafifeen'],
+  84: ['inshiqaaq'],
+  85: ['burooj', 'constellations'],
+  86: ['taariq'],
+  87: ['aala', 'mosthigh'],
+  88: ['ghashiyah'],
+  89: ['fajr', 'dawn'],
+  90: ['balad', 'city'],
+  91: ['shams', 'sun'],
+  92: ['layl', 'night'],
+  93: ['duhaa', 'morning'],
+  94: ['inshirah', 'expansion'],
+  95: ['teen', 'fig'],
+  96: ['alaq', 'clot'],
+  97: ['qadar', 'power'],
+  98: ['bayyinah', 'evidence'],
+  99: ['zilzaal', 'earthquake'],
+  100: ['aadiyaat', 'chargers'],
+  101: ['qaariah', 'calamity'],
+  102: ['takaathur', 'rivalry'],
+  103: ['asr', 'time'],
+  104: ['humazah', 'slanderer'],
+  105: ['feel', 'elephant'],
+  106: ['quraish', 'quresh'],
+  107: ['maoon'],
+  108: ['kauthar', 'abundance'],
+  109: ['kafiroon', 'disbelievers'],
+  110: ['nasr', 'help'],
+  111: ['lahab', 'palmfibre'],
+  112: ['ikhlaas', 'sincerity'],
+  113: ['falaq', 'daybreak'],
+  114: ['naas', 'mankind']
+};
+
 function quranFilteredSurahs() {
   const list = QuranLibrary.meta || [];
-  const q = (QuranLibrary.searchQuery || '').trim().toLowerCase();
+  const rawQ = (QuranLibrary.searchQuery || '').trim();
+  const q = quranNormalizeSearchText(rawQ);
   const juz = QuranLibrary.juzFilter;
-  return list.filter(s => {
+  const scored = [];
+  for (const s of list) {
     if (juz !== 'all') {
       const range = quranSurahJuzRange(s.number);
-      if (Number(juz) < range.first || Number(juz) > range.last) return false;
+      if (Number(juz) < range.first || Number(juz) > range.last) continue;
     }
-    if (!q) return true;
-    return (s.name || '').includes(q)
-      || (s.englishName || '').toLowerCase().includes(q)
-      || (s.englishNameTranslation || '').toLowerCase().includes(q)
-      || String(s.number) === q;
-  });
+    if (!q) { scored.push({ s, score: 0 }); continue; }
+    // Arabic name: match the query as typed.
+    if (rawQ && (s.name || '').includes(rawQ)) { scored.push({ s, score: 0 }); continue; }
+    if (String(s.number) === q) { scored.push({ s, score: 0 }); continue; }
+    const candidates = [s.englishName, s.englishNameTranslation]
+      .concat(QURAN_NAME_ALIASES[s.number] || [])
+      .map(quranNormalizeSearchText)
+      .filter(Boolean);
+    let best = Infinity;
+    for (const c of candidates) {
+      const i = c.indexOf(q);
+      // A match at the end of the name (e.g. "Nas" in "An-Naas") ranks
+      // ahead of a mid-name match (e.g. "Nas" in "An-Nasr").
+      if (i !== -1) best = Math.min(best, c.endsWith(q) ? i - 0.5 : i);
+      if (c.length >= 5 && q.indexOf(c) !== -1) best = 0;
+    }
+    if (best !== Infinity) scored.push({ s, score: best });
+  }
+  // Best matches first (earliest hit in the name), then Surah number order.
+  scored.sort((a, b) => (a.score - b.score) || (a.s.number - b.s.number));
+  return scored.map(x => x.s);
 }
 
 function quranRenderSurahList() {

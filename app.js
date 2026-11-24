@@ -2392,14 +2392,17 @@ function renderCommandPaletteResults(query) {
     action: () => { switchRole('admin'); setNavTab('students'); openEditStudentModal(s.id); }
   }));
 
-  const teacherItems = (AppState.teachers || []).map(t => ({
-    label: `${t.name} (${t.id})`,
-    subLabel: `Teacher • $${t.hourlyRate}/hr`,
-    category: 'Faculty',
-    icon: 'teacher',
-    avatar: t.avatar || getAvatarUrl(t.name),
-    action: () => { switchRole('admin'); setNavTab('teachers'); }
-  }));
+  const teacherItems = (AppState.teachers || []).map(t => {
+    const activeCount = (AppState.students || []).filter(s => s.teacherId === t.id && (s.academicStatus || 'Active') === 'Active').length;
+    return {
+      label: `${t.name} (${t.id})`,
+      subLabel: `Teacher • ${activeCount} Active Student${activeCount === 1 ? '' : 's'}`,
+      category: 'Faculty',
+      icon: 'teacher',
+      avatar: t.avatar || getAvatarUrl(t.name),
+      action: () => { switchRole('admin'); setNavTab('teachers'); }
+    };
+  });
 
   const allItems = [...actionItems, ...navItems, ...studentItems, ...teacherItems];
   const matched = q 
@@ -5150,6 +5153,13 @@ function openEditScheduleModal(studentId) {
     courseSelect.value = targetCourse;
   }
 
+  // Class Duration (per-student; old records without one count as 30 min)
+  const durationSelect = document.getElementById('edit-schedule-class-duration');
+  if (durationSelect) {
+    const d = Number(student.classDuration);
+    durationSelect.value = (d === 15 || d === 30 || d === 60) ? String(d) : '30';
+  }
+
   // Tuition Fee & Currency
   const currencySelect = document.getElementById('edit-schedule-currency');
   if (currencySelect) currencySelect.value = student.currencyCode || 'USD';
@@ -5331,6 +5341,8 @@ function handleSaveEditSchedule() {
   student.country = newCountry;
   student.timezone = newTimezone;
   student.course = newCourse;
+  const rawDuration = document.getElementById('edit-schedule-class-duration')?.value;
+  student.classDuration = (rawDuration === '15' || rawDuration === '60') ? Number(rawDuration) : 30;
   student.familyId = familyId;
   student.weeklySchedule = newWeeklySchedule;
   student.classSchedule = getSchedulePillSummary(student);
@@ -5658,6 +5670,13 @@ function openAddStudentModal() {
   const feeInput = document.getElementById('add-student-fee');
   if (feeInput) feeInput.value = '';
 
+  // Class Duration - default from academy settings (30 min) when supported
+  const durationSelect = document.getElementById('add-student-class-duration');
+  if (durationSelect) {
+    const globalDuration = Number(AppState.settings && AppState.settings.classDuration);
+    durationSelect.value = (globalDuration === 15 || globalDuration === 30 || globalDuration === 60) ? String(globalDuration) : '30';
+  }
+
   // Completely blank photo preview reset (no dummy faces)
   const photoPlaceholder = document.getElementById('add-student-photo-placeholder');
   const photoPreview = document.getElementById('add-student-photo-preview');
@@ -5684,13 +5703,15 @@ function openAddStudentModal() {
     'add-student-id', 'add-student-full-name', 'add-student-guardian-name',
     'add-student-whatsapp', 'add-student-email', 'add-student-country',
     'add-student-timezone', 'add-student-family-id', 'add-student-course',
-    'add-student-currency', 'add-student-fee'
+    'add-student-currency', 'add-student-fee',
+    'add-student-class-duration'
   ]);
   restoreFormDraft('add-student-modal', 'new_student', [
     'add-student-id', 'add-student-full-name', 'add-student-guardian-name',
     'add-student-whatsapp', 'add-student-email', 'add-student-country',
     'add-student-timezone', 'add-student-family-id', 'add-student-course',
-    'add-student-currency', 'add-student-fee'
+    'add-student-currency', 'add-student-fee',
+    'add-student-class-duration'
   ]);
 
   // Family Package: a restored draft family tag must show the package
@@ -5811,6 +5832,8 @@ async function handleSaveNewStudent() {
   const currencyCode = document.getElementById('add-student-currency')?.value;
   const rawFee = document.getElementById('add-student-fee')?.value;
   const monthlyFee = Number(rawFee);
+  const rawDuration = document.getElementById('add-student-class-duration')?.value;
+  const classDuration = (rawDuration === '15' || rawDuration === '60') ? Number(rawDuration) : 30;
 
   clearAllFormErrors('add-student-modal');
 
@@ -5896,6 +5919,7 @@ async function handleSaveNewStudent() {
     teacherName: teacherName,
     assignedTeacher: teacherName,
     course: course,
+    classDuration: classDuration,
     weeklySchedule: defaultWeeklySchedule,
     classSchedule: classSchedule,
     currency: currency,
@@ -5967,10 +5991,6 @@ async function handleSaveNewStudent() {
   }
 }
 
-// Tracks whether the user picked a country by hand in the Add Teacher
-// modal. The dial-code suggestion must never overwrite a manual pick.
-let teacherCountryManuallyPicked = false;
-
 function openAddTeacherModal() {
   const modal = document.getElementById('add-teacher-modal');
   if (!modal) return;
@@ -5997,15 +6017,6 @@ function openAddTeacherModal() {
   const phoneInput = document.getElementById('add-teacher-phone');
   if (phoneInput) phoneInput.value = '';
 
-  const rateInput = document.getElementById('add-teacher-rate');
-  if (rateInput) rateInput.value = '';
-
-  // Country must always start on the disabled "Select country" placeholder —
-  // never pre-select Pakistan (or any country). A previous fix for this was
-  // regressed by a later change that set the value to 'Pakistan' here.
-  teacherCountryManuallyPicked = false;
-  const countrySelect = document.getElementById('add-teacher-country');
-  if (countrySelect) countrySelect.value = '';
 
   // Completely blank photo preview reset (no dummy faces)
   const photoPlaceholder = document.getElementById('add-teacher-photo-placeholder');
@@ -6031,37 +6042,13 @@ function openAddTeacherModal() {
   clearAllFormErrors('add-teacher-modal');
   initFormDraftAutoSave('add-teacher-modal', 'new_teacher', [
     'add-teacher-id', 'add-teacher-name', 'add-teacher-father-name',
-    'add-teacher-cnic', 'add-teacher-email', 'add-teacher-phone',
-    'add-teacher-rate', 'add-teacher-country'
+    'add-teacher-cnic', 'add-teacher-email', 'add-teacher-phone'
   ]);
   restoreFormDraft('add-teacher-modal', 'new_teacher', [
     'add-teacher-id', 'add-teacher-name', 'add-teacher-father-name',
-    'add-teacher-cnic', 'add-teacher-email', 'add-teacher-phone',
-    'add-teacher-rate', 'add-teacher-country'
+    'add-teacher-cnic', 'add-teacher-email', 'add-teacher-phone'
   ]);
 
-  // A draft saved while the old Pakistan default was active can restore
-  // "Pakistan" with no phone typed yet — that is not a manual pick, so a
-  // stale restored Pakistan with an empty phone field is reset to the
-  // placeholder. A restored Pakistan with a phone number is kept.
-  const restoredPhone = document.getElementById('add-teacher-phone')?.value?.trim();
-  if (countrySelect && countrySelect.value === 'Pakistan' && !restoredPhone) {
-    countrySelect.value = '';
-  }
-
-  // Dial-code suggestion: only while the user types a phone number, and
-  // never overwriting a country the user picked by hand. (Bound once.)
-  const phoneInputEl = document.getElementById('add-teacher-phone');
-  if (phoneInputEl && !phoneInputEl._countrySuggestBound) {
-    phoneInputEl.addEventListener('input', () => {
-      if (!teacherCountryManuallyPicked) autoDetectTeacherCountry(phoneInputEl.value);
-    });
-    phoneInputEl._countrySuggestBound = true;
-  }
-  if (countrySelect && !countrySelect._manualPickBound) {
-    countrySelect.addEventListener('change', () => { teacherCountryManuallyPicked = true; });
-    countrySelect._manualPickBound = true;
-  }
 
   modal.classList.add('active');
 }
@@ -6073,34 +6060,6 @@ function closeAddTeacherModal() {
 window.openAddTeacherModal = openAddTeacherModal;
 window.closeAddTeacherModal = closeAddTeacherModal;
 
-function detectCountryFromPhone(phone) {
-  if (!phone) return null;
-  const clean = phone.replace(/[\s\-\(\)]/g, '');
-  if (clean.startsWith('+44') || clean.startsWith('0044')) return 'United Kingdom';
-  if (clean.startsWith('+1') || clean.startsWith('001')) return 'United States';
-  if (clean.startsWith('+971') || clean.startsWith('00971')) return 'United Arab Emirates';
-  if (clean.startsWith('+966') || clean.startsWith('00966')) return 'Saudi Arabia';
-  if (clean.startsWith('+61') || clean.startsWith('0061')) return 'Australia';
-  if (clean.startsWith('+20') || clean.startsWith('0020')) return 'Egypt';
-  if (clean.startsWith('+92') || clean.startsWith('0092')) return 'Pakistan';
-  return null;
-}
-window.detectCountryFromPhone = detectCountryFromPhone;
-
-function autoDetectTeacherCountry(phone) {
-  const select = document.getElementById('add-teacher-country');
-  if (!select) return;
-  // Suggestion only, on phone input: never run on an empty phone field
-  // (e.g. modal open) and never overwrite a country the user picked by hand.
-  if (!phone || !String(phone).trim()) return;
-  if (teacherCountryManuallyPicked) return;
-  const detected = detectCountryFromPhone(phone);
-  if (detected) {
-    select.value = detected;
-  }
-}
-window.autoDetectTeacherCountry = autoDetectTeacherCountry;
-
 async function handleSaveNewTeacher() {
   const teacherId = document.getElementById('add-teacher-id')?.value?.trim();
   const name = document.getElementById('add-teacher-name')?.value?.trim();
@@ -6108,8 +6067,6 @@ async function handleSaveNewTeacher() {
   const cnic = document.getElementById('add-teacher-cnic')?.value?.trim();
   const email = document.getElementById('add-teacher-email')?.value?.trim();
   const phone = document.getElementById('add-teacher-phone')?.value?.trim();
-  const rawRate = document.getElementById('add-teacher-rate')?.value;
-  const hourlyRate = Number(rawRate);
 
   clearAllFormErrors('add-teacher-modal');
 
@@ -6125,20 +6082,10 @@ async function handleSaveNewTeacher() {
     { id: 'add-teacher-cnic', required: true, minLength: 5, label: 'CNIC (National ID)' },
     { id: 'add-teacher-email', required: true, label: 'Gmail / Email Address' },
     { id: 'add-teacher-phone', required: true, minLength: 7, label: 'WhatsApp Number' },
-    { id: 'add-teacher-country', required: true, label: 'Country' },
-    { id: 'add-teacher-rate', required: true, minNumber: 1, label: 'Hourly Honorarium Rate' }
   ];
 
   if (!validateSharedForm(validationRules)) {
     return;
-  }
-
-  // Country is required (validated above). A manual pick always wins; the
-  // dial code is only a fallback when the field was left blank, and there
-  // is no Pakistan (or any) default country.
-  let country = document.getElementById('add-teacher-country')?.value;
-  if (!country) {
-    country = detectCountryFromPhone(phone) || '';
   }
 
   const isHafiz = Boolean(document.getElementById('add-teacher-is-hafiz')?.checked);
@@ -6150,10 +6097,9 @@ async function handleSaveNewTeacher() {
     name: name,
     fatherName: fatherName,
     cnic: cnic,
-    country: country,
+    country: 'Pakistan',
     isHafiz: isHafiz,
     activeStudents: 0,
-    hourlyRate: hourlyRate,
     rating: 5.0,
     status: 'Available',
     salaryStatus: 'Pending',
@@ -6172,7 +6118,7 @@ async function handleSaveNewTeacher() {
 
   addSystemNotification({
     title: 'Faculty Onboarded',
-    desc: `Added faculty member ${name} (${teacherId}) at $${hourlyRate}/hr.`,
+    desc: `Added faculty member ${name} (${teacherId}).`,
     type: 'teacher'
   });
 
@@ -6265,25 +6211,6 @@ function openEditTeacherModal(teacherId) {
   const phoneInput = document.getElementById('edit-teacher-phone');
   if (phoneInput) phoneInput.value = teacher.phone || teacher.whatsapp || '';
 
-  const rateInput = document.getElementById('edit-teacher-rate');
-  if (rateInput) rateInput.value = (teacher.hourlyRate !== undefined && teacher.hourlyRate !== null) ? teacher.hourlyRate : '';
-
-  // Country defaults to the teacher's CURRENT country — never pre-select
-  // Pakistan (or any country) on its own. If the stored country is not
-  // one of the list options, keep it as a selected option so the admin
-  // sees the real value instead of a blank field.
-  const countrySelect = document.getElementById('edit-teacher-country');
-  if (countrySelect) {
-    const currentCountry = teacher.country || '';
-    if (currentCountry && ![...countrySelect.options].some(o => o.value === currentCountry)) {
-      const extraOption = document.createElement('option');
-      extraOption.value = currentCountry;
-      extraOption.textContent = currentCountry;
-      countrySelect.appendChild(extraOption);
-    }
-    countrySelect.value = currentCountry;
-  }
-
   clearAllFormErrors('edit-teacher-modal');
   modal.classList.add('active');
 }
@@ -6305,8 +6232,6 @@ async function handleSaveEditTeacher() {
   const cnic = document.getElementById('edit-teacher-cnic')?.value?.trim();
   const email = document.getElementById('edit-teacher-email')?.value?.trim();
   const phone = document.getElementById('edit-teacher-phone')?.value?.trim();
-  const rawRate = document.getElementById('edit-teacher-rate')?.value;
-  const hourlyRate = Number(rawRate);
 
   clearAllFormErrors('edit-teacher-modal');
 
@@ -6317,15 +6242,12 @@ async function handleSaveEditTeacher() {
     { id: 'edit-teacher-cnic', required: true, minLength: 5, label: 'CNIC (National ID)' },
     { id: 'edit-teacher-email', required: true, label: 'Gmail / Email Address' },
     { id: 'edit-teacher-phone', required: true, minLength: 7, label: 'WhatsApp Number' },
-    { id: 'edit-teacher-country', required: true, label: 'Country' },
-    { id: 'edit-teacher-rate', required: true, minNumber: 1, label: 'Hourly Honorarium Rate' }
   ];
 
   if (!validateSharedForm(validationRules)) {
     return;
   }
 
-  const country = document.getElementById('edit-teacher-country')?.value;
   const oldName = teacher.name;
 
   teacher.name = name;
@@ -6334,8 +6256,6 @@ async function handleSaveEditTeacher() {
   teacher.email = email;
   teacher.phone = phone;
   teacher.whatsapp = phone;
-  teacher.country = country;
-  teacher.hourlyRate = hourlyRate;
   // Keep avatar initials in step with the name (only for generated
   // avatars — a custom uploaded photo is left alone).
   if (name !== oldName && (!teacher.avatar || String(teacher.avatar).includes('ui-avatars.com'))) {
@@ -6464,24 +6384,8 @@ function deleteTeacher(teacherId, event) {
 }
 window.deleteTeacher = deleteTeacher;
 
-function toggleTeacherSalaryStatus(teacherId) {
-  const teacher = AppState.teachers.find(t => t.id === teacherId);
-  if (!teacher) return;
-  teacher.salaryStatus = (teacher.salaryStatus === 'Paid') ? 'Pending' : 'Paid';
-  saveToStorage('lms_teachers', AppState.teachers);
-  dbSaveTeacher(teacher);
-  const assignedStudents = (AppState.students || []).filter(s => s.teacherId === teacher.id);
-  const dynamicActiveCount = (teacher.activeStudents !== undefined && teacher.activeStudents > 0) ? teacher.activeStudents : assignedStudents.length;
-  const hours = dynamicActiveCount * 18;
-  const totalPay = hours * (Number(teacher.hourlyRate) || 20);
-  if (teacher.salaryStatus === 'Paid') {
-    showToastNotification(`✓ Salary of $${totalPay.toLocaleString()} marked as Paid for ${teacher.name}`);
-  } else {
-    showToastNotification(`Salary reverted to Pending for ${teacher.name}`);
-  }
-  renderApp();
-}
-window.toggleTeacherSalaryStatus = toggleTeacherSalaryStatus;
+// toggleTeacherSalaryStatus now lives in section 8A0 (PKR payroll) above
+// renderAdminTeacherPayrollView, with per-month Paid snapshots.
 
 const debouncedTeacherPayrollSearch = debounce(function(q) {
   AppState.teacherPayrollSearchQuery = q;
@@ -12515,64 +12419,550 @@ function renderAdminStudentsDirectory() {
 }
 
 // ==========================================
+// 8A0. TEACHER PAYROLL (PKR) — SETTINGS, FORMULA & MONTH RECORDS
+// All payroll amounts are PKR. The monthly Net Payable is computed live
+// from the global payroll rules (Firestore settings/payroll) and each
+// teacher's assigned active students, weighted by class duration.
+// A month once marked Paid is frozen: its recorded snapshot is shown
+// and never recalculated.
+// ==========================================
+
+const DEFAULT_PAYROLL_SETTINGS = {
+  basicSalary: 25000,
+  basicUnits: 9,
+  extraRate: 2250,
+  allowance: 3500,
+  deduction: 2000
+};
+const PAYROLL_SETTINGS_CACHE_KEY = 'lms_payroll_settings';
+// Class duration (minutes) -> student units for payroll weighting.
+const CLASS_DURATION_UNITS = { 15: 0.5, 30: 1, 60: 2 };
+let payrollSettingsLoaded = false;
+let payrollSettingsLoading = false;
+let legacyPayrollMigrated = false;
+
+function formatPKR(amount) {
+  const n = Math.round(Number(amount) || 0);
+  return 'Rs. ' + n.toLocaleString('en-US');
+}
+
+function formatPayrollUnits(units) {
+  const r = Math.round((Number(units) || 0) * 100) / 100;
+  return String(r);
+}
+
+function getPayrollSettings() {
+  return { ...DEFAULT_PAYROLL_SETTINGS, ...(AppState.payrollSettings || {}) };
+}
+
+// Month key for the displayed/selected payroll month, e.g. "2026-11".
+function getPayrollMonthKey(monthIndex) {
+  const idx = (typeof monthIndex === 'number' && !isNaN(monthIndex)) ? monthIndex : CURRENT_MONTH_INDEX;
+  return `${CURRENT_YEAR}-${String(idx + 1).padStart(2, '0')}`;
+}
+
+// Class duration in minutes for one student. Old records without the field
+// count as the standard 30-minute class (1.0 unit).
+function getStudentClassDurationMinutes(student) {
+  const d = Number(student && student.classDuration);
+  return (d === 15 || d === 30 || d === 60) ? d : 30;
+}
+
+function getStudentClassUnits(student) {
+  return CLASS_DURATION_UNITS[getStudentClassDurationMinutes(student)] || 1;
+}
+
+// Assigned students with an Active academic status (missing status counts
+// as Active, matching the rest of the app).
+function getTeacherActiveStudents(teacher) {
+  return (AppState.students || []).filter(s =>
+    s.teacherId === teacher.id && (s.academicStatus || 'Active') === 'Active'
+  );
+}
+
+function getTeacherPayrollRecord(teacher, monthKey) {
+  if (!teacher || !teacher.payrollMonths) return null;
+  return teacher.payrollMonths[monthKey] || null;
+}
+
+// Full payroll computation for one teacher for the displayed month.
+// Paid months return their recorded snapshot (frozen history); Pending
+// months are computed live from the current settings + bonus.
+function computeTeacherPayroll(teacher, monthIndex) {
+  const settings = getPayrollSettings();
+  const monthKey = getPayrollMonthKey(monthIndex);
+  const activeStudents = getTeacherActiveStudents(teacher);
+  const units = activeStudents.reduce((sum, s) => sum + getStudentClassUnits(s), 0);
+  const extraUnits = Math.max(0, units - settings.basicUnits);
+  const extraPay = extraUnits * settings.extraRate;
+  const basicExtra = settings.basicSalary + extraPay;
+  const record = getTeacherPayrollRecord(teacher, monthKey);
+  const bonus = record ? (Number(record.bonus) || 0) : 0;
+
+  if (record && record.status === 'Paid' && typeof record.paidAmount === 'number') {
+    return {
+      monthKey,
+      units,
+      activeCount: activeStudents.length,
+      extraUnits,
+      extraPay,
+      basicExtra: (typeof record.basicExtra === 'number' ? record.basicExtra : basicExtra),
+      allowance: (typeof record.allowance === 'number' ? record.allowance : settings.allowance),
+      deduction: (typeof record.deduction === 'number' ? record.deduction : settings.deduction),
+      bonus: (typeof record.bonus === 'number' ? record.bonus : bonus),
+      netPayable: record.paidAmount,
+      isPaid: true,
+      paidAmount: record.paidAmount,
+      paidAt: record.paidAt || null
+    };
+  }
+
+  return {
+    monthKey,
+    units,
+    activeCount: activeStudents.length,
+    extraUnits,
+    extraPay,
+    basicExtra,
+    allowance: settings.allowance,
+    deduction: settings.deduction,
+    bonus,
+    netPayable: basicExtra + settings.allowance + bonus - settings.deduction,
+    isPaid: false,
+    paidAmount: null,
+    paidAt: null
+  };
+}
+
+// One-time migration: teachers marked Paid under the old USD/hourly system
+// carry no per-month record. Seed one for the displayed month snapshotting
+// the new-formula net, so their Paid status survives the switch and the
+// month is frozen from here on. Never runs twice per session.
+function migrateLegacyPayrollStatus() {
+  if (legacyPayrollMigrated) return;
+  legacyPayrollMigrated = true;
+  const monthKey = getPayrollMonthKey();
+  let changed = false;
+  (AppState.teachers || []).forEach(t => {
+    if (!t.payrollMonths) t.payrollMonths = {};
+    if (t.payrollMonths[monthKey]) return;
+    if ((t.salaryStatus || 'Pending') !== 'Paid') return;
+    const calc = computeTeacherPayroll(t);
+    t.payrollMonths[monthKey] = {
+      status: 'Paid',
+      bonus: calc.bonus,
+      basicExtra: calc.basicExtra,
+      allowance: calc.allowance,
+      deduction: calc.deduction,
+      paidAmount: calc.netPayable,
+      paidAt: new Date().toISOString(),
+      migratedFromLegacy: true
+    };
+    changed = true;
+    dbSaveTeacher(t).catch(() => {});
+  });
+  if (changed) saveCache('lms_teachers', AppState.teachers);
+}
+
+// Load the global payroll rules: local cache first (instant/offline), then
+// Firestore settings/payroll as the source of truth; defaults when the doc
+// does not exist yet.
+async function loadPayrollSettings() {
+  try {
+    const cached = loadCache(PAYROLL_SETTINGS_CACHE_KEY, null);
+    if (cached && typeof cached === 'object') {
+      AppState.payrollSettings = { ...DEFAULT_PAYROLL_SETTINGS, ...cached };
+    }
+  } catch (e) {}
+  if (typeof db !== 'undefined' && db) {
+    try {
+      const snap = await firestoreGetWithTimeout(db.collection('settings').doc('payroll').get());
+      if (snap && snap.exists && snap.data()) {
+        const d = snap.data();
+        const num = (v, fallback, min) => {
+          const n = Number(v);
+          return (!isNaN(n) && n >= min) ? n : fallback;
+        };
+        AppState.payrollSettings = {
+          basicSalary: num(d.basicSalary, DEFAULT_PAYROLL_SETTINGS.basicSalary, 0),
+          basicUnits: num(d.basicUnits, DEFAULT_PAYROLL_SETTINGS.basicUnits, 0),
+          extraRate: num(d.extraRate, DEFAULT_PAYROLL_SETTINGS.extraRate, 0),
+          allowance: num(d.allowance, DEFAULT_PAYROLL_SETTINGS.allowance, 0),
+          deduction: num(d.deduction, DEFAULT_PAYROLL_SETTINGS.deduction, 0)
+        };
+        saveCache(PAYROLL_SETTINGS_CACHE_KEY, AppState.payrollSettings);
+      }
+    } catch (e) {
+      console.warn('[Payroll] Could not load payroll settings from cloud:', e.message);
+    }
+  }
+  migrateLegacyPayrollStatus();
+}
+
+async function savePayrollSettingsToCloud(settings) {
+  if (typeof db === 'undefined' || !db) {
+    firestoreSyncError = 'Firestore is not connected (database may not exist yet).';
+    return false;
+  }
+  try {
+    await db.collection('settings').doc('payroll').set(
+      { ...settings, updatedAt: new Date().toISOString() },
+      { merge: true }
+    );
+    return true;
+  } catch (e) {
+    firestoreSyncError = e.message;
+    console.warn('[Payroll] Error saving payroll settings:', e.message);
+    return false;
+  }
+}
+
+function openPayrollSettingsModal() {
+  const modal = document.getElementById('payroll-settings-modal');
+  if (!modal) return;
+  const s = getPayrollSettings();
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+  set('payroll-setting-basic-salary', s.basicSalary);
+  set('payroll-setting-basic-units', s.basicUnits);
+  set('payroll-setting-extra-rate', s.extraRate);
+  set('payroll-setting-allowance', s.allowance);
+  set('payroll-setting-deduction', s.deduction);
+  modal.classList.add('active');
+}
+window.openPayrollSettingsModal = openPayrollSettingsModal;
+
+function closePayrollSettingsModal() {
+  const modal = document.getElementById('payroll-settings-modal');
+  if (modal) modal.classList.remove('active');
+}
+window.closePayrollSettingsModal = closePayrollSettingsModal;
+
+async function handleSavePayrollSettings() {
+  const current = getPayrollSettings();
+  const read = (id, fallback, min) => {
+    const raw = document.getElementById(id)?.value;
+    if (raw === undefined || raw === null || String(raw).trim() === '') return fallback;
+    const n = Number(raw);
+    return (!isNaN(n) && n >= min) ? n : fallback;
+  };
+  const next = {
+    basicSalary: read('payroll-setting-basic-salary', current.basicSalary, 0),
+    basicUnits: read('payroll-setting-basic-units', current.basicUnits, 0),
+    extraRate: read('payroll-setting-extra-rate', current.extraRate, 0),
+    allowance: read('payroll-setting-allowance', current.allowance, 0),
+    deduction: read('payroll-setting-deduction', current.deduction, 0)
+  };
+  const ok = await savePayrollSettingsToCloud(next);
+  if (!ok) {
+    showToastNotification(`Could not save to cloud: ${firestoreSyncError || 'Firestore is not available'} — settings not saved.`, 'error');
+    return;
+  }
+  AppState.payrollSettings = next;
+  saveCache(PAYROLL_SETTINGS_CACHE_KEY, next);
+  closePayrollSettingsModal();
+  renderApp();
+  showToastNotification('✓ Payroll settings saved. Unpaid payroll figures recalculated.');
+}
+window.handleSavePayrollSettings = handleSavePayrollSettings;
+
+// Quick per-teacher manual bonus for the displayed month. Saved to
+// Firestore on the teacher doc (awaited); Paid months are frozen and
+// cannot be edited.
+async function handleTeacherBonusChange(teacherId, inputEl) {
+  const teacher = (AppState.teachers || []).find(t => t.id === teacherId);
+  if (!teacher || !inputEl) return;
+  const monthKey = getPayrollMonthKey();
+  const calc = computeTeacherPayroll(teacher);
+  if (calc.isPaid) { renderApp(); return; }
+  let bonus = Number(inputEl.value);
+  if (isNaN(bonus) || bonus < 0) bonus = 0;
+  bonus = Math.round(bonus);
+  if (!teacher.payrollMonths) teacher.payrollMonths = {};
+  const prev = teacher.payrollMonths[monthKey] || {};
+  teacher.payrollMonths[monthKey] = { ...prev, status: prev.status || 'Pending', bonus };
+  saveCache('lms_teachers', AppState.teachers);
+  const ok = await dbSaveTeacher(teacher);
+  renderApp();
+  if (ok) {
+    showToastNotification(`✓ Bonus of ${formatPKR(bonus)} saved for ${teacher.name} (${MONTHS_LIST[CURRENT_MONTH_INDEX]} ${CURRENT_YEAR}).`);
+  } else {
+    showToastNotification(`Could not save to cloud: ${firestoreSyncError || 'Firestore is not available'} — saved on this device only.`, 'error');
+  }
+}
+window.handleTeacherBonusChange = handleTeacherBonusChange;
+
+// Mark the displayed month's Net Payable as Paid (snapshot frozen), or
+// revert a Paid month back to Pending (bonus is kept, snapshot dropped).
+async function toggleTeacherSalaryStatus(teacherId) {
+  const teacher = (AppState.teachers || []).find(t => t.id === teacherId);
+  if (!teacher) return;
+  const monthKey = getPayrollMonthKey();
+  const calc = computeTeacherPayroll(teacher);
+  if (!teacher.payrollMonths) teacher.payrollMonths = {};
+  if (calc.isPaid) {
+    const prev = teacher.payrollMonths[monthKey] || {};
+    teacher.payrollMonths[monthKey] = { ...prev, status: 'Pending', paidAmount: null, paidAt: null };
+    teacher.salaryStatus = 'Pending';
+    saveCache('lms_teachers', AppState.teachers);
+    const ok = await dbSaveTeacher(teacher);
+    renderApp();
+    if (ok) showToastNotification(`Salary reverted to Pending for ${teacher.name}`);
+    else showToastNotification(`Could not save to cloud: ${firestoreSyncError || 'Firestore is not available'} — saved on this device only.`, 'error');
+  } else {
+    teacher.payrollMonths[monthKey] = {
+      status: 'Paid',
+      bonus: calc.bonus,
+      basicExtra: calc.basicExtra,
+      allowance: calc.allowance,
+      deduction: calc.deduction,
+      paidAmount: calc.netPayable,
+      paidAt: new Date().toISOString()
+    };
+    teacher.salaryStatus = 'Paid';
+    saveCache('lms_teachers', AppState.teachers);
+    const ok = await dbSaveTeacher(teacher);
+    renderApp();
+    if (ok) showToastNotification(`✓ Salary of ${formatPKR(calc.netPayable)} marked as Paid for ${teacher.name}`);
+    else showToastNotification(`Could not save to cloud: ${firestoreSyncError || 'Firestore is not available'} — saved on this device only.`, 'error');
+  }
+}
+window.toggleTeacherSalaryStatus = toggleTeacherSalaryStatus;
+
+// ==========================================
 // 8. TEACHER PAYROLL VIEW
 // ==========================================
 
 function renderAdminTeacherPayrollView() {
-  const totalTeachers = AppState.teachers.length;
+  // Lazy-load the global payroll rules from Firestore on first payroll
+  // visit (local cache + defaults meanwhile). Re-renders when they arrive.
+  if (!payrollSettingsLoaded && !payrollSettingsLoading) {
+    payrollSettingsLoading = true;
+    loadPayrollSettings().catch(() => {}).finally(() => {
+      payrollSettingsLoaded = true;
+      payrollSettingsLoading = false;
+      renderApp();
+    });
+  }
+  const monthLabel = `${MONTHS_LIST[CURRENT_MONTH_INDEX]} ${CURRENT_YEAR}`;
+  const teachers = AppState.teachers || [];
+
+  // KPI totals for the displayed month (Paid months use their recorded
+  // snapshot; Pending months use the live formula).
   let totalPayroll = 0;
   let paidPayroll = 0;
   let pendingPayroll = 0;
-  let totalHours = 0;
-
-  AppState.teachers.forEach(t => {
-    const assignedStudents = (AppState.students || []).filter(s => s.teacherId === t.id);
-    const dynamicActiveCount = (t.activeStudents !== undefined && t.activeStudents > 0) ? t.activeStudents : assignedStudents.length;
-    const hours = dynamicActiveCount * 18;
-    const rate = Number(t.hourlyRate) || 20;
-    const totalPay = hours * rate;
-    totalPayroll += totalPay;
-    totalHours += hours;
-    if (t.salaryStatus === 'Paid') {
-      paidPayroll += totalPay;
-    } else {
-      pendingPayroll += totalPay;
-    }
+  let paidCount = 0;
+  let pendingCount = 0;
+  teachers.forEach(t => {
+    const c = computeTeacherPayroll(t);
+    totalPayroll += c.netPayable;
+    if (c.isPaid) { paidPayroll += c.netPayable; paidCount++; }
+    else { pendingPayroll += c.netPayable; pendingCount++; }
   });
+
+  // One filtered list shared by the desktop table and the mobile cards.
+  let displayedTeachers = teachers.slice();
+  if (AppState.teacherPayrollSalaryFilter && AppState.teacherPayrollSalaryFilter !== 'all') {
+    displayedTeachers = displayedTeachers.filter(t => (computeTeacherPayroll(t).isPaid ? 'Paid' : 'Pending') === AppState.teacherPayrollSalaryFilter);
+  }
+  if (AppState.teacherPayrollSearchQuery && AppState.teacherPayrollSearchQuery.trim() !== '') {
+    const q = AppState.teacherPayrollSearchQuery.trim().toLowerCase();
+    displayedTeachers = displayedTeachers.filter(t =>
+      (t.name || '').toLowerCase().includes(q) ||
+      (t.id || '').toLowerCase().includes(q)
+    );
+  }
+  const isFiltered = (AppState.teacherPayrollSalaryFilter && AppState.teacherPayrollSalaryFilter !== 'all') ||
+    AppState.teacherPayrollSearchQuery;
+
+  const emptyStateHtml = renderSharedEmptyState({
+    icon: 'teacher',
+    title: isFiltered ? 'No faculty members match your filter criteria' : 'No faculty members registered yet',
+    description: isFiltered ? 'Try adjusting your salary filter settings.' : 'Onboard your first teacher to start assigning classes and tracking payroll.',
+    actionText: isFiltered ? 'Reset Filters' : '+ Add Faculty Member',
+    actionFn: isFiltered ? 'resetTeacherPayrollFilters()' : 'openAddTeacherModal()'
+  });
+
+  const rowsHtml = displayedTeachers.length === 0 ? `
+    <tr>
+      <td colspan="9" class="py-12 text-center">${emptyStateHtml}</td>
+    </tr>
+  ` : displayedTeachers.map(t => {
+    const c = computeTeacherPayroll(t);
+    const isPaid = c.isPaid;
+    const bonusCell = isPaid
+      ? `<span class="font-semibold text-[#141F1E] tabular-nums">${formatPKR(c.bonus)}</span>`
+      : `<span class="inline-flex items-center gap-1">
+           <span class="text-[#7A8684] text-[11px]">Rs.</span>
+           <input type="number" min="0" step="any" value="${c.bonus}"
+             onchange="handleTeacherBonusChange('${t.id}', this)"
+             class="w-20 bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-8 px-2 text-xs font-bold text-[#141F1E] tabular-nums outline-none focus:border-[#0E4D45] focus:bg-white"
+             title="Manual bonus for ${monthLabel} (PKR)" />
+         </span>`;
+    return `
+      <tr class="hover:bg-[#F8F6F1]/50 transition-colors">
+        <td class="py-3.5 font-bold text-[#141F1E]" data-label="Teacher">
+          <div class="flex items-center gap-2">
+            <img
+              src="${t.avatar ? (t.avatar.includes('ui-avatars.com') ? getAvatarUrl(t.name) : t.avatar) : getAvatarUrl(t.name)}"
+              alt="${t.name}"
+              class="w-7 h-7 rounded-full object-cover shrink-0 ring-1 ring-[#0E4D45]/20"
+              onerror="this.onerror=null; this.src='${getAvatarUrl(t.name)}';"
+            />
+            <span class="cursor-pointer hover:text-[#0E4D45] hover:underline" onclick="openEditTeacherModal('${t.id}')" title="Edit Teacher">${t.name}</span>
+          </div>
+        </td>
+        <td class="py-3.5 font-semibold text-[#0E4D45] tabular-nums" data-label="Student Units">${formatPayrollUnits(c.units)} units</td>
+        <td class="py-3.5 text-[#141F1E] font-medium tabular-nums" data-label="Basic + Extra">${formatPKR(c.basicExtra)}</td>
+        <td class="py-3.5 text-[#141F1E] tabular-nums" data-label="Allowance">${formatPKR(c.allowance)}</td>
+        <td class="py-3.5 text-[#141F1E] tabular-nums" data-label="Deduction">${formatPKR(c.deduction)}</td>
+        <td class="py-3.5" data-label="Bonus">${bonusCell}</td>
+        <td class="py-3.5 font-bold text-[#0E4D45] tabular-nums" data-label="Net Payable">${formatPKR(c.netPayable)}</td>
+        <td class="py-3.5 text-center" data-label="Status">
+          <span class="ts-badge ${isPaid ? 'ts-badge-paid' : 'ts-badge-partial'}">
+            ${isPaid ? 'Paid' : 'Pending'}
+          </span>
+        </td>
+        <td class="py-3.5 text-right pl-2" data-label="Action">
+          <div class="flex items-center justify-end gap-1.5 whitespace-nowrap">
+            <button onclick="openEditTeacherModal('${t.id}')"
+              class="px-3 py-1 text-[11px] font-semibold rounded-lg bg-white border border-[#ECEAE4] text-[#141F1E] hover:bg-[#F8F6F1] hover:border-[#0E4D45] hover:text-[#0E4D45] transition-colors whitespace-nowrap cursor-pointer"
+              title="Edit Teacher">
+              Edit
+            </button>
+            <button onclick="toggleTeacherSalaryStatus('${t.id}')"
+              class="px-3 py-1 text-[11px] font-semibold rounded-lg ${isPaid ? 'bg-[#E8EFEE] text-[#0E4D45] hover:bg-[#FEE2E2] hover:text-[#991B1B]' : 'bg-[#0E4D45] text-white hover:bg-[#14534B]'} transition-colors whitespace-nowrap shadow-2xs cursor-pointer">
+              ${isPaid ? 'Mark Pending' : 'Pay Salary'}
+            </button>
+            <button onclick="deleteTeacher('${t.id}', event)"
+              class="p-1.5 rounded-lg text-[#DC2626] hover:bg-red-50 hover:text-red-700 transition-colors cursor-pointer border border-transparent hover:border-red-200"
+              title="Delete Faculty Member">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  const cardsHtml = displayedTeachers.length === 0 ? `
+    <div class="py-6 text-center">${emptyStateHtml}</div>
+  ` : displayedTeachers.map(t => {
+    const c = computeTeacherPayroll(t);
+    const isPaid = c.isPaid;
+    const bonusRow = isPaid
+      ? `<div class="flex items-center justify-between mt-3 pt-3 border-t border-[#F8F6F1]">
+           <span class="text-[11px] font-semibold text-[#7A8684]">Bonus (Paid)</span>
+           <span class="text-xs font-bold text-[#141F1E] tabular-nums">${formatPKR(c.bonus)}</span>
+         </div>`
+      : `<div class="flex items-center justify-between gap-2 mt-3 pt-3 border-t border-[#F8F6F1]">
+           <label class="text-[11px] font-bold text-[#0E4D45] whitespace-nowrap">+ Add Bonus</label>
+           <span class="inline-flex items-center gap-1">
+             <span class="text-[#7A8684] text-[11px]">Rs.</span>
+             <input type="number" min="0" step="any" value="${c.bonus}"
+               onchange="handleTeacherBonusChange('${t.id}', this)"
+               class="w-24 bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-9 px-2.5 text-xs font-bold text-[#141F1E] tabular-nums outline-none focus:border-[#0E4D45] focus:bg-white"
+               title="Manual bonus for ${monthLabel} (PKR)" />
+           </span>
+         </div>`;
+    return `
+      <div class="bg-white border border-[#ECEAE4] rounded-2xl p-4 shadow-xs">
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <img
+              src="${t.avatar ? (t.avatar.includes('ui-avatars.com') ? getAvatarUrl(t.name) : t.avatar) : getAvatarUrl(t.name)}"
+              alt="${t.name}"
+              class="w-9 h-9 rounded-full object-cover shrink-0 ring-1 ring-[#0E4D45]/20"
+              onerror="this.onerror=null; this.src='${getAvatarUrl(t.name)}';"
+            />
+            <div class="min-w-0">
+              <p class="text-sm font-bold text-[#141F1E] truncate cursor-pointer hover:text-[#0E4D45]" onclick="openEditTeacherModal('${t.id}')" title="Edit Teacher">${t.name}</p>
+              <p class="text-[11px] text-[#7A8684]">${c.activeCount} Active Student${c.activeCount === 1 ? '' : 's'} • ${formatPayrollUnits(c.units)} units</p>
+            </div>
+          </div>
+          <span class="ts-badge ${isPaid ? 'ts-badge-paid' : 'ts-badge-partial'} shrink-0">${isPaid ? 'Paid' : 'Pending'}</span>
+        </div>
+        <p class="mt-3 text-[11px] font-semibold text-[#7A8684]">Net Payable • ${monthLabel}</p>
+        <p class="text-2xl font-bold text-[#0E4D45] tabular-nums">${formatPKR(c.netPayable)}</p>
+        <div class="mt-3 grid grid-cols-4 gap-2 rounded-xl bg-[#F8F6F1] border border-[#ECEAE4] px-2 py-2.5 text-center">
+          <div class="min-w-0">
+            <p class="text-[10px] font-semibold text-[#7A8684]">Units</p>
+            <p class="text-[11px] font-bold text-[#141F1E] tabular-nums truncate" title="${formatPayrollUnits(c.units)} units">${formatPayrollUnits(c.units)}</p>
+          </div>
+          <div class="min-w-0">
+            <p class="text-[10px] font-semibold text-[#7A8684]">Basic+Extra</p>
+            <p class="text-[11px] font-bold text-[#141F1E] tabular-nums truncate" title="${formatPKR(c.basicExtra)}">${formatPKR(c.basicExtra)}</p>
+          </div>
+          <div class="min-w-0">
+            <p class="text-[10px] font-semibold text-[#7A8684]">Allow</p>
+            <p class="text-[11px] font-bold text-[#141F1E] tabular-nums truncate" title="${formatPKR(c.allowance)}">${formatPKR(c.allowance)}</p>
+          </div>
+          <div class="min-w-0">
+            <p class="text-[10px] font-semibold text-[#7A8684]">Deduct</p>
+            <p class="text-[11px] font-bold text-[#141F1E] tabular-nums truncate" title="${formatPKR(c.deduction)}">${formatPKR(c.deduction)}</p>
+          </div>
+        </div>
+        ${bonusRow}
+        <div class="mt-3 flex items-center gap-2">
+          <button onclick="toggleTeacherSalaryStatus('${t.id}')"
+            class="flex-1 px-3 py-2 text-xs font-bold rounded-lg ${isPaid ? 'bg-[#E8EFEE] text-[#0E4D45] hover:bg-[#FEE2E2] hover:text-[#991B1B]' : 'bg-[#0E4D45] text-white hover:bg-[#14534B]'} transition-colors cursor-pointer">
+            ${isPaid ? 'Mark Pending' : 'Pay Salary'}
+          </button>
+          <button onclick="openEditTeacherModal('${t.id}')"
+            class="px-3 py-2 text-xs font-semibold rounded-lg bg-white border border-[#ECEAE4] text-[#141F1E] hover:bg-[#F8F6F1] hover:border-[#0E4D45] hover:text-[#0E4D45] transition-colors cursor-pointer">
+            Edit
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
 
   return `
     <div class="ts-card p-3.5 sm:p-6 mb-8 overflow-hidden">
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-[#ECEAE4]">
         <div>
           <h2 class="text-xl font-bold text-[#141F1E]">Teacher Payroll</h2>
-          <p class="text-xs text-[#7A8684] mt-1">Calculated monthly honorarium based on verified logged student hours.</p>
+          <p class="text-xs text-[#7A8684] mt-1">Net payable salary in PKR — Basic Salary + extra student units, allowance, bonus and deduction.</p>
         </div>
-        <button onclick="openAddTeacherModal()" class="px-5 py-2.5 rounded-full bg-[#0E4D45] text-white text-xs font-bold hover:bg-[#14534B] transition-all shadow-sm flex items-center gap-2 whitespace-nowrap cursor-pointer">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
-          <span>+ Add Teacher</span>
-        </button>
+        <div class="flex items-center gap-2 flex-wrap">
+          <button onclick="openPayrollSettingsModal()" class="px-4 py-2.5 rounded-full bg-white border border-[#0E4D45] text-[#0E4D45] text-xs font-bold hover:bg-[#E8EFEE] transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer" title="Edit global payroll rules">
+            <span>Payroll Settings ⚙️</span>
+          </button>
+          <button onclick="openAddTeacherModal()" class="px-5 py-2.5 rounded-full bg-[#0E4D45] text-white text-xs font-bold hover:bg-[#14534B] transition-all shadow-sm flex items-center gap-2 whitespace-nowrap cursor-pointer">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
+            <span>+ Add Teacher</span>
+          </button>
+        </div>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div class="p-4 bg-[#F8F6F1] rounded-2xl border border-[#ECEAE4]">
           <span class="text-xs text-[#7A8684] font-medium">Teachers</span>
-          <p class="text-2xl font-bold text-[#141F1E] mt-1">${AppState.teachers.length} Teachers</p>
+          <p class="text-2xl font-bold text-[#141F1E] mt-1">${teachers.length} Teachers</p>
           <div class="flex items-center gap-1.5 mt-1">
-            <span class="text-[11px] text-[#0E4D45] font-medium">Out of ${totalTeachers} total faculty members</span>
+            <span class="text-[11px] text-[#0E4D45] font-medium">Out of ${teachers.length} total faculty members</span>
           </div>
         </div>
         <div class="p-4 bg-[#F8F6F1] rounded-2xl border border-[#ECEAE4]">
-          <span class="text-xs text-[#7A8684] font-medium">Estimated Payroll (${MONTHS_LIST[CURRENT_MONTH_INDEX]})</span>
-          <p class="text-2xl font-bold text-[#0E4D45] mt-1">$${totalPayroll.toLocaleString()}</p>
-          <div class="flex items-center gap-2 mt-1">
-            <span class="text-[11px] text-[#065F46] font-semibold">Paid: $${paidPayroll.toLocaleString()}</span>
-            <span class="text-[11px] text-[#7A8684]">•</span>
-            <span class="text-[11px] text-[#991B1B] font-semibold">Pending: $${pendingPayroll.toLocaleString()}</span>
+          <span class="text-xs text-[#7A8684] font-medium">Estimated Payroll (${monthLabel})</span>
+          <p class="text-2xl font-bold text-[#0E4D45] mt-1">${formatPKR(totalPayroll)}</p>
+          <div class="flex items-center gap-1.5 mt-1">
+            <span class="text-[11px] text-[#0E4D45] font-medium">${paidCount} paid • ${pendingCount} pending</span>
           </div>
         </div>
         <div class="p-4 bg-[#F8F6F1] rounded-2xl border border-[#ECEAE4]">
-          <span class="text-xs text-[#7A8684] font-medium">Classes Logged</span>
-          <p class="text-2xl font-bold text-[#141F1E] mt-1">${totalHours} Logged Hours</p>
+          <span class="text-xs text-[#7A8684] font-medium">Paid (${monthLabel})</span>
+          <p class="text-2xl font-bold text-[#065F46] mt-1">${formatPKR(paidPayroll)}</p>
+          <div class="flex items-center gap-1.5 mt-1">
+            <span class="text-[11px] text-[#065F46] font-semibold">${paidCount} teacher${paidCount === 1 ? '' : 's'} paid</span>
+          </div>
+        </div>
+        <div class="p-4 bg-[#F8F6F1] rounded-2xl border border-[#ECEAE4]">
+          <span class="text-xs text-[#7A8684] font-medium">Pending (${monthLabel})</span>
+          <p class="text-2xl font-bold text-[#991B1B] mt-1">${formatPKR(pendingPayroll)}</p>
+          <div class="flex items-center gap-1.5 mt-1">
+            <span class="text-[11px] text-[#991B1B] font-semibold">${pendingCount} teacher${pendingCount === 1 ? '' : 's'} pending</span>
+          </div>
         </div>
       </div>
 
@@ -12580,10 +12970,10 @@ function renderAdminTeacherPayrollView() {
       <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 mb-6 pb-4 border-b border-[#ECEAE4]">
         <div class="flex items-center gap-2 flex-wrap text-xs">
           <span class="text-[11px] font-semibold text-[#7A8684] shrink-0">Filter:</span>
-          
+
           <!-- Salary Status Filter -->
-          <select 
-            onchange="setTeacherPayrollSalaryFilter(this.value)" 
+          <select
+            onchange="setTeacherPayrollSalaryFilter(this.value)"
             class="px-3 py-1.5 rounded-full border border-[#ECEAE4] bg-[#F8F6F1] text-xs font-semibold text-[#141F1E] focus:outline-none focus:border-[#0E4D45] cursor-pointer"
           >
             <option value="all">All Salary Statuses</option>
@@ -12604,12 +12994,12 @@ function renderAdminTeacherPayrollView() {
           <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-[#94A3B8]">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
           </span>
-          <input 
-            type="text" 
-            id="teacher-payroll-search-input" 
-            value="${AppState.teacherPayrollSearchQuery || ''}" 
-            oninput="handleTeacherPayrollSearch(this.value)" 
-            placeholder="Search faculty..." 
+          <input
+            type="text"
+            id="teacher-payroll-search-input"
+            value="${AppState.teacherPayrollSearchQuery || ''}"
+            oninput="handleTeacherPayrollSearch(this.value)"
+            placeholder="Search faculty..."
             class="w-full pl-10 pr-8 py-2 text-xs rounded-full border border-[#ECEAE4] bg-white text-[#141F1E] placeholder-[#94A3B8] focus:outline-none focus:border-[#0E4D45] focus:ring-1 focus:ring-[#0E4D45] transition-all shadow-2xs"
           />
           ${AppState.teacherPayrollSearchQuery ? `
@@ -12618,109 +13008,36 @@ function renderAdminTeacherPayrollView() {
         </div>
       </div>
 
-      <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse min-w-0 md:min-w-[850px] responsive-table-cards">
+      <!-- Desktop table (hidden on mobile) -->
+      <div class="hidden md:block overflow-x-auto">
+        <table class="w-full text-left border-collapse min-w-[880px]">
           <thead>
             <tr class="border-b border-[#ECEAE4] text-[11px] font-semibold text-[#7A8684]">
               <th class="pb-3">Teacher Name</th>
-              <th class="pb-3">Country</th>
-              <th class="pb-3">Active Students</th>
-              <th class="pb-3">Hourly Rate</th>
-              <th class="pb-3">${MONTHS_LIST[CURRENT_MONTH_INDEX]} Hours</th>
-              <th class="pb-3">Payable Honorarium</th>
+              <th class="pb-3">Student Units</th>
+              <th class="pb-3">Basic + Extra</th>
+              <th class="pb-3">Allowance</th>
+              <th class="pb-3">Deduction</th>
+              <th class="pb-3">Bonus (Editable)</th>
+              <th class="pb-3">Net Payable (PKR)</th>
               <th class="pb-3 text-center">Status</th>
               <th class="pb-3 text-right">Action</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-[#ECEAE4] text-xs">
-            ${(() => {
-              let displayedTeachers = (AppState.teachers || []).slice();
-              if (AppState.teacherPayrollSalaryFilter && AppState.teacherPayrollSalaryFilter !== 'all') {
-                displayedTeachers = displayedTeachers.filter(t => (t.salaryStatus || 'Pending') === AppState.teacherPayrollSalaryFilter);
-              }
-              if (AppState.teacherPayrollSearchQuery && AppState.teacherPayrollSearchQuery.trim() !== '') {
-                const q = AppState.teacherPayrollSearchQuery.trim().toLowerCase();
-                displayedTeachers = displayedTeachers.filter(t => 
-                  (t.name || '').toLowerCase().includes(q) || 
-                  (t.id || '').toLowerCase().includes(q) || 
-                  (t.country || '').toLowerCase().includes(q)
-                );
-              }
-              if (displayedTeachers.length === 0) {
-                const isFiltered = (AppState.teacherPayrollSalaryFilter && AppState.teacherPayrollSalaryFilter !== 'all') || 
-                                   AppState.teacherPayrollSearchQuery;
-                return `
-                  <tr>
-                    <td colspan="8" class="py-12 text-center">
-                      ${renderSharedEmptyState({
-                        icon: 'teacher',
-                        title: isFiltered ? 'No faculty members match your filter criteria' : 'No faculty members registered yet',
-                        description: isFiltered ? 'Try adjusting your salary filter settings.' : 'Onboard your first teacher to start assigning classes and tracking payroll.',
-                        actionText: isFiltered ? 'Reset Filters' : '+ Add Faculty Member',
-                        actionFn: isFiltered ? 'resetTeacherPayrollFilters()' : 'openAddTeacherModal()'
-                      })}
-                    </td>
-                  </tr>
-                `;
-              }
-              return displayedTeachers.map(t => {
-              const assignedStudents = (AppState.students || []).filter(s => s.teacherId === t.id);
-              const dynamicActiveCount = (t.activeStudents !== undefined && t.activeStudents > 0) ? t.activeStudents : assignedStudents.length;
-              const hours = dynamicActiveCount * 18;
-              const rate = Number(t.hourlyRate) || 20;
-              const totalPay = hours * rate;
-              const isPaid = t.salaryStatus === 'Paid';
-              return `
-                <tr class="hover:bg-[#F8F6F1]/50 transition-colors">
-                  <td class="py-3.5 font-bold text-[#141F1E]" data-label="Teacher">
-                    <div class="flex items-center gap-2">
-                      <img 
-                        src="${t.avatar ? (t.avatar.includes('ui-avatars.com') ? getAvatarUrl(t.name) : t.avatar) : getAvatarUrl(t.name)}" 
-                        alt="${t.name}" 
-                        class="w-7 h-7 rounded-full object-cover shrink-0 ring-1 ring-[#0E4D45]/20"
-                        onerror="this.onerror=null; this.src='${getAvatarUrl(t.name)}';"
-                      />
-                      <span class="cursor-pointer hover:text-[#0E4D45] hover:underline" onclick="openEditTeacherModal('${t.id}')" title="Edit Teacher">${t.name}</span>
-                    </div>
-                  </td>
-                  <td class="py-3.5 text-[#7A8684]" data-label="Country">${t.country}</td>
-                  <td class="py-3.5 font-semibold text-[#0E4D45] tabular-nums" data-label="Active Students">${dynamicActiveCount} ${dynamicActiveCount === 1 ? 'Student' : 'Students'}</td>
-                  <td class="py-3.5 text-[#141F1E] font-medium tabular-nums" data-label="Hourly Rate">$${rate}/hr</td>
-                  <td class="py-3.5 text-[#7A8684] tabular-nums" data-label="Hours Logged">${hours} hrs</td>
-                  <td class="py-3.5 font-semibold text-[#0E4D45] tabular-nums" data-label="Honorarium">$${totalPay.toLocaleString()}</td>
-                  <td class="py-3.5 text-center" data-label="Status">
-                    <span class="ts-badge ${isPaid ? 'ts-badge-paid' : 'ts-badge-partial'}">
-                      ${isPaid ? 'Paid' : 'Pending'}
-                    </span>
-                  </td>
-                  <td class="py-3.5 text-right pl-2" data-label="Action">
-                    <div class="flex items-center justify-end gap-1.5 whitespace-nowrap">
-                      <button onclick="openEditTeacherModal('${t.id}')"
-                        class="px-3 py-1 text-[11px] font-semibold rounded-lg bg-white border border-[#ECEAE4] text-[#141F1E] hover:bg-[#F8F6F1] hover:border-[#0E4D45] hover:text-[#0E4D45] transition-colors whitespace-nowrap cursor-pointer"
-                        title="Edit Teacher">
-                        Edit
-                      </button>
-                      <button onclick="toggleTeacherSalaryStatus('${t.id}')"
-                        class="px-3 py-1 text-[11px] font-semibold rounded-lg ${isPaid ? 'bg-[#E8EFEE] text-[#0E4D45] hover:bg-[#FEE2E2] hover:text-[#991B1B]' : 'bg-[#0E4D45] text-white hover:bg-[#14534B]'} transition-colors whitespace-nowrap shadow-2xs cursor-pointer">
-                        ${isPaid ? 'Mark Pending' : 'Pay Salary'}
-                      </button>
-                      <button onclick="deleteTeacher('${t.id}', event)"
-                        class="p-1.5 rounded-lg text-[#DC2626] hover:bg-red-50 hover:text-red-700 transition-colors cursor-pointer border border-transparent hover:border-red-200"
-                        title="Delete Faculty Member">
-                        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              `;
-            }).join('');
-            })()}
+            ${rowsHtml}
           </tbody>
         </table>
+      </div>
+
+      <!-- Mobile stacked cards (max-width: 768px) -->
+      <div class="md:hidden space-y-3">
+        ${cardsHtml}
       </div>
     </div>
   `;
 }
+
 
 // ==========================================
 // 8B. ADMIN TRIALS & ACADEMY NOTICES VIEW

@@ -7724,7 +7724,7 @@ const QURAN_FUTURE_BOOKS = [
 
 const QuranLibrary = {
   meta: loadCache('lms_quran_meta', null),
-  view: 'home', // 'home' | 'reader' | 'bookmarks'
+  view: 'home', // 'home' | 'reader' | 'pdf' | 'bookmarks'
   surahNumber: null,
   surah: null, // current Arabic surah payload (edition depends on mode/script)
   translation: null, // current translation surah payload, if loaded
@@ -7741,15 +7741,11 @@ const QuranLibrary = {
   tajweedUnavailable: false,
   translationLoading: false,
   adminTab: 'books', // 'books' | 'assign'
-  readMode: loadCache('lms_quran_readmode', 'surah'), // 'surah' | 'page' — reader layout
-  layout: null, // 16-line page layout data (fetched on demand, memory only)
-  pageNumber: 1,
-  pageLoading: false,
-  pageError: null,
-  pageSelected: null, // {surah, ayah} selected in Page Mode
-  pageTajweed: {}, // surah -> { ayah: [coloured word html, ...] }
-  pageTranslations: {}, // '<lang>:<surah>' -> translation payload
-  pageTranslationLoading: false,
+  readMode: loadCache('lms_quran_readmode', 'surah'), // 'surah' | 'pdf' — reader layout
+  pdfPage: loadCache('lms_quran_pdf_page', 1), // last-read Mushaf page in PDF mode (1-548)
+  pdfBlobUrl: null, // assembled printed-Mushaf PDF blob URL (memory only)
+  pdfLoading: false,
+  pdfError: null,
   bookmarks: loadCache('lms_quran_bookmarks', []),
   lastRead: loadCache('lms_quran_last_read', null),
   assignments: loadCache('lms_quran_assignments', []),
@@ -7759,6 +7755,10 @@ const QuranLibrary = {
   assignNote: ''
 };
 window.QuranLibrary = QuranLibrary;
+
+// Page Mode was removed (its Nastaliq font never rendered live); a stale
+// 'page' value saved in an old browser falls back to Surah Mode.
+if (QuranLibrary.readMode !== 'surah' && QuranLibrary.readMode !== 'pdf') QuranLibrary.readMode = 'surah';
 
 function quranEscapeHtml(s) {
   return String(s == null ? '' : s)
@@ -7959,12 +7959,6 @@ async function setQuranMode(mode) {
   if (QuranLibrary.mode === mode) return;
   QuranLibrary.mode = mode;
   QuranLibrary.selectedAyah = null;
-  if (QuranLibrary.view === 'page') {
-    QuranLibrary.pageSelected = null;
-    renderApp();
-    if (mode === 'tajweed') quranEnsurePageTajweed();
-    return;
-  }
   if (QuranLibrary.view !== 'reader' || !QuranLibrary.surahNumber) { renderApp(); return; }
   QuranLibrary.loadingSurah = true;
   renderApp();
@@ -7983,7 +7977,6 @@ async function setQuranScript(script) {
   if (QuranLibrary.script === script) return;
   QuranLibrary.script = script;
   QuranLibrary.selectedAyah = null;
-  if (QuranLibrary.view === 'page') { renderApp(); return; }
   // Tajweed colours are Uthmani-based, so the script only changes the
   // Simple-mode text; Tajweed mode keeps Uthmani text (see the note in
   // the reader header).
@@ -8002,12 +7995,6 @@ async function setQuranScript(script) {
 window.setQuranScript = setQuranScript;
 
 function toggleQuranTranslation() {
-  if (QuranLibrary.view === 'page') {
-    QuranLibrary.showTranslation = !QuranLibrary.showTranslation;
-    renderApp();
-    if (QuranLibrary.showTranslation) quranEnsurePageTranslations();
-    return;
-  }
   QuranLibrary.showTranslation = !QuranLibrary.showTranslation;
   if (QuranLibrary.showTranslation) {
     QuranLibrary.translation = null;
@@ -8022,11 +8009,6 @@ window.toggleQuranTranslation = toggleQuranTranslation;
 function setQuranTranslationLang(lang) {
   if (QuranLibrary.translationLang === lang) return;
   QuranLibrary.translationLang = lang;
-  if (QuranLibrary.view === 'page') {
-    renderApp();
-    if (QuranLibrary.showTranslation) quranEnsurePageTranslations();
-    return;
-  }
   QuranLibrary.translation = null;
   if (QuranLibrary.showTranslation) quranLoadTranslationIfNeeded();
   else renderApp();
@@ -8066,7 +8048,7 @@ function quranToggleBookmark(surah, ayah) {
       surah: surah,
       surahName: meta ? meta.englishName : ('Surah ' + surah),
       ayah: ayah,
-      page: (QuranLibrary.view === 'page' ? QuranLibrary.pageNumber : null),
+      page: null,
       savedAt: Date.now()
     });
     if (typeof showToastNotification === 'function') showToastNotification('Ayah bookmarked.', 'success');
@@ -8079,8 +8061,7 @@ window.quranToggleBookmark = quranToggleBookmark;
 function quranOpenBookmark(index) {
   const b = (QuranLibrary.bookmarks || [])[index];
   if (!b) return;
-  if (b.page) openQuranPage(b.page, { surah: b.surah, ayah: b.ayah });
-  else openQuranSurah(b.surah, b.ayah);
+  openQuranSurah(b.surah, b.ayah);
 }
 window.quranOpenBookmark = quranOpenBookmark;
 
@@ -8092,17 +8073,6 @@ function quranRemoveBookmark(index) {
 window.quranRemoveBookmark = quranRemoveBookmark;
 
 function quranCopyAyah(surah, ayahNumber) {
-  if (QuranLibrary.view === 'page' && QuranLibrary.layout) {
-    const meta = (QuranLibrary.meta || []).find(s => s.number === surah);
-    const text = quranPageAyahText(surah, ayahNumber) + '  (' + (meta ? meta.englishName : ('Surah ' + surah)) + ' ' + surah + ':' + ayahNumber + ')';
-    const done = () => { if (typeof showToastNotification === 'function') showToastNotification('Ayah copied.', 'success'); };
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(done).catch(() => quranCopyFallback(text, done));
-    } else {
-      quranCopyFallback(text, done);
-    }
-    return;
-  }
   const surahData = QuranLibrary.surah;
   if (!surahData) return;
   const ayah = (surahData.ayahs || []).find(a => a.numberInSurah === ayahNumber);
@@ -8176,233 +8146,118 @@ function quranTranslationFor(ayahNumber) {
   return t ? t.text : '';
 }
 
-// --- 16-line Page Mode (Indo-Pak Mushaf, Taj Company layout) ---
-// Page layout data (Quranic Universal Library, Mushaf layout 7:
-// "Indopak 16 lines - Taj company", 548 pages, 16 lines per page) is
-// bundled with the app in quran-16line-layout.json and fetched on
-// demand when Page Mode opens. It holds the exact printed line breaks:
-// per page, 16 lines; each line is a word range (or a Surah header /
-// Bismillah / empty line). Words are stored once, in Quran order;
-// ayahEnds maps the last word of each ayah to its Surah:Ayah, so any
-// word can be traced back to its ayah.
-let quranLayoutPromise = null;
+// --- Printed Mushaf (PDF) — Taj Company 16-line, simple black-and-white ---
+// The printed book, bundled with the app as base64 text parts (the repo
+// connector only pushes UTF-8 text, so the 17 MB binary PDF travels as
+// six small .b64 parts, each under 4 MB) and reassembled in the browser
+// into a Blob for the native PDF viewer. The file lives in this project
+// — no outside host and no outside branding anywhere in the UI. Source:
+// a scan of the printed Taj Company 16-line Mushaf (code comment only,
+// never shown).
+// Page offset: the scan has 559 PDF pages — p.1 is the cover, p.2 the
+// title page, Mushaf page 1 (Al-Fatiha) is PDF page 3. Verified by
+// rendering the PDF pages: Mushaf p.1 = PDF p.3, Juz 2 (Mushaf p.20) =
+// PDF p.22, Al-Mulk (Mushaf p.508) = PDF p.510.
+const QURAN_PDF_PARTS = ['quran-16line-taj.pdf.b64.part1', 'quran-16line-taj.pdf.b64.part2', 'quran-16line-taj.pdf.b64.part3', 'quran-16line-taj.pdf.b64.part4', 'quran-16line-taj.pdf.b64.part5', 'quran-16line-taj.pdf.b64.part6'];
+const QURAN_PDF_PAGE_OFFSET = 2; // Mushaf page N lives on PDF page N + 2
+const QURAN_PDF_DOWNLOAD_NAME = 'Taj-Company-16-Line-Quran.pdf';
+// Juz first pages in the Taj Company 16-line layout (the same pages the
+// printed PDF uses, so PDF mode needs no layout file).
+const QURAN_PDF_JUZ_PAGES = { 1: 1, 2: 20, 3: 38, 4: 56, 5: 74, 6: 92, 7: 109, 8: 128, 9: 146, 10: 164, 11: 181, 12: 200, 13: 218, 14: 235, 15: 254, 16: 272, 17: 290, 18: 308, 19: 326, 20: 343, 21: 362, 22: 380, 23: 398, 24: 416, 25: 434, 26: 452, 27: 470, 28: 488, 29: 508, 30: 528 };
 
-function quranEnsureLayout() {
-  if (QuranLibrary.layout) return Promise.resolve(QuranLibrary.layout);
-  if (quranLayoutPromise) return quranLayoutPromise;
-  quranLayoutPromise = fetch('quran-16line-layout.json?v=20261124-fontfix')
-    .then(r => { if (!r.ok) throw new Error('Page layout could not be loaded (' + r.status + ')'); return r.json(); })
-    .then(data => { QuranLibrary.layout = data; return data; })
-    .catch(e => { quranLayoutPromise = null; throw e; });
-  return quranLayoutPromise;
-}
+// First Mushaf page of each Surah (Taj Company layout), so the reader can
+// jump from a PDF page to the Surah on that page without the old 16-line
+// layout file. Spot-checked against the known anchors: Surah 3 starts
+// p.45, Surah 18 p.264, Surah 36 p.396, Surah 55 p.478, Surah 67 p.508,
+// Surah 78 p.528.
+const QURAN_SURAH_START_PAGES = { 1: 1, 2: 2, 3: 45, 4: 69, 5: 96, 6: 115, 7: 136, 8: 159, 9: 168, 10: 187, 11: 199, 12: 212, 13: 224, 14: 230, 15: 235, 16: 240, 17: 254, 18: 264, 19: 275, 20: 281, 21: 290, 22: 299, 23: 308, 24: 315, 25: 324, 26: 330, 27: 339, 28: 347, 29: 357, 30: 364, 31: 370, 32: 373, 33: 376, 34: 385, 35: 391, 36: 396, 37: 401, 38: 408, 39: 412, 40: 420, 41: 429, 42: 434, 43: 440, 44: 446, 45: 448, 46: 452, 47: 456, 48: 460, 49: 463, 50: 466, 51: 468, 52: 471, 53: 473, 54: 475, 55: 478, 56: 481, 57: 484, 58: 488, 59: 491, 60: 495, 61: 497, 62: 499, 63: 500, 64: 502, 65: 504, 66: 506, 67: 508, 68: 510, 69: 512, 70: 514, 71: 516, 72: 518, 73: 520, 74: 521, 75: 523, 76: 524, 77: 526, 78: 528, 79: 529, 80: 530, 81: 532, 82: 532, 83: 533, 84: 534, 85: 535, 86: 536, 87: 537, 88: 537, 89: 538, 90: 539, 91: 540, 92: 540, 93: 541, 94: 541, 95: 542, 96: 542, 97: 543, 98: 543, 99: 544, 100: 544, 101: 544, 102: 545, 103: 545, 104: 545, 105: 546, 106: 546, 107: 546, 108: 546, 109: 547, 110: 547, 111: 547, 112: 547, 113: 548, 114: 548 };
 
-// Which ayah (Surah:Ayah) does word index i belong to?
-function quranPageAyahOfWord(i) {
-  const ends = QuranLibrary.layout.ayahEnds;
-  let lo = 0, hi = ends.length - 1, ans = ends.length - 1;
-  while (lo <= hi) {
-    const mid = (lo + hi) >> 1;
-    if (ends[mid][0] >= i) { ans = mid; hi = mid - 1; } else lo = mid + 1;
-  }
-  return { surah: ends[ans][1], ayah: ends[ans][2] };
-}
-
-// First/last ayah, Surah segments and Juz for a printed page.
-function quranPageInfo(n) {
-  const page = QuranLibrary.layout.pages[n - 1];
-  const wlines = page.l.filter(l => l[2] === 'w');
-  const first = quranPageAyahOfWord(wlines[0][0]);
-  const last = quranPageAyahOfWord(wlines[wlines.length - 1][1] - 1);
-  const segs = [];
-  let cur = null;
-  for (const ln of wlines) {
-    for (let wi = ln[0]; wi < ln[1]; wi++) {
-      const a = quranPageAyahOfWord(wi);
-      if (!cur || cur.surah !== a.surah) { cur = { surah: a.surah, first: a.ayah, last: a.ayah }; segs.push(cur); }
-      else cur.last = a.ayah;
+let quranPdfBlobPromise = null;
+function quranEnsurePdfBlob() {
+  if (QuranLibrary.pdfBlobUrl) return Promise.resolve(QuranLibrary.pdfBlobUrl);
+  if (quranPdfBlobPromise) return quranPdfBlobPromise;
+  quranPdfBlobPromise = (async () => {
+    const chunks = [];
+    for (const part of QURAN_PDF_PARTS) {
+      const r = await fetch(part + '?v=20261124-printed');
+      if (!r.ok) throw new Error('Printed Mushaf file could not be loaded (' + r.status + ')');
+      chunks.push(await r.text());
     }
-  }
-  let juz = 1;
-  const jp = QuranLibrary.layout.juzPages || {};
-  for (let j = 1; j <= 30; j++) { if (jp[j] && jp[j] <= n) juz = j; }
-  return { first: first, last: last, segs: segs, juz: juz };
+    const b64 = chunks.join('').replace(/\s+/g, '');
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const blob = new Blob([bytes], { type: 'application/pdf' });
+    QuranLibrary.pdfBlobUrl = URL.createObjectURL(blob);
+    return QuranLibrary.pdfBlobUrl;
+  })();
+  quranPdfBlobPromise.catch(() => { quranPdfBlobPromise = null; });
+  return quranPdfBlobPromise;
 }
 
-function quranPageRangeText(info) {
-  const meta = QuranLibrary.meta || [];
-  const name = (n) => { const m = meta.find(s => s.number === n); return m ? m.englishName : ('Surah ' + n); };
-  return info.segs.map(sg => {
-    const range = sg.first === sg.last ? ('Ayah ' + sg.first) : ('Ayah ' + sg.first + ' – ' + sg.last);
-    return name(sg.surah) + ', ' + range;
-  }).join(' • ');
-}
-
-// Plain text of one ayah, from the layout words (for Copy in Page Mode).
-function quranPageAyahText(surah, ayah) {
-  const ends = QuranLibrary.layout.ayahEnds;
-  let endIdx = -1, prevEnd = -1;
-  for (let i = 0; i < ends.length; i++) {
-    if (ends[i][1] === surah && ends[i][2] === ayah) { endIdx = ends[i][0]; prevEnd = i > 0 ? ends[i - 1][0] : -1; break; }
-  }
-  if (endIdx < 0) return '';
-  return QuranLibrary.layout.words.slice(prevEnd + 1, endIdx + 1).join(' ');
-}
-
-async function openQuranPage(n, scrollAyah) {
+async function openQuranPdf(n) {
   ensureQuranMeta();
   n = Math.max(1, Math.min(548, Number(n) || 1));
-  QuranLibrary.readMode = 'page';
-  saveCache('lms_quran_readmode', 'page');
-  QuranLibrary.view = 'page';
-  QuranLibrary.pageNumber = n;
-  QuranLibrary.pageSelected = scrollAyah || null;
-  QuranLibrary.pageError = null;
+  QuranLibrary.readMode = 'pdf';
+  saveCache('lms_quran_readmode', 'pdf');
+  QuranLibrary.view = 'pdf';
+  QuranLibrary.pdfPage = n;
+  saveCache('lms_quran_pdf_page', n);
+  QuranLibrary.pdfLoading = !QuranLibrary.pdfBlobUrl;
+  QuranLibrary.pdfError = null;
   renderApp();
   window.scrollTo({ top: 0, behavior: 'instant' });
-  if (!QuranLibrary.layout) {
-    QuranLibrary.pageLoading = true;
-    renderApp();
-    try {
-      await quranEnsureLayout();
-    } catch (e) {
-      QuranLibrary.pageLoading = false;
-      QuranLibrary.pageError = 'The 16-line pages could not be loaded. Check your connection and try again.';
-      renderApp();
-      return;
+  if (!QuranLibrary.pdfBlobUrl) {
+    try { await quranEnsurePdfBlob(); }
+    catch (e) {
+      QuranLibrary.pdfError = 'The printed Mushaf could not be loaded. Check your connection and try again.';
+      console.warn('[Library] PDF load failed:', e && e.message);
     }
-    QuranLibrary.pageLoading = false;
+    QuranLibrary.pdfLoading = false;
     renderApp();
   }
-  if (QuranLibrary.mode === 'tajweed') quranEnsurePageTajweed();
-  if (QuranLibrary.showTranslation) quranEnsurePageTranslations();
-  if (scrollAyah) {
-    quranSaveLastReadPosition(scrollAyah.surah, scrollAyah.ayah, n);
-    quranPageScrollToAyah(scrollAyah.surah, scrollAyah.ayah);
-  }
 }
-window.openQuranPage = openQuranPage;
+window.openQuranPdf = openQuranPdf;
 
-function quranPageScrollToAyah(surah, ayah) {
-  setTimeout(() => {
-    const el = document.querySelector('[data-quran-page-ayah="' + surah + ':' + ayah + '"]');
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, 80);
-}
+function quranPdfGo(n) { openQuranPdf(n); }
+window.quranPdfGo = quranPdfGo;
 
-function quranPageGo(n) { openQuranPage(n); }
-window.quranPageGo = quranPageGo;
-
-function quranJumpToPage(value) {
+function quranPdfJumpToPage(value) {
   const n = parseInt(value, 10);
   if (!n || n < 1 || n > 548) {
-    if (typeof showToastNotification === 'function') showToastNotification('Enter a page number from 1 to 548.', 'error');
+    if (typeof showToastNotification === 'function') showToastNotification('Enter a Mushaf page number from 1 to 548.', 'error');
     return;
   }
-  openQuranPage(n);
+  openQuranPdf(n);
 }
-window.quranJumpToPage = quranJumpToPage;
+window.quranPdfJumpToPage = quranPdfJumpToPage;
 
-function quranJumpToJuz(j) {
-  const p = QuranLibrary.layout && QuranLibrary.layout.juzPages ? QuranLibrary.layout.juzPages[j] : null;
-  if (p) openQuranPage(p);
+function quranPdfJumpToJuz(j) {
+  const jp = QURAN_PDF_JUZ_PAGES;
+  const p = jp[j];
+  if (p) openQuranPdf(p);
 }
-window.quranJumpToJuz = quranJumpToJuz;
+window.quranPdfJumpToJuz = quranPdfJumpToJuz;
 
 function quranSetReadMode(mode) {
   if (QuranLibrary.readMode === mode) return;
   QuranLibrary.readMode = mode;
   saveCache('lms_quran_readmode', mode);
-  if (mode === 'page') {
-    const p = (QuranLibrary.lastRead && QuranLibrary.lastRead.page) || 1;
-    openQuranPage(p);
-  } else if (QuranLibrary.view === 'page') {
-    const info = QuranLibrary.layout ? quranPageInfo(QuranLibrary.pageNumber) : null;
-    const firstSurah = info ? info.segs[0].surah : 1;
-    openQuranSurah(firstSurah);
+  if (mode === 'pdf') {
+    openQuranPdf(QuranLibrary.pdfPage || 1);
+  } else if (QuranLibrary.view === 'pdf') {
+    // Leaving the printed PDF for Surah Mode: open the Surah that starts
+    // on (or before) the current Mushaf page, from the Surah start table.
+    const p = QuranLibrary.pdfPage || 1;
+    let surah = 1;
+    for (let s = 1; s <= 114; s++) { if (QURAN_SURAH_START_PAGES[s] && QURAN_SURAH_START_PAGES[s] <= p) surah = s; }
+    openQuranSurah(surah);
   } else {
     QuranLibrary.view = 'home';
     renderApp();
   }
 }
 window.quranSetReadMode = quranSetReadMode;
-
-function quranPageHoverAyah(key, on) {
-  const els = document.querySelectorAll('[data-quran-page-ayah="' + key + '"]');
-  for (const el of els) el.classList.toggle('quran-page-word-hover', !!on);
-}
-window.quranPageHoverAyah = quranPageHoverAyah;
-
-function quranPageSelectAyah(surah, ayah) {
-  if (QuranLibrary.pageSelected && QuranLibrary.pageSelected.surah === surah && QuranLibrary.pageSelected.ayah === ayah) {
-    QuranLibrary.pageSelected = null;
-  } else {
-    QuranLibrary.pageSelected = { surah: surah, ayah: ayah };
-    quranSaveLastReadPosition(surah, ayah, QuranLibrary.pageNumber);
-  }
-  renderApp();
-}
-window.quranPageSelectAyah = quranPageSelectAyah;
-
-// Tajweed colours in Page Mode: the printed words are matched, ayah by
-// ayah, against the Tajweed text data. Where the word counts match, the
-// coloured words are used; where they do not match, the plain printed
-// word is shown, so the page never breaks.
-async function quranEnsurePageTajweed() {
-  if (QuranLibrary.mode !== 'tajweed' || !QuranLibrary.layout) return;
-  const info = quranPageInfo(QuranLibrary.pageNumber);
-  let changed = false;
-  for (const sg of info.segs) {
-    if (QuranLibrary.pageTajweed[sg.surah]) continue;
-    try {
-      const data = await quranFetchJson(QURAN_API_BASE + '/surah/' + sg.surah + '/quran-tajweed');
-      const perAyah = {};
-      for (const a of (data.ayahs || [])) {
-        perAyah[a.numberInSurah] = (a.text || '').split(/\s+/).filter(Boolean).map(tok => quranParseTajweed(tok));
-      }
-      QuranLibrary.pageTajweed[sg.surah] = perAyah;
-      changed = true;
-    } catch (e) { console.warn('[Library] Page Tajweed unavailable for Surah ' + sg.surah + ':', e && e.message); }
-  }
-  if (changed) renderApp();
-}
-
-function quranPageWordHtml(wi, surah, ayah, posInAyah, totalInAyah) {
-  const plain = quranEscapeHtml(QuranLibrary.layout.words[wi]);
-  if (QuranLibrary.mode !== 'tajweed') return plain;
-  const perAyah = QuranLibrary.pageTajweed[surah];
-  if (!perAyah || !perAyah[ayah]) return plain;
-  const tokens = perAyah[ayah];
-  if (!tokens || tokens.length !== totalInAyah) return plain;
-  return tokens[posInAyah - 1];
-}
-
-// Translation panel for the current page: translations of the ayahs on
-// this page, shown below the page (never inside the 16 lines).
-async function quranEnsurePageTranslations() {
-  if (!QuranLibrary.showTranslation || !QuranLibrary.layout) return;
-  const info = quranPageInfo(QuranLibrary.pageNumber);
-  const lang = QuranLibrary.translationLang;
-  let changed = false;
-  QuranLibrary.pageTranslationLoading = true;
-  for (const sg of info.segs) {
-    const key = lang + ':' + sg.surah;
-    if (QuranLibrary.pageTranslations[key]) continue;
-    const cache = quranGetSurahCache(sg.surah);
-    if (cache[lang]) { QuranLibrary.pageTranslations[key] = cache[lang]; changed = true; continue; }
-    try {
-      const edition = lang === 'ur' ? 'ur.junagarhi' : 'en.sahih';
-      const data = await quranFetchJson(QURAN_API_BASE + '/surah/' + sg.surah + '/' + edition);
-      const patch = {};
-      patch[lang] = data;
-      quranSetSurahCache(sg.surah, patch);
-      QuranLibrary.pageTranslations[key] = data;
-      changed = true;
-    } catch (e) { console.warn('[Library] Page translation unavailable for Surah ' + sg.surah + ':', e && e.message); }
-  }
-  QuranLibrary.pageTranslationLoading = false;
-  if (changed) renderApp();
-}
 
 // Standard Juz (Para) names, 1-30. Used for the Juz header band at the
 // top of the page where a Juz starts.
@@ -8419,130 +8274,12 @@ const QURAN_JUZ_NAMES = {
   30: "Amma Yatasa'aloon"
 };
 
-// Which Juz starts on printed page n (0 if none starts on this page)?
-function quranJuzStartingOnPage(n) {
-  const jp = (QuranLibrary.layout && QuranLibrary.layout.juzPages) || {};
-  for (let j = 1; j <= 30; j++) { if (jp[j] === n) return j; }
-  return 0;
-}
-
-function quranPageLinesHtml(n) {
-  const page = QuranLibrary.layout.pages[n - 1];
-  const meta = QuranLibrary.meta || [];
-  const firstWord = Math.min.apply(null, page.l.filter(l => l[2] === 'w').map(l => l[0]));
-  const lastWord = Math.max.apply(null, page.l.filter(l => l[2] === 'w').map(l => l[1] - 1));
-  const endWords = new Set(QuranLibrary.layout.ayahEnds.filter(e => e[0] >= firstWord && e[0] <= lastWord).map(e => e[0]));
-  const ayahTotal = {};
-  for (const ln of page.l) {
-    if (ln[2] !== 'w') continue;
-    for (let wi = ln[0]; wi < ln[1]; wi++) {
-      const a = quranPageAyahOfWord(wi);
-      const key = a.surah + ':' + a.ayah;
-      ayahTotal[key] = (ayahTotal[key] || 0) + 1;
-    }
-  }
-  const ayahSeen = {};
-  return page.l.map(ln => {
-    const type = ln[2];
-    if (type === 'h' || type === 'hb') {
-      const m = meta.find(s => s.number === ln[4]);
-      return `
-      <div class="quran-page-line-header">
-        <div class="quran-page-surah-header">
-          <p class="quran-page-arabic" dir="rtl" style="font-size:1.5rem;line-height:1.6">${m ? quranEscapeHtml(m.name || '') : ''}</p>
-          <p class="text-xs font-bold text-[#0E4D45]">${m ? quranEscapeHtml(m.englishName || '') : ('Surah ' + ln[4])} • Surah ${ln[4]}</p>
-        </div>
-        ${type === 'hb' ? `<div class="quran-page-bismillah">﷽</div>` : ''}
-      </div>`;
-    }
-    if (type === 'b') return `<div class="quran-page-line-bismillah"><div class="quran-page-bismillah">﷽</div></div>`;
-    if (type === '') return `<div class="quran-page-line quran-page-empty"></div>`;
-    // One inline span per ayah, words joined with plain spaces inside
-    // it: Arabic letters join across inline span boundaries, so the line
-    // renders as continuous connected Mushaf script. The old per-word
-    // flex boxes broke the joining and looked like separate chips.
-    // (Tajweed mode still colours words: quranPageWordHtml returns
-    // colour-only inline spans, which do not break the joining.)
-    let html = '';
-    let curKey = null, curSurah = 0, curAyah = 0, curWords = [];
-    const flushAyah = () => {
-      if (!curKey) return;
-      const selected = QuranLibrary.pageSelected && QuranLibrary.pageSelected.surah === curSurah && QuranLibrary.pageSelected.ayah === curAyah;
-      html += `<span class="quran-page-ayah${selected ? ' quran-page-word-selected' : ''}" data-quran-page-ayah="${curKey}" onmouseover="quranPageHoverAyah('${curKey}',true)" onmouseout="quranPageHoverAyah('${curKey}',false)" onclick="quranPageSelectAyah(${curSurah},${curAyah})">${curWords.join(' ')}</span>`;
-      curKey = null; curWords = [];
-    };
-    for (let wi = ln[0]; wi < ln[1]; wi++) {
-      const a = quranPageAyahOfWord(wi);
-      const key = a.surah + ':' + a.ayah;
-      ayahSeen[key] = (ayahSeen[key] || 0) + 1;
-      if (key !== curKey) { flushAyah(); curKey = key; curSurah = a.surah; curAyah = a.ayah; }
-      curWords.push(quranPageWordHtml(wi, a.surah, a.ayah, ayahSeen[key], ayahTotal[key]));
-      if (endWords.has(wi)) {
-        flushAyah();
-        html += `<span class="quran-page-ayah-end" data-quran-page-ayah="${key}" onmouseover="quranPageHoverAyah('${key}',true)" onmouseout="quranPageHoverAyah('${key}',false)" onclick="quranPageSelectAyah(${a.surah},${a.ayah})">${quranArabicNumeral(a.ayah)}</span> `;
-      }
-    }
-    flushAyah();
-    const alignCls = ln[3] === 'c' ? ' quran-page-line-center' : '';
-    // Printed-page margin marks, placed from data only (never guessed):
-    // a Ruku ends where its last ayah ends, a Sajda sits on its ayah.
-    // rukuEnds = [lastWordIndex, rukuNumber]; sajdaWords = [lastWordIndex].
-    const marks = [];
-    for (const re of (QuranLibrary.layout.rukuEnds || [])) {
-      if (re[0] >= ln[0] && re[0] < ln[1]) marks.push(`<span class="quran-page-mark quran-page-mark-ruku" title="Ruku ${re[1]} ends here">ع<small>${re[1]}</small></span>`);
-    }
-    for (const w of (QuranLibrary.layout.sajdaWords || [])) {
-      if (w >= ln[0] && w < ln[1]) marks.push(`<span class="quran-page-mark quran-page-mark-sajda" title="Sajda — prostration here"><span class="sajda-badge"><span>۩</span></span><small>Sajda</small></span>`);
-    }
-    const marksHtml = marks.length ? `<span class="quran-page-margin-marks">${marks.join('')}</span>` : '';
-    return `<div class="quran-page-line${alignCls}" dir="rtl">${html}${marksHtml}</div>`;
-  }).join('');
-}
-
-function quranPageSelectedBarHtml(sel) {
-  const bookmarked = quranIsBookmarked(sel.surah, sel.ayah);
-  const meta = (QuranLibrary.meta || []).find(s => s.number === sel.surah);
-  return `
-  <div class="flex flex-wrap items-center gap-2 mt-4 p-3 rounded-2xl bg-[#F8F6F1] border border-[#ECEAE4]">
-    <span class="text-xs font-bold text-[#141F1E]">${quranEscapeHtml(meta ? meta.englishName : ('Surah ' + sel.surah))} — Ayah ${sel.ayah}</span>
-    <button onclick="quranToggleBookmark(${sel.surah}, ${sel.ayah})" class="px-3 py-1.5 text-[11px] font-bold rounded-full cursor-pointer ${bookmarked ? 'bg-[#0E4D45] text-white' : 'bg-white border border-[#ECEAE4] text-[#0E4D45]'}">${bookmarked ? 'Bookmarked ✓' : 'Bookmark'}</button>
-    <button onclick="quranCopyAyah(${sel.surah}, ${sel.ayah})" class="px-3 py-1.5 text-[11px] font-bold rounded-full bg-white border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#F8F6F1] cursor-pointer">Copy</button>
-    <span class="text-[11px] text-[#7A8684]">Saved as your reading position — Page ${QuranLibrary.pageNumber}.</span>
-  </div>`;
-}
-
-function quranPageTranslationHtml(info) {
-  const lang = QuranLibrary.translationLang;
-  const rows = [];
-  for (const sg of info.segs) {
-    const payload = QuranLibrary.pageTranslations[lang + ':' + sg.surah];
-    const ayahs = (payload && payload.ayahs) || [];
-    for (let a = sg.first; a <= sg.last; a++) {
-      const t = ayahs.find(x => x.numberInSurah === a);
-      if (t) rows.push({ surah: sg.surah, ayah: a, text: t.text });
-    }
-  }
-  if (!rows.length) {
-    return `<div class="mt-4 p-4 rounded-2xl bg-[#F8F6F1] border border-[#ECEAE4] text-center"><p class="text-xs text-[#7A8684]">${QuranLibrary.pageTranslationLoading ? 'Loading translation…' : 'Translation is not available for this page right now.'}</p></div>`;
-  }
-  return `
-  <div class="mt-4 p-4 sm:p-5 rounded-2xl bg-[#F8F6F1] border border-[#ECEAE4]">
-    <p class="text-xs font-bold text-[#141F1E] mb-3">Translation — ${lang === 'ur' ? 'Urdu' : 'English'}</p>
-    <div class="space-y-2">
-      ${rows.map(r => {
-        const meta = (QuranLibrary.meta || []).find(s => s.number === r.surah);
-        return `<p class="text-[13px] leading-relaxed text-[#5B6B69]" ${lang === 'ur' ? 'dir="rtl" style="text-align:right"' : ''}><span class="font-bold text-[#0E4D45]">${quranEscapeHtml(meta ? meta.englishName : ('Surah ' + r.surah))} ${r.surah}:${r.ayah} — </span>${quranEscapeHtml(r.text)}</p>`;
-      }).join('')}
-    </div>
-  </div>`;
-}
-
-function renderQuranPageView(isAdmin) {
-  const n = QuranLibrary.pageNumber;
-  const layout = QuranLibrary.layout;
-  const info = layout ? quranPageInfo(n) : null;
-  const mode = QuranLibrary.mode;
-  const sel = QuranLibrary.pageSelected;
+function renderQuranPdfView(isAdmin) {
+  const n = QuranLibrary.pdfPage || 1;
+  const jp = QURAN_PDF_JUZ_PAGES;
+  let juz = 1;
+  for (let j = 1; j <= 30; j++) { if (jp[j] && jp[j] <= n) juz = j; }
+  const juzStartsHere = jp[juz] === n ? juz : null;
 
   const header = `
   <div class="p-6 bg-white rounded-2xl border border-[#ECEAE4] shadow-xs">
@@ -8551,78 +8288,56 @@ function renderQuranPageView(isAdmin) {
       <button onclick="quranOpenBookmarks()" class="text-xs font-bold text-[#0E4D45] hover:underline cursor-pointer">My Bookmarks (${(QuranLibrary.bookmarks || []).length})</button>
     </div>
     <div class="text-center">
-      <h2 class="text-xl font-bold text-[#141F1E]">Mushaf — 16-line Page Mode</h2>
-      <p class="text-xs text-[#7A8684] mt-0.5">${info ? quranEscapeHtml(quranPageRangeText(info)) + ' • Juz ' + info.juz : 'Indo-Pak printed layout • 548 pages'}</p>
+      <h2 class="text-xl font-bold text-[#141F1E]">Printed Mushaf — Taj Company 16-line</h2>
+      <p class="text-xs text-[#7A8684] mt-0.5">The exact printed book, page by page • Simple black-and-white • 548 pages</p>
     </div>
     <div class="flex flex-wrap items-center justify-center gap-2 mt-5">
       <div class="flex rounded-full border border-[#ECEAE4] overflow-hidden">
         <button onclick="quranSetReadMode('surah')" class="px-4 py-1.5 text-xs font-bold cursor-pointer ${QuranLibrary.readMode === 'surah' ? 'bg-[#0E4D45] text-white' : 'bg-white text-[#0E4D45]'}">Surah Mode</button>
-        <button onclick="quranSetReadMode('page')" class="px-4 py-1.5 text-xs font-bold cursor-pointer ${QuranLibrary.readMode === 'page' ? 'bg-[#0E4D45] text-white' : 'bg-white text-[#0E4D45]'}">Page Mode</button>
-      </div>
-      <div class="flex rounded-full border border-[#ECEAE4] overflow-hidden">
-        <button onclick="setQuranMode('simple')" class="px-4 py-1.5 text-xs font-bold cursor-pointer ${mode === 'simple' ? 'bg-[#0E4D45] text-white' : 'bg-white text-[#0E4D45]'}">Simple</button>
-        <button onclick="setQuranMode('tajweed')" class="px-4 py-1.5 text-xs font-bold cursor-pointer ${mode === 'tajweed' ? 'bg-[#0E4D45] text-white' : 'bg-white text-[#0E4D45]'}">Tajweed</button>
+        <button onclick="quranSetReadMode('pdf')" class="px-4 py-1.5 text-xs font-bold cursor-pointer ${QuranLibrary.readMode === 'pdf' ? 'bg-[#0E4D45] text-white' : 'bg-white text-[#0E4D45]'}">Printed Mushaf (PDF)</button>
       </div>
       <span class="px-3 py-1.5 text-xs font-bold rounded-full bg-[#F8F6F1] border border-[#ECEAE4] text-[#0E4D45]">Indo-Pak • 16 lines</span>
-      <button onclick="toggleQuranTranslation()" class="px-4 py-1.5 text-xs font-bold rounded-full cursor-pointer ${QuranLibrary.showTranslation ? 'bg-[#0E4D45] text-white' : 'bg-white border border-[#ECEAE4] text-[#0E4D45]'}">Translation ${QuranLibrary.showTranslation ? 'On' : 'Off'}</button>
-      ${QuranLibrary.showTranslation ? `
-      <select onchange="setQuranTranslationLang(this.value)" class="text-xs bg-[#F8F6F1] border border-[#ECEAE4] rounded-full px-3 py-1.5 text-[#0E4D45] font-bold outline-none cursor-pointer">
-        <option value="en" ${QuranLibrary.translationLang === 'en' ? 'selected' : ''}>English</option>
-        <option value="ur" ${QuranLibrary.translationLang === 'ur' ? 'selected' : ''}>Urdu</option>
-      </select>` : ''}
     </div>
-    ${mode === 'tajweed' ? `
-    <div class="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 mt-4">
-      ${QURAN_TAJWEED_LEGEND.map(r => `<span class="inline-flex items-center gap-1.5 text-[11px] text-[#7A8684]"><span class="w-2.5 h-2.5 rounded-full inline-block" style="background:${r.color}"></span>${r.label}</span>`).join('')}
-    </div>
-    <p class="text-center text-[11px] text-[#7A8684] mt-2">Tajweed colours highlight the printed words where the colour data matches; a few words may show plain.</p>` : ''}
     <div class="flex flex-wrap items-center justify-center gap-2 mt-5 pt-4 border-t border-[#ECEAE4]">
-      <button ${n <= 1 ? 'disabled' : ''} onclick="quranPageGo(${n - 1})" class="px-4 py-2 text-xs font-bold rounded-full bg-white border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#F8F6F1] transition-colors cursor-pointer disabled:opacity-40">← Previous page</button>
-      <label class="flex items-center gap-2 text-xs font-bold text-[#0E4D45]">Jump to page
-        <input type="number" min="1" max="548" value="${n}" onchange="quranJumpToPage(this.value)" class="w-20 text-xs bg-[#F8F6F1] border border-[#ECEAE4] rounded-full px-3 py-2 text-[#141F1E] outline-none focus:border-[#0E4D45] text-center" />
+      <button ${n <= 1 ? 'disabled' : ''} onclick="quranPdfGo(${n - 1})" class="px-4 py-2 text-xs font-bold rounded-full bg-white border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#F8F6F1] transition-colors cursor-pointer disabled:opacity-40">← Previous page</button>
+      <label class="flex items-center gap-2 text-xs font-bold text-[#0E4D45]">Jump to Mushaf page
+        <input type="number" min="1" max="548" value="${n}" onchange="quranPdfJumpToPage(this.value)" class="w-20 text-xs bg-[#F8F6F1] border border-[#ECEAE4] rounded-full px-3 py-2 text-[#141F1E] outline-none focus:border-[#0E4D45] text-center" />
         <span class="text-[#7A8684] font-normal">of 548</span>
       </label>
-      <select onchange="quranJumpToJuz(this.value)" class="text-xs bg-[#F8F6F1] border border-[#ECEAE4] rounded-full px-3 py-2 text-[#0E4D45] font-bold outline-none cursor-pointer">
+      <select onchange="quranPdfJumpToJuz(this.value)" class="text-xs bg-[#F8F6F1] border border-[#ECEAE4] rounded-full px-3 py-2 text-[#0E4D45] font-bold outline-none cursor-pointer">
         <option value="">Jump to Juz…</option>
-        ${layout ? Object.keys(layout.juzPages).sort((a, b) => a - b).map(j => `<option value="${j}">Juz ${j} — page ${layout.juzPages[j]}</option>`).join('') : ''}
+        ${Object.keys(jp).sort((a, b) => a - b).map(j => `<option value="${j}">Juz ${j} — page ${jp[j]}</option>`).join('')}
       </select>
-      <button ${n >= 548 ? 'disabled' : ''} onclick="quranPageGo(${n + 1})" class="px-4 py-2 text-xs font-bold rounded-full bg-white border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#F8F6F1] transition-colors cursor-pointer disabled:opacity-40">Next page →</button>
+      <button ${n >= 548 ? 'disabled' : ''} onclick="quranPdfGo(${n + 1})" class="px-4 py-2 text-xs font-bold rounded-full bg-white border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#F8F6F1] transition-colors cursor-pointer disabled:opacity-40">Next page →</button>
+      ${QuranLibrary.pdfBlobUrl ? `
+      <a href="${QuranLibrary.pdfBlobUrl}" download="${QURAN_PDF_DOWNLOAD_NAME}" class="px-4 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors cursor-pointer">Download PDF</a>
+      <a href="${QuranLibrary.pdfBlobUrl}#page=${n + QURAN_PDF_PAGE_OFFSET}" target="_blank" rel="noopener" class="px-4 py-2 text-xs font-bold rounded-full bg-white border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#F8F6F1] transition-colors cursor-pointer">Open in new tab</a>` : ''}
     </div>
+    <p class="text-center text-[11px] text-[#7A8684] mt-3">Mushaf page ${n} of 548 • Juz ${juz}${juzStartsHere ? ' • ' + quranEscapeHtml(QURAN_JUZ_NAMES[juz] || '') + ' starts here' : ''} • Use Surah Mode for search, bookmarks and translation.</p>
   </div>`;
 
   let body = '';
-  if (QuranLibrary.pageLoading || !layout) {
+  if (QuranLibrary.pdfLoading || !QuranLibrary.pdfBlobUrl) {
     body = `
     <div class="p-6 bg-white rounded-2xl border border-[#ECEAE4] shadow-xs space-y-4">
       <div class="w-2/3 h-6 skeleton-shimmer rounded mx-auto"></div>
-      ${Array.from({ length: 8 }).map(() => `<div class="w-full h-8 skeleton-shimmer rounded-xl"></div>`).join('')}
-      <p class="text-center text-xs text-[#7A8684]">Loading page ${n}…</p>
+      <div class="w-full h-[60vh] skeleton-shimmer rounded-xl"></div>
+      <p class="text-center text-xs text-[#7A8684]">Loading the printed Mushaf… (about 17 MB, first time only)</p>
     </div>`;
-  } else if (QuranLibrary.pageError) {
+  } else if (QuranLibrary.pdfError) {
     body = `
     <div class="p-8 bg-white rounded-2xl border border-[#ECEAE4] shadow-xs text-center">
-      <p class="text-sm font-bold text-[#141F1E]">${quranEscapeHtml(QuranLibrary.pageError)}</p>
-      <button onclick="openQuranPage(${n})" class="mt-4 px-5 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors cursor-pointer">Retry</button>
+      <p class="text-sm font-bold text-[#141F1E]">${quranEscapeHtml(QuranLibrary.pdfError)}</p>
+      <button onclick="openQuranPdf(${n})" class="mt-4 px-5 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors cursor-pointer">Retry</button>
     </div>`;
   } else {
-    const juzStart = quranJuzStartingOnPage(n);
-    const juzBand = juzStart ? `<div class="quran-page-juz-band">Juz ${juzStart} &bull; ${quranEscapeHtml(QURAN_JUZ_NAMES[juzStart] || '')}</div>` : '';
     body = `
     <div class="p-4 sm:p-6 bg-white rounded-2xl border border-[#ECEAE4] shadow-xs">
-      <div class="quran-page">
-        ${juzBand}
-        <p class="text-center text-[11px] text-[#7A8684] mb-3">Page ${n} of 548 • ${quranEscapeHtml(quranPageRangeText(info))} • Juz ${info.juz}</p>
-        <div class="quran-page-arabic" dir="rtl">
-          ${quranPageLinesHtml(n)}
-        </div>
-        <div class="quran-page-number"><span>Page ${n} of 548</span></div>
-      </div>
-      ${sel ? quranPageSelectedBarHtml(sel) : ''}
-      ${QuranLibrary.showTranslation ? quranPageTranslationHtml(info) : ''}
+      <iframe src="${QuranLibrary.pdfBlobUrl}#page=${n + QURAN_PDF_PAGE_OFFSET}" class="quran-pdf-frame" title="Printed Mushaf — Mushaf page ${n} of 548"></iframe>
       <div class="flex items-center justify-between gap-3 mt-6 pt-4 border-t border-[#ECEAE4]">
-        <button ${n <= 1 ? 'disabled' : ''} onclick="quranPageGo(${n - 1})" class="px-4 py-2 text-xs font-bold rounded-full bg-white border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#F8F6F1] transition-colors cursor-pointer disabled:opacity-40">← Previous page</button>
+        <button ${n <= 1 ? 'disabled' : ''} onclick="quranPdfGo(${n - 1})" class="px-4 py-2 text-xs font-bold rounded-full bg-white border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#F8F6F1] transition-colors cursor-pointer disabled:opacity-40">← Previous page</button>
         <button onclick="quranGoHome()" class="px-4 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors cursor-pointer">Back to Library</button>
-        <button ${n >= 548 ? 'disabled' : ''} onclick="quranPageGo(${n + 1})" class="px-4 py-2 text-xs font-bold rounded-full bg-white border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#F8F6F1] transition-colors cursor-pointer disabled:opacity-40">Next page →</button>
+        <button ${n >= 548 ? 'disabled' : ''} onclick="quranPdfGo(${n + 1})" class="px-4 py-2 text-xs font-bold rounded-full bg-white border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#F8F6F1] transition-colors cursor-pointer disabled:opacity-40">Next page →</button>
       </div>
     </div>`;
   }
@@ -8933,7 +8648,7 @@ function renderQuranLibraryView() {
   }
 
   if (QuranLibrary.view === 'reader') return renderQuranReaderView(isAdmin);
-  if (QuranLibrary.view === 'page') return renderQuranPageView(isAdmin);
+  if (QuranLibrary.view === 'pdf') return renderQuranPdfView(isAdmin);
   if (QuranLibrary.view === 'bookmarks') return renderQuranBookmarksView(isAdmin);
   return renderQuranHomeView(isAdmin);
 }
@@ -8958,7 +8673,7 @@ function renderQuranHomeView(isAdmin) {
       <div class="flex items-center gap-2">
         <div class="flex rounded-full border border-[#ECEAE4] overflow-hidden">
           <button onclick="quranSetReadMode('surah')" class="px-4 py-2 text-xs font-bold cursor-pointer ${QuranLibrary.readMode === 'surah' ? 'bg-[#0E4D45] text-white' : 'bg-white text-[#0E4D45]'}">Surah Mode</button>
-          <button onclick="quranSetReadMode('page')" class="px-4 py-2 text-xs font-bold cursor-pointer ${QuranLibrary.readMode === 'page' ? 'bg-[#0E4D45] text-white' : 'bg-white text-[#0E4D45]'}">Page Mode • 16 lines</button>
+          <button onclick="quranSetReadMode('pdf')" class="px-4 py-2 text-xs font-bold cursor-pointer ${QuranLibrary.readMode === 'pdf' ? 'bg-[#0E4D45] text-white' : 'bg-white text-[#0E4D45]'}">Printed Mushaf (PDF)</button>
         </div>
         <button onclick="quranOpenBookmarks()" class="px-4 py-2 text-xs font-bold rounded-full bg-white border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#F8F6F1] transition-colors cursor-pointer">
           My Bookmarks (${(QuranLibrary.bookmarks || []).length})
@@ -8970,9 +8685,9 @@ function renderQuranHomeView(isAdmin) {
     <div class="p-5 bg-[#0E4D45] rounded-2xl shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
       <div>
         <p class="text-[11px] font-semibold text-[#A3C2BE]">Continue reading</p>
-        <p class="text-base font-bold text-white mt-0.5">${quranEscapeHtml(lastRead.surahName)} — Ayah ${lastRead.ayah}${lastRead.page ? ' • Page ' + lastRead.page : ''}</p>
+        <p class="text-base font-bold text-white mt-0.5">${quranEscapeHtml(lastRead.surahName)} — Ayah ${lastRead.ayah}</p>
       </div>
-      <button onclick="${lastRead.page ? `openQuranPage(${lastRead.page})` : `openQuranSurah(${lastRead.surah}, ${lastRead.ayah})`}" class="px-5 py-2 text-xs font-bold rounded-full bg-white text-[#0E4D45] hover:bg-[#F8F6F1] transition-colors cursor-pointer shrink-0">Resume reading</button>
+      <button onclick="openQuranSurah(${lastRead.surah}, ${lastRead.ayah})" class="px-5 py-2 text-xs font-bold rounded-full bg-white text-[#0E4D45] hover:bg-[#F8F6F1] transition-colors cursor-pointer shrink-0">Resume reading</button>
     </div>` : ''}
 
     ${assignments.length ? `
@@ -9041,7 +8756,7 @@ function renderQuranAdminPanel() {
         <div>
           <p class="text-xs font-bold text-[#141F1E]">Quran</p>
           <p class="text-[11px] text-[#7A8684]">Full text, Simple and Tajweed scripts, with translation.</p>
-          <p class="text-[11px] text-[#7A8684]">16-line Page Mode: On — 548 pages, Indo-Pak (Taj Company) layout.</p>
+          <p class="text-[11px] text-[#7A8684]">Printed Mushaf (PDF): On — Taj Company 16-line, simple black-and-white, 548 pages.</p>
         </div>
         <span class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-[#E8EFEE] text-[#0E4D45]">Always on</span>
       </div>
@@ -9122,7 +8837,7 @@ function renderQuranReaderView(isAdmin) {
       </div>
       <div class="flex rounded-full border border-[#ECEAE4] overflow-hidden">
         <button onclick="quranSetReadMode('surah')" class="px-4 py-1.5 text-xs font-bold cursor-pointer ${QuranLibrary.readMode === 'surah' ? 'bg-[#0E4D45] text-white' : 'bg-white text-[#0E4D45]'}">Surah Mode</button>
-        <button onclick="quranSetReadMode('page')" class="px-4 py-1.5 text-xs font-bold cursor-pointer ${QuranLibrary.readMode === 'page' ? 'bg-[#0E4D45] text-white' : 'bg-white text-[#0E4D45]'}">Page Mode</button>
+        <button onclick="quranSetReadMode('pdf')" class="px-4 py-1.5 text-xs font-bold cursor-pointer ${QuranLibrary.readMode === 'pdf' ? 'bg-[#0E4D45] text-white' : 'bg-white text-[#0E4D45]'}">Printed Mushaf (PDF)</button>
       </div>
       <div class="flex rounded-full border border-[#ECEAE4] overflow-hidden">
         <button onclick="setQuranScript('indopak')" class="px-4 py-1.5 text-xs font-bold cursor-pointer ${script === 'indopak' ? 'bg-[#0E4D45] text-white' : 'bg-white text-[#0E4D45]'}">Indo-Pak</button>

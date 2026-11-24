@@ -748,3 +748,44 @@ html, body {
   table.responsive-table-cards { min-width: 640px; }
   #command-palette .modal-content { margin-top: 6vh; margin-bottom: auto; }
 }
+
+/* Quran Library */
+.quran-arabic {
+  font-family: 'Amiri Quran', 'Traditional Arabic', 'Scheherazade New', serif;
+  font-size: 1.75rem;
+  line-height: 2.4;
+  color: #141F1E;
+}
+.quran-ayah {
+  border: 1px solid transparent;
+}
+.quran-ayah:hover {
+  background: #F1EFE7;
+  border-color: #E8E6DF;
+}
+.quran-ayah-selected {
+  background: #E8EFEE;
+  border-color: #0E4D45;
+}
+.quran-ayah-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.9rem;
+  height: 1.9rem;
+  padding: 0 0.3rem;
+  border-radius: 9999px;
+  border: 1px solid #0E4D45;
+  color: #0E4D45;
+  font-size: 0.95rem;
+  line-height: 1;
+  vertical-align: middle;
+  margin-inline-start: 0.5rem;
+  background: #FFFFFF;
+}
+@media (max-width: 640px) {
+  .quran-arabic {
+    font-size: 1.45rem;
+    line-height: 2.2;
+  }
+}

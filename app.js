@@ -1585,7 +1585,7 @@ window.getMonthFeeCollected = getMonthFeeCollected;
 // App State
 const AppState = {
   currentRole: 'admin', // 'admin' | 'manager' | 'teacher' | 'student'
-  activeNav: 'dashboard', // 'dashboard' | 'fee-matrix' | 'students' | 'teachers' | 'trials-notices'
+  activeNav: 'dashboard', // 'dashboard' | 'fee-matrix' | 'students' | 'teachers' | 'trials-notices' | 'library'
   selectedFilter: 'all', // 'all' | 'paid' | 'partial' | 'advance' | 'defaulter'
   groupByFamily: true,
   collapsedFamilies: {},
@@ -2169,6 +2169,7 @@ function renderCommandPaletteResults(query) {
     { label: 'Student Directory', category: 'Navigation', icon: 'user', action: () => { switchRole('admin'); setNavTab('students'); } },
     { label: 'Teacher Payroll', category: 'Navigation', icon: 'teacher', action: () => { switchRole('admin'); setNavTab('teachers'); } },
     { label: 'Trials & Notices', category: 'Navigation', icon: 'notice', action: () => { switchRole('admin'); setNavTab('trials-notices'); } },
+    { label: 'Quran Library', category: 'Navigation', icon: 'book', action: () => { switchRole('admin'); setNavTab('library'); } },
     { label: 'Manager Radar & Live Sessions', category: 'Navigation', icon: 'radar', action: () => { switchRole('manager'); setNavTab('manager-radar'); } },
     { label: 'Teacher Schedule & Log', category: 'Navigation', icon: 'calendar', action: () => { switchRole('teacher'); setNavTab('teacher-schedule'); } },
     { label: 'Student & Parent Portal', category: 'Navigation', icon: 'user', action: () => { switchRole('student'); setNavTab('student-portal'); } },
@@ -2450,7 +2451,7 @@ function handleRouteHash() {
       'dashboard', 'fee-matrix', 'students', 'teachers', 'trials-notices',
       'manager-radar', 'manager-trials', 'manager-substitute', 'manager-students',
       'teacher-schedule', 'teacher-logger', 'teacher-my-students',
-      'student-portal', 'student-ledger', 'student-receipts'
+      'student-portal', 'student-ledger', 'student-receipts', 'library'
     ];
     if (validNavs.includes(raw)) {
       if (['manager-radar', 'manager-trials', 'manager-substitute', 'manager-students'].includes(raw)) {
@@ -7516,6 +7517,8 @@ function renderApp() {
       container.innerHTML = renderAdminTeacherPayrollView();
     } else if (AppState.activeNav === 'trials-notices') {
       container.innerHTML = renderAdminTrialsAndNoticesView();
+    } else if (AppState.activeNav === 'library') {
+      container.innerHTML = renderQuranLibraryView();
     } else {
       container.innerHTML = renderAdminDashboardView();
       initAttendanceDotMatrix();
@@ -7545,26 +7548,30 @@ function renderNavLinks() {
       { id: 'fee-matrix', label: '12-Month Fee Ledger', shortLabel: 'Fees', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
       { id: 'students', label: 'Student Directory', shortLabel: 'Students', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },
       { id: 'teachers', label: 'Teacher Payroll', shortLabel: 'Payroll', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' },
-      { id: 'trials-notices', label: 'Trials & Notices', shortLabel: 'Trials', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' }
+      { id: 'trials-notices', label: 'Trials & Notices', shortLabel: 'Trials', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' },
+      { id: 'library', label: 'Quran Library', shortLabel: 'Library', icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253' }
     ];
   } else if (AppState.currentRole === 'manager') {
     links = [
       { id: 'manager-radar', label: 'Live Classes Radar', shortLabel: 'Radar', icon: 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
       { id: 'manager-trials', label: 'Trial Pipeline', shortLabel: 'Trials', icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
       { id: 'manager-substitute', label: 'Substitute Dispatch', shortLabel: 'Substitute', icon: 'M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4' },
-      { id: 'manager-students', label: 'Masked Student Roster', shortLabel: 'Students', icon: 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z' }
+      { id: 'manager-students', label: 'Masked Student Roster', shortLabel: 'Students', icon: 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z' },
+      { id: 'library', label: 'Quran Library', shortLabel: 'Library', icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253' }
     ];
   } else if (AppState.currentRole === 'teacher') {
     links = [
       { id: 'teacher-schedule', label: "Today's Schedule", shortLabel: 'Schedule', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
       { id: 'teacher-logger', label: '30-Sec Sabaq Logger', shortLabel: 'Logger', icon: 'M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z' },
-      { id: 'teacher-my-students', label: 'My Students', shortLabel: 'Students', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' }
+      { id: 'teacher-my-students', label: 'My Students', shortLabel: 'Students', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
+      { id: 'library', label: 'Quran Library', shortLabel: 'Library', icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253' }
     ];
   } else if (AppState.currentRole === 'student') {
     links = [
       { id: 'student-portal', label: 'Class & Sabaq Portal', shortLabel: 'Classes', icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253' },
       { id: 'student-ledger', label: 'My Tuition Ledger', shortLabel: 'Ledger', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
-      { id: 'student-receipts', label: 'Official Receipts', shortLabel: 'Receipts', icon: 'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z' }
+      { id: 'student-receipts', label: 'Official Receipts', shortLabel: 'Receipts', icon: 'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z' },
+      { id: 'library', label: 'Quran Library', shortLabel: 'Library', icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253' }
     ];
   }
 
@@ -7655,6 +7662,908 @@ function handleKpiCardClick(type) {
       setTimeout(() => el.classList.remove('ring-2', 'ring-[#0E4D45]'), 1800);
     }
   }
+}
+
+// ==========================================
+// QURAN LIBRARY (Shared Across Admin, Manager, Teacher & Parent Portals)
+// One implementation, reused by every portal. No brand name, logo or link
+// to any outside source is shown anywhere in the UI.
+// Text source (code comment only): public Quran text data fetched per
+// surah on demand and cached locally; see QURAN_API_BASE below.
+// ==========================================
+
+// Public text data endpoint (code only — never displayed in the UI).
+const QURAN_API_BASE = 'https://api.alquran.cloud/v1';
+
+// Juz (Para) start points: [surah, ayah] where each Juz begins.
+// Used to work out which Juz a surah spans, for the Juz filter.
+const QURAN_JUZ_STARTS = [
+  [1, 1], [2, 142], [2, 253], [3, 93], [4, 24], [4, 148], [5, 82],
+  [6, 111], [7, 88], [8, 41], [9, 93], [11, 6], [12, 53], [15, 1],
+  [17, 1], [18, 75], [21, 1], [23, 1], [25, 21], [27, 56], [29, 46],
+  [33, 31], [36, 28], [39, 32], [41, 47], [46, 1], [51, 31], [58, 1],
+  [67, 1], [78, 1]
+];
+
+// Tajweed rule colours. Marker codes come from the Tajweed text data:
+// m/p = Madd (prolongation), g/n = Ghunnah, q = Qalqalah,
+// h = Hamzat Wasl, f/o/a/c/w/i/d/u = Ikhfa / Idgham, l/s = silent letter.
+const QURAN_TAJWEED_RULES = {
+  m: { label: 'Madd', color: '#C2410C' },
+  p: { label: 'Madd', color: '#C2410C' },
+  g: { label: 'Ghunnah', color: '#0E7A5F' },
+  n: { label: 'Ghunnah', color: '#0E7A5F' },
+  q: { label: 'Qalqalah', color: '#1D4ED8' },
+  h: { label: 'Hamzat Wasl', color: '#6B7280' },
+  f: { label: 'Ikhfa / Idgham', color: '#7C3AED' },
+  o: { label: 'Ikhfa / Idgham', color: '#7C3AED' },
+  a: { label: 'Ikhfa / Idgham', color: '#7C3AED' },
+  c: { label: 'Ikhfa / Idgham', color: '#7C3AED' },
+  w: { label: 'Ikhfa / Idgham', color: '#7C3AED' },
+  i: { label: 'Ikhfa / Idgham', color: '#7C3AED' },
+  d: { label: 'Ikhfa / Idgham', color: '#7C3AED' },
+  u: { label: 'Ikhfa / Idgham', color: '#7C3AED' },
+  l: { label: 'Silent Letter', color: '#9CA3AF' },
+  s: { label: 'Silent Letter', color: '#9CA3AF' }
+};
+
+const QURAN_TAJWEED_LEGEND = [
+  { label: 'Madd', color: '#C2410C' },
+  { label: 'Ghunnah', color: '#0E7A5F' },
+  { label: 'Qalqalah', color: '#1D4ED8' },
+  { label: 'Hamzat Wasl', color: '#6B7280' },
+  { label: 'Ikhfa / Idgham', color: '#7C3AED' },
+  { label: 'Silent Letter', color: '#9CA3AF' }
+];
+
+const QURAN_FUTURE_BOOKS = [
+  { id: 'tajweed-guide', name: 'Tajweed Guide', desc: 'Tajweed rules with examples, for students learning recitation.' },
+  { id: 'tafseer', name: 'Tafseer', desc: 'Explanation of the verses, in simple language.' },
+  { id: 'daily-duas', name: 'Daily Duas', desc: 'Morning, evening and everyday duas with translation.' }
+];
+
+const QuranLibrary = {
+  meta: loadCache('lms_quran_meta', null),
+  view: 'home', // 'home' | 'reader' | 'bookmarks'
+  surahNumber: null,
+  surah: null, // current Arabic surah payload (edition depends on mode/script)
+  translation: null, // current translation surah payload, if loaded
+  mode: 'simple', // 'simple' | 'tajweed'
+  script: 'indopak', // 'indopak' | 'uthmani' — default Indo-Pak (Pakistan)
+  showTranslation: false,
+  translationLang: 'en', // 'en' | 'ur'
+  selectedAyah: null,
+  searchQuery: '',
+  juzFilter: 'all',
+  loadingSurah: false,
+  loadingMeta: false,
+  error: null,
+  tajweedUnavailable: false,
+  translationLoading: false,
+  adminTab: 'books', // 'books' | 'assign'
+  bookmarks: loadCache('lms_quran_bookmarks', []),
+  lastRead: loadCache('lms_quran_last_read', null),
+  assignments: loadCache('lms_quran_assignments', []),
+  settings: loadCache('lms_quran_settings', { studentAccess: true }),
+  assignStudentId: '',
+  assignSurah: 1,
+  assignNote: ''
+};
+window.QuranLibrary = QuranLibrary;
+
+function quranEscapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function quranArabicNumeral(n) {
+  const digits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+  return String(n).split('').map(ch => digits[Number(ch)] || ch).join('');
+}
+
+function quranSaveBookmarks() { saveCache('lms_quran_bookmarks', QuranLibrary.bookmarks); }
+function quranSaveLastRead() { saveCache('lms_quran_last_read', QuranLibrary.lastRead); }
+function quranSaveAssignments() { saveCache('lms_quran_assignments', QuranLibrary.assignments); }
+function quranSaveSettings() { saveCache('lms_quran_settings', QuranLibrary.settings); }
+
+function quranGetSurahCache(n) {
+  return loadCache('lms_quran_surah_' + n, null) || {};
+}
+
+function quranSetSurahCache(n, patch) {
+  const merged = Object.assign({}, quranGetSurahCache(n), patch);
+  saveCache('lms_quran_surah_' + n, merged);
+  return merged;
+}
+
+// First and last Juz a surah spans, from the Juz start table.
+function quranSurahJuzRange(n) {
+  let first = 1;
+  let last = 1;
+  QURAN_JUZ_STARTS.forEach((entry, idx) => {
+    const juz = idx + 1;
+    if (entry[0] < n || (entry[0] === n && entry[1] <= 1)) first = juz;
+    if (entry[0] <= n) last = juz;
+  });
+  return { first: first, last: last };
+}
+
+async function quranFetchJson(url) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+  try {
+    const res = await fetch(url, { headers: { Accept: 'application/json' }, signal: controller.signal });
+    if (!res.ok) throw new Error('Request failed (' + res.status + ')');
+    const json = await res.json();
+    if (!json || json.code !== 200 || !json.data) throw new Error('Unexpected response');
+    return json.data;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function ensureQuranMeta() {
+  if (QuranLibrary.meta || QuranLibrary.loadingMeta) return;
+  QuranLibrary.loadingMeta = true;
+  quranFetchJson(QURAN_API_BASE + '/meta')
+    .then(data => {
+      if (data && data.surahs && Array.isArray(data.surahs.references)) {
+        QuranLibrary.meta = data.surahs.references;
+        saveCache('lms_quran_meta', QuranLibrary.meta);
+      }
+    })
+    .catch(e => { console.warn('[Library] Surah list could not be loaded:', e && e.message); })
+    .finally(() => { QuranLibrary.loadingMeta = false; renderApp(); });
+}
+
+// Edition key for the current Simple-mode script.
+function quranSimpleEditionKey() {
+  return QuranLibrary.script === 'indopak' ? 'indopak' : 'uthmani';
+}
+
+function quranSimpleEditionId() {
+  return QuranLibrary.script === 'indopak' ? 'quran-indopak' : 'quran-uthmani';
+}
+
+// Load the Arabic text for the open surah in the current mode/script.
+// Uses the per-surah local cache first, fetches on demand otherwise.
+async function quranLoadCurrentSurahText() {
+  const n = QuranLibrary.surahNumber;
+  if (!n) return;
+  const cache = quranGetSurahCache(n);
+  if (QuranLibrary.mode === 'tajweed') {
+    if (cache.tajweed) { QuranLibrary.surah = cache.tajweed; QuranLibrary.tajweedUnavailable = false; return; }
+    try {
+      const data = await quranFetchJson(QURAN_API_BASE + '/surah/' + n + '/quran-tajweed');
+      quranSetSurahCache(n, { tajweed: data });
+      QuranLibrary.surah = data;
+      QuranLibrary.tajweedUnavailable = false;
+    } catch (e) {
+      console.warn('[Library] Tajweed text unavailable, falling back to simple text:', e && e.message);
+      QuranLibrary.tajweedUnavailable = true;
+      await quranLoadSimpleText(n, cache);
+    }
+    return;
+  }
+  await quranLoadSimpleText(n, cache);
+}
+
+async function quranLoadSimpleText(n, cache) {
+  const key = quranSimpleEditionKey();
+  const cached = cache || quranGetSurahCache(n);
+  if (cached[key]) { QuranLibrary.surah = cached[key]; return; }
+  const data = await quranFetchJson(QURAN_API_BASE + '/surah/' + n + '/' + quranSimpleEditionId());
+  const patch = {};
+  patch[key] = data;
+  quranSetSurahCache(n, patch);
+  QuranLibrary.surah = data;
+}
+
+async function quranLoadTranslationIfNeeded() {
+  if (!QuranLibrary.showTranslation || !QuranLibrary.surahNumber) return;
+  const n = QuranLibrary.surahNumber;
+  const lang = QuranLibrary.translationLang;
+  const cache = quranGetSurahCache(n);
+  if (cache[lang]) { QuranLibrary.translation = cache[lang]; return; }
+  QuranLibrary.translationLoading = true;
+  renderApp();
+  try {
+    const edition = lang === 'ur' ? 'ur.junagarhi' : 'en.sahih';
+    const data = await quranFetchJson(QURAN_API_BASE + '/surah/' + n + '/' + edition);
+    const patch = {};
+    patch[lang] = data;
+    quranSetSurahCache(n, patch);
+    QuranLibrary.translation = data;
+  } catch (e) {
+    console.warn('[Library] Translation could not be loaded:', e && e.message);
+    if (typeof showToastNotification === 'function') showToastNotification('Translation could not be loaded. Check your connection and try again.', 'error');
+    QuranLibrary.showTranslation = false;
+  } finally {
+    QuranLibrary.translationLoading = false;
+    renderApp();
+  }
+}
+
+function quranScrollToAyah(n) {
+  setTimeout(() => {
+    const el = document.getElementById('quran-ayah-' + n);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 80);
+}
+
+async function openQuranSurah(n, scrollAyah) {
+  ensureQuranMeta();
+  QuranLibrary.view = 'reader';
+  QuranLibrary.surahNumber = n;
+  QuranLibrary.surah = null;
+  QuranLibrary.translation = null;
+  QuranLibrary.selectedAyah = null;
+  QuranLibrary.error = null;
+  QuranLibrary.loadingSurah = true;
+  renderApp();
+  window.scrollTo({ top: 0, behavior: 'instant' });
+  try {
+    await quranLoadCurrentSurahText();
+    QuranLibrary.loadingSurah = false;
+    renderApp();
+    if (QuranLibrary.showTranslation) quranLoadTranslationIfNeeded();
+    if (scrollAyah) {
+      QuranLibrary.selectedAyah = scrollAyah;
+      quranSaveLastReadPosition(n, scrollAyah);
+      renderApp();
+      quranScrollToAyah(scrollAyah);
+    }
+  } catch (e) {
+    QuranLibrary.loadingSurah = false;
+    QuranLibrary.error = 'This Surah could not be loaded. Check your connection and try again.';
+    console.warn('[Library] Surah load failed:', e && e.message);
+    renderApp();
+  }
+}
+window.openQuranSurah = openQuranSurah;
+
+function quranGoHome() {
+  QuranLibrary.view = 'home';
+  QuranLibrary.surahNumber = null;
+  QuranLibrary.surah = null;
+  QuranLibrary.translation = null;
+  QuranLibrary.selectedAyah = null;
+  QuranLibrary.error = null;
+  renderApp();
+  window.scrollTo({ top: 0, behavior: 'instant' });
+}
+window.quranGoHome = quranGoHome;
+
+function quranOpenBookmarks() {
+  QuranLibrary.view = 'bookmarks';
+  renderApp();
+  window.scrollTo({ top: 0, behavior: 'instant' });
+}
+window.quranOpenBookmarks = quranOpenBookmarks;
+
+async function setQuranMode(mode) {
+  if (QuranLibrary.mode === mode) return;
+  QuranLibrary.mode = mode;
+  QuranLibrary.selectedAyah = null;
+  if (QuranLibrary.view !== 'reader' || !QuranLibrary.surahNumber) { renderApp(); return; }
+  QuranLibrary.loadingSurah = true;
+  renderApp();
+  try {
+    await quranLoadCurrentSurahText();
+  } catch (e) {
+    QuranLibrary.error = 'This Surah could not be loaded. Check your connection and try again.';
+  } finally {
+    QuranLibrary.loadingSurah = false;
+    renderApp();
+  }
+}
+window.setQuranMode = setQuranMode;
+
+async function setQuranScript(script) {
+  if (QuranLibrary.script === script) return;
+  QuranLibrary.script = script;
+  QuranLibrary.selectedAyah = null;
+  // Tajweed colours are Uthmani-based, so the script only changes the
+  // Simple-mode text; Tajweed mode keeps Uthmani text (see the note in
+  // the reader header).
+  if (QuranLibrary.view !== 'reader' || !QuranLibrary.surahNumber || QuranLibrary.mode === 'tajweed') { renderApp(); return; }
+  QuranLibrary.loadingSurah = true;
+  renderApp();
+  try {
+    await quranLoadCurrentSurahText();
+  } catch (e) {
+    QuranLibrary.error = 'This Surah could not be loaded. Check your connection and try again.';
+  } finally {
+    QuranLibrary.loadingSurah = false;
+    renderApp();
+  }
+}
+window.setQuranScript = setQuranScript;
+
+function toggleQuranTranslation() {
+  QuranLibrary.showTranslation = !QuranLibrary.showTranslation;
+  if (QuranLibrary.showTranslation) {
+    QuranLibrary.translation = null;
+    renderApp();
+    quranLoadTranslationIfNeeded();
+  } else {
+    renderApp();
+  }
+}
+window.toggleQuranTranslation = toggleQuranTranslation;
+
+function setQuranTranslationLang(lang) {
+  if (QuranLibrary.translationLang === lang) return;
+  QuranLibrary.translationLang = lang;
+  QuranLibrary.translation = null;
+  if (QuranLibrary.showTranslation) quranLoadTranslationIfNeeded();
+  else renderApp();
+}
+window.setQuranTranslationLang = setQuranTranslationLang;
+
+function quranSaveLastReadPosition(surahNumber, ayahNumber) {
+  const meta = (QuranLibrary.meta || []).find(s => s.number === surahNumber);
+  QuranLibrary.lastRead = {
+    surah: surahNumber,
+    surahName: meta ? meta.englishName : ('Surah ' + surahNumber),
+    ayah: ayahNumber,
+    updatedAt: Date.now()
+  };
+  quranSaveLastRead();
+}
+
+function quranSelectAyah(num) {
+  QuranLibrary.selectedAyah = (QuranLibrary.selectedAyah === num) ? null : num;
+  if (QuranLibrary.selectedAyah) quranSaveLastReadPosition(QuranLibrary.surahNumber, num);
+  renderApp();
+}
+window.quranSelectAyah = quranSelectAyah;
+
+function quranIsBookmarked(surah, ayah) {
+  return (QuranLibrary.bookmarks || []).some(b => b.surah === surah && b.ayah === ayah);
+}
+
+function quranToggleBookmark(surah, ayah) {
+  if (quranIsBookmarked(surah, ayah)) {
+    QuranLibrary.bookmarks = QuranLibrary.bookmarks.filter(b => !(b.surah === surah && b.ayah === ayah));
+    if (typeof showToastNotification === 'function') showToastNotification('Bookmark removed.', 'success');
+  } else {
+    const meta = (QuranLibrary.meta || []).find(s => s.number === surah);
+    QuranLibrary.bookmarks.unshift({
+      surah: surah,
+      surahName: meta ? meta.englishName : ('Surah ' + surah),
+      ayah: ayah,
+      savedAt: Date.now()
+    });
+    if (typeof showToastNotification === 'function') showToastNotification('Ayah bookmarked.', 'success');
+  }
+  quranSaveBookmarks();
+  renderApp();
+}
+window.quranToggleBookmark = quranToggleBookmark;
+
+function quranRemoveBookmark(index) {
+  QuranLibrary.bookmarks.splice(index, 1);
+  quranSaveBookmarks();
+  renderApp();
+}
+window.quranRemoveBookmark = quranRemoveBookmark;
+
+function quranCopyAyah(surah, ayahNumber) {
+  const surahData = QuranLibrary.surah;
+  if (!surahData) return;
+  const ayah = (surahData.ayahs || []).find(a => a.numberInSurah === ayahNumber);
+  if (!ayah) return;
+  const plain = ayah.text.replace(/\[[a-z](?::\d+)?\[/g, '').replace(/\]/g, '');
+  const text = plain + '  (' + (surahData.englishName || ('Surah ' + surah)) + ' ' + surah + ':' + ayahNumber + ')';
+  const done = () => { if (typeof showToastNotification === 'function') showToastNotification('Ayah copied.', 'success'); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done).catch(() => quranCopyFallback(text, done));
+  } else {
+    quranCopyFallback(text, done);
+  }
+}
+window.quranCopyAyah = quranCopyAyah;
+
+function quranCopyFallback(text, done) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    done();
+  } catch (e) { /* copy unavailable */ }
+}
+
+// Parse Tajweed marker text like [h:1[ٱ] or [n[ـٰ] into coloured spans.
+// Stack-based so nested markers render correctly; marker syntax is
+// stripped from the displayed text.
+function quranParseTajweed(text) {
+  let out = '';
+  let i = 0;
+  const stack = [];
+  while (i < text.length) {
+    const ch = text[i];
+    if (ch === '[') {
+      const m = text.slice(i).match(/^\[([a-z])(?::\d+)?\[/);
+      if (m) {
+        const rule = QURAN_TAJWEED_RULES[m[1]] || { color: '#141F1E' };
+        out += '<span style="color:' + rule.color + '">';
+        stack.push(1);
+        i += m[0].length;
+        continue;
+      }
+      out += quranEscapeHtml(ch);
+      i++;
+      continue;
+    }
+    if (ch === ']' && stack.length) {
+      out += '</span>';
+      stack.pop();
+      i++;
+      continue;
+    }
+    out += quranEscapeHtml(ch);
+    i++;
+  }
+  while (stack.length) { out += '</span>'; stack.pop(); }
+  return out;
+}
+
+function quranAyahTextHtml(ayah) {
+  if (QuranLibrary.mode === 'tajweed') return quranParseTajweed(ayah.text || '');
+  return quranEscapeHtml(ayah.text || '');
+}
+
+function quranTranslationFor(ayahNumber) {
+  if (!QuranLibrary.showTranslation || !QuranLibrary.translation) return '';
+  const t = (QuranLibrary.translation.ayahs || []).find(a => a.numberInSurah === ayahNumber);
+  return t ? t.text : '';
+}
+
+// --- Library home: search + Juz filter (updates the list only, so the
+// search box keeps focus while typing) ---
+const quranSearchDebounced = debounce(() => { quranRenderSurahList(); }, 250);
+
+function quranSearchInput(value) {
+  QuranLibrary.searchQuery = value || '';
+  quranSearchDebounced();
+}
+window.quranSearchInput = quranSearchInput;
+
+function quranSetJuzFilter(value) {
+  QuranLibrary.juzFilter = value || 'all';
+  quranRenderSurahList();
+}
+window.quranSetJuzFilter = quranSetJuzFilter;
+
+function quranFilteredSurahs() {
+  const list = QuranLibrary.meta || [];
+  const q = (QuranLibrary.searchQuery || '').trim().toLowerCase();
+  const juz = QuranLibrary.juzFilter;
+  return list.filter(s => {
+    if (juz !== 'all') {
+      const range = quranSurahJuzRange(s.number);
+      if (Number(juz) < range.first || Number(juz) > range.last) return false;
+    }
+    if (!q) return true;
+    return (s.name || '').includes(q)
+      || (s.englishName || '').toLowerCase().includes(q)
+      || (s.englishNameTranslation || '').toLowerCase().includes(q)
+      || String(s.number) === q;
+  });
+}
+
+function quranRenderSurahList() {
+  const container = document.getElementById('quran-surah-list');
+  if (!container) return;
+  container.innerHTML = quranSurahListHtml();
+  const count = document.getElementById('quran-surah-count');
+  if (count) count.textContent = quranFilteredSurahs().length + ' Surahs';
+}
+
+function quranSurahListHtml() {
+  const list = quranFilteredSurahs();
+  if (!QuranLibrary.meta) {
+    return Array.from({ length: 6 }).map(() => `
+      <div class="p-4 bg-white rounded-2xl border border-[#ECEAE4] shadow-xs">
+        <div class="w-3/4 h-4 skeleton-shimmer rounded mb-2"></div>
+        <div class="w-1/2 h-3 skeleton-shimmer rounded"></div>
+      </div>`).join('');
+  }
+  if (list.length === 0) {
+    return `
+      <div class="col-span-full py-10 text-center bg-white rounded-2xl border border-[#ECEAE4]">
+        <p class="text-sm font-bold text-[#141F1E]">No Surah matches your search</p>
+        <p class="text-xs text-[#7A8684] mt-1">Try a different Surah name, number or Juz.</p>
+      </div>`;
+  }
+  return list.map(s => {
+    const range = quranSurahJuzRange(s.number);
+    const juzLabel = range.first === range.last ? ('Juz ' + range.first) : ('Juz ' + range.first + '–' + range.last);
+    return `
+      <button type="button" onclick="openQuranSurah(${s.number})" class="text-left p-4 bg-white rounded-2xl border border-[#ECEAE4] shadow-xs hover:border-[#0E4D45] hover:shadow-sm transition-all cursor-pointer">
+        <div class="flex items-start justify-between gap-2">
+          <span class="w-8 h-8 rounded-full bg-[#E8EFEE] text-[#0E4D45] text-xs font-bold flex items-center justify-center shrink-0">${s.number}</span>
+          <span class="quran-arabic text-lg leading-snug text-[#141F1E]" dir="rtl">${quranEscapeHtml(s.name || '')}</span>
+        </div>
+        <p class="text-sm font-bold text-[#141F1E] mt-2">${quranEscapeHtml(s.englishName || '')}</p>
+        <p class="text-[11px] text-[#7A8684] mt-0.5">${quranEscapeHtml(s.englishNameTranslation || '')} • ${s.numberOfAyahs} Ayahs • ${s.revelationType === 'Medinan' ? 'Medinan' : 'Meccan'} • ${juzLabel}</p>
+      </button>`;
+  }).join('');
+}
+
+// --- Admin management ---
+function quranSetAdminTab(tab) {
+  QuranLibrary.adminTab = tab;
+  renderApp();
+}
+window.quranSetAdminTab = quranSetAdminTab;
+
+function quranTogglePortalAccess() {
+  QuranLibrary.settings.studentAccess = !QuranLibrary.settings.studentAccess;
+  quranSaveSettings();
+  renderApp();
+  if (typeof showToastNotification === 'function') {
+    showToastNotification(QuranLibrary.settings.studentAccess ? 'Library is now open for Teacher, Student and Parent portals.' : 'Library is now paused for Teacher, Student and Parent portals.', 'success');
+  }
+}
+window.quranTogglePortalAccess = quranTogglePortalAccess;
+
+function quranSaveAssignment() {
+  const studentId = QuranLibrary.assignStudentId || (document.getElementById('quran-assign-student') || {}).value || '';
+  const surahNum = Number((document.getElementById('quran-assign-surah') || {}).value || QuranLibrary.assignSurah || 1);
+  const note = ((document.getElementById('quran-assign-note') || {}).value || '').trim();
+  if (!studentId) {
+    if (typeof showToastNotification === 'function') showToastNotification('Choose a student first.', 'error');
+    return;
+  }
+  const student = (AppState.students || []).find(s => s.id === studentId);
+  const meta = (QuranLibrary.meta || []).find(s => s.number === surahNum);
+  const assignment = {
+    id: 'QA-' + Date.now(),
+    studentId: studentId,
+    studentName: student ? ((student.firstName || '') + ' ' + (student.lastName || '')).trim() : studentId,
+    surah: surahNum,
+    surahName: meta ? meta.englishName : ('Surah ' + surahNum),
+    note: note,
+    assignedAt: Date.now()
+  };
+  QuranLibrary.assignments.unshift(assignment);
+  quranSaveAssignments();
+  if (typeof db !== 'undefined' && db) {
+    db.collection('quran_assignments').doc(String(assignment.id)).set(assignment, { merge: true })
+      .catch(e => { console.warn('[Library] Assignment saved locally only:', e && e.message); });
+  }
+  QuranLibrary.assignNote = '';
+  renderApp();
+  if (typeof showToastNotification === 'function') showToastNotification('Reading assigned to ' + assignment.studentName + ' — ' + assignment.surahName + '.', 'success');
+}
+window.quranSaveAssignment = quranSaveAssignment;
+
+function quranDeleteAssignment(id) {
+  QuranLibrary.assignments = QuranLibrary.assignments.filter(a => a.id !== id);
+  quranSaveAssignments();
+  if (typeof db !== 'undefined' && db) {
+    db.collection('quran_assignments').doc(String(id)).delete()
+      .catch(e => { console.warn('[Library] Assignment delete (cloud) failed:', e && e.message); });
+  }
+  renderApp();
+}
+window.quranDeleteAssignment = quranDeleteAssignment;
+
+// --- Main Library view (shared by all portals) ---
+function renderQuranLibraryView() {
+  const isAdmin = AppState.currentRole === 'admin';
+  ensureQuranMeta();
+
+  if (!isAdmin && !QuranLibrary.settings.studentAccess) {
+    return `
+    <div class="space-y-6 mb-8">
+      <div class="p-6 bg-white rounded-2xl border border-[#ECEAE4] shadow-xs">
+        <h2 class="text-xl font-bold text-[#141F1E]">Quran Library</h2>
+        <p class="text-xs text-[#7A8684] mt-1">Read the Quran, bookmark Ayahs and continue where you left off.</p>
+      </div>
+      <div class="max-w-xl mx-auto py-14 px-6 text-center bg-white rounded-2xl border border-[#ECEAE4] shadow-xs">
+        <p class="text-sm font-bold text-[#141F1E]">The Library is paused by the Admin</p>
+        <p class="text-xs text-[#7A8684] mt-1.5">Please ask your Admin to open the Library again.</p>
+      </div>
+    </div>`;
+  }
+
+  if (QuranLibrary.view === 'reader') return renderQuranReaderView(isAdmin);
+  if (QuranLibrary.view === 'bookmarks') return renderQuranBookmarksView(isAdmin);
+  return renderQuranHomeView(isAdmin);
+}
+window.renderQuranLibraryView = renderQuranLibraryView;
+
+function renderQuranHomeView(isAdmin) {
+  const lastRead = QuranLibrary.lastRead;
+  const assignments = QuranLibrary.assignments || [];
+  const juzOptions = Array.from({ length: 30 }, (_, i) => i + 1)
+    .map(j => `<option value="${j}" ${String(QuranLibrary.juzFilter) === String(j) ? 'selected' : ''}>Juz ${j}</option>`).join('');
+
+  return `
+  <div class="space-y-6 mb-8">
+    <div class="p-6 bg-white rounded-2xl border border-[#ECEAE4] shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-3">
+          <h2 class="text-xl font-bold text-[#141F1E]">Quran Library</h2>
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#E8EFEE] text-[#0E4D45] border border-[#CBD5E1]">${isAdmin ? 'Admin Workspace' : 'Reading Portal'}</span>
+        </div>
+        <p class="text-xs text-[#7A8684] mt-1">Read the Quran, bookmark Ayahs and continue where you left off. Tap any Ayah to select it.</p>
+      </div>
+      <button onclick="quranOpenBookmarks()" class="px-4 py-2 text-xs font-bold rounded-full bg-white border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#F8F6F1] transition-colors cursor-pointer">
+        My Bookmarks (${(QuranLibrary.bookmarks || []).length})
+      </button>
+    </div>
+
+    ${lastRead ? `
+    <div class="p-5 bg-[#0E4D45] rounded-2xl shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+      <div>
+        <p class="text-[11px] font-semibold text-[#A3C2BE]">Continue reading</p>
+        <p class="text-base font-bold text-white mt-0.5">${quranEscapeHtml(lastRead.surahName)} — Ayah ${lastRead.ayah}</p>
+      </div>
+      <button onclick="openQuranSurah(${lastRead.surah}, ${lastRead.ayah})" class="px-5 py-2 text-xs font-bold rounded-full bg-white text-[#0E4D45] hover:bg-[#F8F6F1] transition-colors cursor-pointer shrink-0">Resume reading</button>
+    </div>` : ''}
+
+    ${assignments.length ? `
+    <div class="p-6 bg-white rounded-2xl border border-[#ECEAE4] shadow-xs">
+      <h3 class="text-sm font-bold text-[#141F1E]">Assigned reading</h3>
+      <p class="text-xs text-[#7A8684] mt-0.5 mb-3">Reading assigned by the Admin.</p>
+      <div class="space-y-2">
+        ${assignments.map(a => `
+          <div class="flex items-center justify-between gap-3 p-3 rounded-xl bg-[#F8F6F1] border border-[#ECEAE4]">
+            <div class="min-w-0">
+              <p class="text-xs font-bold text-[#141F1E] truncate">${quranEscapeHtml(a.surahName)} — ${quranEscapeHtml(a.studentName)}</p>
+              ${a.note ? `<p class="text-[11px] text-[#7A8684] truncate">${quranEscapeHtml(a.note)}</p>` : ''}
+            </div>
+            <button onclick="openQuranSurah(${a.surah})" class="px-3 py-1.5 text-[11px] font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors cursor-pointer shrink-0">Open</button>
+          </div>`).join('')}
+      </div>
+    </div>` : ''}
+
+    ${isAdmin ? renderQuranAdminPanel() : ''}
+
+    <div class="p-6 bg-white rounded-2xl border border-[#ECEAE4] shadow-xs">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
+        <div>
+          <h3 class="text-sm font-bold text-[#141F1E]">All Surahs</h3>
+          <p class="text-xs text-[#7A8684]"><span id="quran-surah-count">${(QuranLibrary.meta || []).length || '114'} Surahs</span> • Search by name or number, or filter by Juz.</p>
+        </div>
+        <div class="flex flex-col sm:flex-row gap-2">
+          <input type="text" placeholder="Search Surah name or number…" value="${quranEscapeHtml(QuranLibrary.searchQuery)}" oninput="quranSearchInput(this.value)" class="text-xs bg-[#F8F6F1] border border-[#ECEAE4] rounded-full px-4 py-2 text-[#141F1E] outline-none focus:border-[#0E4D45] w-full sm:w-56" />
+          <select onchange="quranSetJuzFilter(this.value)" class="text-xs bg-[#F8F6F1] border border-[#ECEAE4] rounded-full px-4 py-2 text-[#0E4D45] font-bold outline-none cursor-pointer">
+            <option value="all">All Juz</option>
+            ${juzOptions}
+          </select>
+        </div>
+      </div>
+      <div id="quran-surah-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        ${quranSurahListHtml()}
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderQuranAdminPanel() {
+  const tab = QuranLibrary.adminTab;
+  const students = AppState.students || [];
+  const meta = QuranLibrary.meta || [];
+  const surahOptions = meta.length
+    ? meta.map(s => `<option value="${s.number}" ${Number(QuranLibrary.assignSurah) === s.number ? 'selected' : ''}>${s.number}. ${quranEscapeHtml(s.englishName)}</option>`).join('')
+    : '<option value="1">1. Al-Faatiha</option>';
+
+  return `
+  <div class="p-6 bg-white rounded-2xl border border-[#ECEAE4] shadow-xs">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-4 border-b border-[#ECEAE4]">
+      <div>
+        <h3 class="text-sm font-bold text-[#141F1E]">Manage Library</h3>
+        <p class="text-xs text-[#7A8684]">Admin only — books, portal access and reading assignments.</p>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="quranSetAdminTab('books')" class="px-4 py-1.5 text-xs font-bold rounded-full cursor-pointer ${tab === 'books' ? 'bg-[#0E4D45] text-white' : 'bg-white border border-[#ECEAE4] text-[#0E4D45]'}">Books</button>
+        <button onclick="quranSetAdminTab('assign')" class="px-4 py-1.5 text-xs font-bold rounded-full cursor-pointer ${tab === 'assign' ? 'bg-[#0E4D45] text-white' : 'bg-white border border-[#ECEAE4] text-[#0E4D45]'}">Assign reading</button>
+      </div>
+    </div>
+
+    ${tab === 'books' ? `
+    <div class="space-y-2">
+      <div class="flex items-center justify-between gap-3 p-3 rounded-xl bg-[#F8F6F1] border border-[#ECEAE4]">
+        <div>
+          <p class="text-xs font-bold text-[#141F1E]">Quran</p>
+          <p class="text-[11px] text-[#7A8684]">Full text, Simple and Tajweed scripts, with translation.</p>
+        </div>
+        <span class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-[#E8EFEE] text-[#0E4D45]">Always on</span>
+      </div>
+      ${QURAN_FUTURE_BOOKS.map(b => `
+      <div class="flex items-center justify-between gap-3 p-3 rounded-xl bg-white border border-[#ECEAE4] opacity-70">
+        <div>
+          <p class="text-xs font-bold text-[#141F1E]">${quranEscapeHtml(b.name)}</p>
+          <p class="text-[11px] text-[#7A8684]">${quranEscapeHtml(b.desc)}</p>
+        </div>
+        <span class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-[#F8F6F1] text-[#7A8684] border border-[#ECEAE4]">Coming soon</span>
+      </div>`).join('')}
+      <label class="flex items-center justify-between gap-3 p-3 rounded-xl bg-white border border-[#ECEAE4] cursor-pointer">
+        <span>
+          <span class="block text-xs font-bold text-[#141F1E]">Open the Library for Teacher, Student and Parent portals</span>
+          <span class="block text-[11px] text-[#7A8684]">When off, other portals see a paused message instead of the Library.</span>
+        </span>
+        <input type="checkbox" ${QuranLibrary.settings.studentAccess ? 'checked' : ''} onchange="quranTogglePortalAccess()" class="w-4 h-4 accent-[#0E4D45] cursor-pointer shrink-0" />
+      </label>
+    </div>` : `
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div>
+        <label class="block text-[11px] font-bold text-[#7A8684] mb-1">Student</label>
+        <select id="quran-assign-student" class="w-full text-xs bg-[#F8F6F1] border border-[#ECEAE4] rounded-xl px-3 py-2 text-[#141F1E] outline-none cursor-pointer">
+          <option value="">Select a student…</option>
+          ${students.map(s => `<option value="${quranEscapeHtml(s.id)}">${quranEscapeHtml((s.firstName || '') + ' ' + (s.lastName || ''))} (${quranEscapeHtml(s.id)})</option>`).join('')}
+        </select>
+      </div>
+      <div>
+        <label class="block text-[11px] font-bold text-[#7A8684] mb-1">Surah</label>
+        <select id="quran-assign-surah" class="w-full text-xs bg-[#F8F6F1] border border-[#ECEAE4] rounded-xl px-3 py-2 text-[#141F1E] outline-none cursor-pointer">
+          ${surahOptions}
+        </select>
+      </div>
+      <div class="md:col-span-2">
+        <label class="block text-[11px] font-bold text-[#7A8684] mb-1">Note (optional)</label>
+        <input id="quran-assign-note" type="text" placeholder="e.g. Read with Tajweed colours, 5 Ayahs a day" class="w-full text-xs bg-[#F8F6F1] border border-[#ECEAE4] rounded-xl px-3 py-2 text-[#141F1E] outline-none focus:border-[#0E4D45]" />
+      </div>
+      <div class="md:col-span-2 flex justify-end">
+        <button onclick="quranSaveAssignment()" class="px-5 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors cursor-pointer">Assign reading</button>
+      </div>
+    </div>
+    ${(QuranLibrary.assignments || []).length ? `
+    <div class="mt-4 space-y-2">
+      ${(QuranLibrary.assignments || []).map(a => `
+        <div class="flex items-center justify-between gap-3 p-3 rounded-xl bg-[#F8F6F1] border border-[#ECEAE4]">
+          <div class="min-w-0">
+            <p class="text-xs font-bold text-[#141F1E] truncate">${quranEscapeHtml(a.surahName)} — ${quranEscapeHtml(a.studentName)}</p>
+            ${a.note ? `<p class="text-[11px] text-[#7A8684] truncate">${quranEscapeHtml(a.note)}</p>` : ''}
+          </div>
+          <button onclick="quranDeleteAssignment('${quranEscapeHtml(a.id)}')" class="text-[11px] font-bold text-[#DC2626] hover:underline cursor-pointer shrink-0">Remove</button>
+        </div>`).join('')}
+    </div>` : ''}`}
+  </div>`;
+}
+
+function renderQuranReaderView(isAdmin) {
+  const n = QuranLibrary.surahNumber;
+  const meta = (QuranLibrary.meta || []).find(s => s.number === n);
+  const surah = QuranLibrary.surah;
+  const mode = QuranLibrary.mode;
+  const script = QuranLibrary.script;
+
+  const header = `
+  <div class="p-6 bg-white rounded-2xl border border-[#ECEAE4] shadow-xs">
+    <div class="flex items-center justify-between gap-3 mb-4">
+      <button onclick="quranGoHome()" class="text-xs font-bold text-[#0E4D45] hover:underline cursor-pointer">← Back to Library</button>
+      <button onclick="quranOpenBookmarks()" class="text-xs font-bold text-[#0E4D45] hover:underline cursor-pointer">My Bookmarks (${(QuranLibrary.bookmarks || []).length})</button>
+    </div>
+    <div class="text-center">
+      <p class="quran-arabic text-2xl text-[#141F1E]" dir="rtl">${meta ? quranEscapeHtml(meta.name || '') : ''}</p>
+      <h2 class="text-xl font-bold text-[#141F1E] mt-1">${meta ? quranEscapeHtml(meta.englishName || '') : ('Surah ' + n)}</h2>
+      <p class="text-xs text-[#7A8684] mt-0.5">${meta ? (quranEscapeHtml(meta.englishNameTranslation || '') + ' • ' + (meta.revelationType === 'Medinan' ? 'Medinan' : 'Meccan') + ' • ' + meta.numberOfAyahs + ' Ayahs') : ''}</p>
+    </div>
+    <div class="flex flex-wrap items-center justify-center gap-2 mt-5">
+      <div class="flex rounded-full border border-[#ECEAE4] overflow-hidden">
+        <button onclick="setQuranMode('simple')" class="px-4 py-1.5 text-xs font-bold cursor-pointer ${mode === 'simple' ? 'bg-[#0E4D45] text-white' : 'bg-white text-[#0E4D45]'}">Simple</button>
+        <button onclick="setQuranMode('tajweed')" class="px-4 py-1.5 text-xs font-bold cursor-pointer ${mode === 'tajweed' ? 'bg-[#0E4D45] text-white' : 'bg-white text-[#0E4D45]'}">Tajweed</button>
+      </div>
+      <div class="flex rounded-full border border-[#ECEAE4] overflow-hidden">
+        <button onclick="setQuranScript('indopak')" class="px-4 py-1.5 text-xs font-bold cursor-pointer ${script === 'indopak' ? 'bg-[#0E4D45] text-white' : 'bg-white text-[#0E4D45]'}">Indo-Pak</button>
+        <button onclick="setQuranScript('uthmani')" class="px-4 py-1.5 text-xs font-bold cursor-pointer ${script === 'uthmani' ? 'bg-[#0E4D45] text-white' : 'bg-white text-[#0E4D45]'}">Uthmani</button>
+      </div>
+      <button onclick="toggleQuranTranslation()" class="px-4 py-1.5 text-xs font-bold rounded-full cursor-pointer ${QuranLibrary.showTranslation ? 'bg-[#0E4D45] text-white' : 'bg-white border border-[#ECEAE4] text-[#0E4D45]'}">Translation ${QuranLibrary.showTranslation ? 'On' : 'Off'}</button>
+      ${QuranLibrary.showTranslation ? `
+      <select onchange="setQuranTranslationLang(this.value)" class="text-xs bg-[#F8F6F1] border border-[#ECEAE4] rounded-full px-3 py-1.5 text-[#0E4D45] font-bold outline-none cursor-pointer">
+        <option value="en" ${QuranLibrary.translationLang === 'en' ? 'selected' : ''}>English</option>
+        <option value="ur" ${QuranLibrary.translationLang === 'ur' ? 'selected' : ''}>Urdu</option>
+      </select>` : ''}
+    </div>
+    ${mode === 'tajweed' ? `
+    <div class="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 mt-4">
+      ${QURAN_TAJWEED_LEGEND.map(r => `<span class="inline-flex items-center gap-1.5 text-[11px] text-[#7A8684]"><span class="w-2.5 h-2.5 rounded-full inline-block" style="background:${r.color}"></span>${r.label}</span>`).join('')}
+    </div>` : ''}
+    ${mode === 'tajweed' && script === 'indopak' ? `<p class="text-center text-[11px] text-[#7A8684] mt-2">Tajweed colours use Uthmani script.</p>` : ''}
+    ${QuranLibrary.tajweedUnavailable ? `<p class="text-center text-[11px] text-[#991B1B] mt-2">Tajweed colours unavailable — showing simple text.</p>` : ''}
+    <div class="flex items-center justify-between gap-3 mt-5 pt-4 border-t border-[#ECEAE4]">
+      <button ${n <= 1 ? 'disabled' : ''} onclick="openQuranSurah(${n - 1})" class="px-4 py-2 text-xs font-bold rounded-full bg-white border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#F8F6F1] transition-colors cursor-pointer disabled:opacity-40">← Previous Surah</button>
+      <span class="text-xs text-[#7A8684]">Surah ${n} of 114</span>
+      <button ${n >= 114 ? 'disabled' : ''} onclick="openQuranSurah(${n + 1})" class="px-4 py-2 text-xs font-bold rounded-full bg-white border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#F8F6F1] transition-colors cursor-pointer disabled:opacity-40">Next Surah →</button>
+    </div>
+  </div>`;
+
+  let body = '';
+  if (QuranLibrary.loadingSurah) {
+    body = `
+    <div class="p-6 bg-white rounded-2xl border border-[#ECEAE4] shadow-xs space-y-4">
+      <div class="w-2/3 h-6 skeleton-shimmer rounded mx-auto"></div>
+      ${Array.from({ length: 5 }).map(() => `<div class="w-full h-10 skeleton-shimmer rounded-xl"></div>`).join('')}
+      <p class="text-center text-xs text-[#7A8684]">Loading Surah…</p>
+    </div>`;
+  } else if (QuranLibrary.error) {
+    body = `
+    <div class="p-8 bg-white rounded-2xl border border-[#ECEAE4] shadow-xs text-center">
+      <p class="text-sm font-bold text-[#141F1E]">${quranEscapeHtml(QuranLibrary.error)}</p>
+      <button onclick="openQuranSurah(${n})" class="mt-4 px-5 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors cursor-pointer">Retry</button>
+    </div>`;
+  } else if (surah && surah.ayahs) {
+    body = `
+    <div class="p-4 sm:p-6 bg-white rounded-2xl border border-[#ECEAE4] shadow-xs">
+      ${QuranLibrary.translationLoading ? `<p class="text-center text-xs text-[#7A8684] mb-3">Loading translation…</p>` : ''}
+      <div class="space-y-1">
+        ${surah.ayahs.map(ayah => {
+          const num = ayah.numberInSurah;
+          const selected = QuranLibrary.selectedAyah === num;
+          const bookmarked = quranIsBookmarked(n, num);
+          const translation = quranTranslationFor(num);
+          return `
+          <div id="quran-ayah-${num}" onclick="quranSelectAyah(${num})" class="quran-ayah ${selected ? 'quran-ayah-selected' : ''} rounded-2xl px-3 py-3 sm:px-4 cursor-pointer transition-colors">
+            <p class="quran-arabic" dir="rtl">${quranAyahTextHtml(ayah)} <span class="quran-ayah-badge">${quranArabicNumeral(num)}</span></p>
+            ${translation ? `<p class="text-[13px] leading-relaxed text-[#5B6B69] mt-2 ${QuranLibrary.translationLang === 'ur' ? 'text-right' : 'text-left'}" ${QuranLibrary.translationLang === 'ur' ? 'dir="rtl"' : ''}>${quranEscapeHtml(translation)}</p>` : ''}
+            ${selected ? `
+            <div class="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-[#ECEAE4]" onclick="event.stopPropagation()">
+              <button onclick="quranToggleBookmark(${n}, ${num})" class="px-3 py-1.5 text-[11px] font-bold rounded-full cursor-pointer ${bookmarked ? 'bg-[#0E4D45] text-white' : 'bg-white border border-[#ECEAE4] text-[#0E4D45]'}">${bookmarked ? 'Bookmarked ✓' : 'Bookmark'}</button>
+              <button onclick="quranCopyAyah(${n}, ${num})" class="px-3 py-1.5 text-[11px] font-bold rounded-full bg-white border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#F8F6F1] cursor-pointer">Copy</button>
+              <span class="text-[11px] text-[#7A8684]">Saved as your reading position.</span>
+            </div>` : ''}
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="flex items-center justify-between gap-3 mt-6 pt-4 border-t border-[#ECEAE4]">
+        <button ${n <= 1 ? 'disabled' : ''} onclick="openQuranSurah(${n - 1})" class="px-4 py-2 text-xs font-bold rounded-full bg-white border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#F8F6F1] transition-colors cursor-pointer disabled:opacity-40">← Previous Surah</button>
+        <button onclick="quranGoHome()" class="px-4 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors cursor-pointer">Back to Library</button>
+        <button ${n >= 114 ? 'disabled' : ''} onclick="openQuranSurah(${n + 1})" class="px-4 py-2 text-xs font-bold rounded-full bg-white border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#F8F6F1] transition-colors cursor-pointer disabled:opacity-40">Next Surah →</button>
+      </div>
+    </div>`;
+  }
+
+  return `
+  <div class="space-y-6 mb-8">
+    ${header}
+    ${body}
+  </div>`;
+}
+
+function renderQuranBookmarksView(isAdmin) {
+  const bookmarks = QuranLibrary.bookmarks || [];
+  return `
+  <div class="space-y-6 mb-8">
+    <div class="p-6 bg-white rounded-2xl border border-[#ECEAE4] shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div>
+        <h2 class="text-xl font-bold text-[#141F1E]">My Bookmarks</h2>
+        <p class="text-xs text-[#7A8684] mt-1">Jump back to any Ayah you saved.</p>
+      </div>
+      <button onclick="quranGoHome()" class="px-4 py-2 text-xs font-bold rounded-full bg-white border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#F8F6F1] transition-colors cursor-pointer">← Back to Library</button>
+    </div>
+    <div class="p-6 bg-white rounded-2xl border border-[#ECEAE4] shadow-xs">
+      ${bookmarks.length === 0 ? `
+        <div class="py-10 text-center">
+          <p class="text-sm font-bold text-[#141F1E]">No bookmarks yet</p>
+          <p class="text-xs text-[#7A8684] mt-1">Open a Surah, tap an Ayah, then press Bookmark.</p>
+        </div>` : `
+        <div class="space-y-2">
+          ${bookmarks.map((b, i) => `
+          <div class="flex items-center justify-between gap-3 p-3 rounded-xl bg-[#F8F6F1] border border-[#ECEAE4]">
+            <div>
+              <p class="text-xs font-bold text-[#141F1E]">${quranEscapeHtml(b.surahName)} — Ayah ${b.ayah}</p>
+              <p class="text-[11px] text-[#7A8684]">Surah ${b.surah}, Ayah ${b.ayah}</p>
+            </div>
+            <div class="flex gap-2 shrink-0">
+              <button onclick="openQuranSurah(${b.surah}, ${b.ayah})" class="px-3 py-1.5 text-[11px] font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] cursor-pointer">Open</button>
+              <button onclick="quranRemoveBookmark(${i})" class="px-3 py-1.5 text-[11px] font-bold rounded-full bg-white border border-[#ECEAE4] text-[#DC2626] hover:bg-red-50 cursor-pointer">Remove</button>
+            </div>
+          </div>`).join('')}
+        </div>`}
+    </div>
+  </div>`;
 }
 
 // ==========================================
@@ -12502,6 +13411,7 @@ function renderAdminTrialsAndNoticesView() {
 
 function renderManagerPortalView() {
   const activeNav = AppState.activeNav || 'manager-radar';
+  if (activeNav === 'library') return renderQuranLibraryView();
 
   const headerBanner = `
     <!-- Top Manager Notice Banner -->
@@ -12776,6 +13686,7 @@ function renderManagerPortalView() {
 function renderTeacherPortalView() {
   const currentTeacher = AppState.teachers[0] || null;
   const activeNav = AppState.activeNav || 'teacher-schedule';
+  if (activeNav === 'library') return renderQuranLibraryView();
 
   if (!currentTeacher) {
     return `
@@ -13021,6 +13932,7 @@ function renderStudentParentPortalView() {
       </div>
     `;
   }
+  if (AppState.activeNav === 'library') return renderQuranLibraryView();
   const activeStudent = AppState.students.find(s => s.id === AppState.selectedSiblingId) || AppState.students[0];
   const siblingStudents = AppState.students.filter(s => s.familyId === 'FAM-102');
   const feeStatus = getStudentFeeStatus(activeStudent);
@@ -14437,7 +15349,7 @@ document.addEventListener('DOMContentLoaded', () => {
   updateHeaderDateDisplay();
   if (window.location.hash) {
     const hash = window.location.hash.replace('#', '');
-    if (['dashboard', 'fee-matrix', 'students', 'teachers', 'trials-notices'].includes(hash)) {
+    if (['dashboard', 'fee-matrix', 'students', 'teachers', 'trials-notices', 'library'].includes(hash)) {
       AppState.activeNav = hash;
     }
   }

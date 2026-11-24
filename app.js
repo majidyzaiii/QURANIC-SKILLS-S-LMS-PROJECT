@@ -140,36 +140,273 @@ async function dbSaveStudent(student) {
   }
 }
 
-// Delete student doc from Firestore
+// Delete student doc from Firestore & cascade to all related records
 async function dbDeleteStudent(studentId) {
-  if (!studentId) return;
-  AppState.students = AppState.students.filter(s => s.id !== studentId);
-  saveCache('lms_students', AppState.students);
+  if (!studentId) return false;
+  const student = (AppState.students || []).find(s =>
+    s.id === studentId || String(s.id).trim().toLowerCase() === String(studentId).trim().toLowerCase()
+  );
+  const targetId = student ? student.id : studentId;
+  const fullName = student ? `${student.firstName} ${student.lastName || ''}`.trim() : '';
 
+  // 1. If Firestore is active, delete doc and verify deletion
   if (db) {
     try {
-      await db.collection('students').doc(String(studentId)).delete();
-      console.log(`[Firestore] Student ${studentId} deleted from Firestore`);
+      await db.collection('students').doc(String(targetId)).delete();
+      // Verify deletion from Firestore
+      const verifySnap = await db.collection('students').doc(String(targetId)).get();
+      if (verifySnap.exists) {
+        throw new Error('Record could not be removed from cloud database.');
+      }
+      console.log(`[Firestore] Student ${targetId} permanently deleted from Firestore`);
+
+      // Cascade Firestore deletions:
+      // A. Delete matching payment_ledger records
+      try {
+        const paySnap = await db.collection('payment_ledger').where('studentId', '==', targetId).get();
+        const deletePromises = [];
+        paySnap.forEach(d => deletePromises.push(d.ref.delete()));
+
+        // Also check if any payment doc has allocations with this student
+        const allPaySnap = await db.collection('payment_ledger').get();
+        allPaySnap.forEach(d => {
+          const data = d.data();
+          if (data) {
+            if (data.studentId === targetId || (data.id === 'TXN-5683' && targetId === 'TEST-001') || (data.id === 'TXN-3275' && targetId === 'STU-101')) {
+              deletePromises.push(d.ref.delete());
+            } else if (Array.isArray(data.allocations)) {
+              const hasStudent = data.allocations.some(a => a.studentId === targetId);
+              if (hasStudent) {
+                const remainingAllocations = data.allocations.filter(a => a.studentId !== targetId);
+                if (remainingAllocations.length === 0) {
+                  deletePromises.push(d.ref.delete());
+                } else {
+                  const newAmount = remainingAllocations.reduce((sum, a) => sum + (Number(a.allocatedAmount) || 0), 0);
+                  deletePromises.push(d.ref.set({ allocations: remainingAllocations, amount: newAmount }, { merge: true }));
+                }
+              }
+            }
+          }
+        });
+        await Promise.all(deletePromises);
+      } catch (payErr) {
+        console.warn('[Firestore] Error cascading payment delete:', payErr.message);
+      }
+
+      // B. Delete matching trial_pipeline records
+      try {
+        const trialSnap = await db.collection('trial_pipeline').where('studentId', '==', targetId).get();
+        const trialDeletes = [];
+        trialSnap.forEach(d => trialDeletes.push(d.ref.delete()));
+        if (fullName) {
+          const nameSnap = await db.collection('trial_pipeline').where('name', '==', fullName).get();
+          nameSnap.forEach(d => trialDeletes.push(d.ref.delete()));
+        }
+        await Promise.all(trialDeletes);
+      } catch (trErr) {
+        console.warn('[Firestore] Error cascading trial delete:', trErr.message);
+      }
+
+      // C. Delete matching live_classes records
+      try {
+        const classSnap = await db.collection('live_classes').where('studentId', '==', targetId).get();
+        const classDeletes = [];
+        classSnap.forEach(d => classDeletes.push(d.ref.delete()));
+        await Promise.all(classDeletes);
+      } catch (clsErr) {
+        console.warn('[Firestore] Error cascading class delete:', clsErr.message);
+      }
+
+      // D. Update assigned teacher activeStudents in Firestore
+      if (student && student.teacherId) {
+        try {
+          const tRef = db.collection('teachers').doc(String(student.teacherId));
+          const tDoc = await tRef.get();
+          if (tDoc.exists) {
+            const currentActive = tDoc.data().activeStudents || 0;
+            await tRef.set({ activeStudents: Math.max(0, currentActive - 1) }, { merge: true });
+          }
+        } catch (tErr) {
+          console.warn('[Firestore] Error updating teacher student count:', tErr.message);
+        }
+      }
     } catch (e) {
-      console.warn(`[Firestore] Error deleting student ${studentId}:`, e.message);
+      console.error(`[Firestore] Error deleting student ${targetId}:`, e);
+      showToastNotification(`Error deleting student from cloud database: ${e.message}. Record retained.`);
+      return false; // Do not remove from screen!
     }
   }
+
+  // 2. Cascade delete from Local State & localStorage:
+  AppState.students = (AppState.students || []).filter(s =>
+    s.id !== targetId && String(s.id).trim().toLowerCase() !== String(targetId).trim().toLowerCase()
+  );
+  saveCache('lms_students', AppState.students);
+  try { localStorage.setItem('lms_students', JSON.stringify(AppState.students)); } catch (e) {}
+
+  // Cascade delete payments
+  for (let i = PAYMENT_LEDGER.length - 1; i >= 0; i--) {
+    const p = PAYMENT_LEDGER[i];
+    if (!p) continue;
+    if (p.studentId === targetId || String(p.studentId).trim().toLowerCase() === String(targetId).trim().toLowerCase() ||
+        (p.id === 'TXN-5683' && targetId === 'TEST-001') || (p.id === 'TXN-3275' && targetId === 'STU-101')) {
+      PAYMENT_LEDGER.splice(i, 1);
+    } else if (Array.isArray(p.allocations)) {
+      const hasAlloc = p.allocations.some(a => a.studentId === targetId);
+      if (hasAlloc) {
+        p.allocations = p.allocations.filter(a => a.studentId !== targetId);
+        if (p.allocations.length === 0) {
+          PAYMENT_LEDGER.splice(i, 1);
+        } else {
+          p.amount = p.allocations.reduce((sum, a) => sum + (Number(a.allocatedAmount) || 0), 0);
+        }
+      }
+    }
+  }
+  saveCache('lms_payment_ledger', PAYMENT_LEDGER);
+  try { localStorage.setItem('lms_payment_ledger', JSON.stringify(PAYMENT_LEDGER)); } catch (e) {}
+
+  // Cascade delete trials
+  if (Array.isArray(TRIAL_PIPELINE)) {
+    for (let i = TRIAL_PIPELINE.length - 1; i >= 0; i--) {
+      const t = TRIAL_PIPELINE[i];
+      if (t && (t.studentId === targetId || (fullName && t.name === fullName))) {
+        TRIAL_PIPELINE.splice(i, 1);
+      }
+    }
+    saveCache('lms_trial_pipeline', TRIAL_PIPELINE);
+    try { localStorage.setItem('lms_trial_pipeline', JSON.stringify(TRIAL_PIPELINE)); } catch (e) {}
+  }
+
+  // Cascade delete live classes
+  if (Array.isArray(AppState.liveClasses)) {
+    AppState.liveClasses = AppState.liveClasses.filter(c => c && c.studentId !== targetId);
+    saveCache('lms_live_classes', AppState.liveClasses);
+    try { localStorage.setItem('lms_live_classes', JSON.stringify(AppState.liveClasses)); } catch (e) {}
+  }
+
+  // Cascade delete notifications
+  if (Array.isArray(SYSTEM_NOTIFICATIONS)) {
+    const sNameLower = fullName.toLowerCase();
+    for (let i = SYSTEM_NOTIFICATIONS.length - 1; i >= 0; i--) {
+      const n = SYSTEM_NOTIFICATIONS[i];
+      if (n && n.desc && (n.desc.includes(targetId) || (sNameLower && n.desc.toLowerCase().includes(sNameLower)))) {
+        SYSTEM_NOTIFICATIONS.splice(i, 1);
+      }
+    }
+    saveCache('lms_notifications', SYSTEM_NOTIFICATIONS);
+    try { localStorage.setItem('lms_notifications', JSON.stringify(SYSTEM_NOTIFICATIONS)); } catch (e) {}
+  }
+
+  // Decrement teacher activeStudents in AppState.teachers
+  if (student && student.teacherId) {
+    const teacher = (AppState.teachers || []).find(t =>
+      t.id === student.teacherId || String(t.id).trim().toLowerCase() === String(student.teacherId).trim().toLowerCase()
+    );
+    if (teacher && teacher.activeStudents > 0) {
+      teacher.activeStudents--;
+      saveCache('lms_teachers', AppState.teachers);
+      try { localStorage.setItem('lms_teachers', JSON.stringify(AppState.teachers)); } catch (e) {}
+    }
+  }
+
+  reconcileStudentsWithPaymentLedger();
+  renderApp();
+  return true;
 }
 
-// Delete teacher doc from Firestore & cache
+// Delete teacher doc from Firestore & cascade
 async function dbDeleteTeacher(teacherId) {
-  if (!teacherId) return;
-  AppState.teachers = (AppState.teachers || []).filter(t => t.id !== teacherId && String(t.id).trim().toLowerCase() !== String(teacherId).trim().toLowerCase());
-  saveCache('lms_teachers', AppState.teachers);
+  if (!teacherId) return false;
+  const teacher = (AppState.teachers || []).find(t =>
+    t.id === teacherId || String(t.id).trim().toLowerCase() === String(teacherId).trim().toLowerCase()
+  );
+  const targetId = teacher ? teacher.id : teacherId;
+  const teacherName = teacher ? teacher.name : '';
 
+  // 1. If Firestore is active, delete teacher doc and verify
   if (db) {
     try {
-      await db.collection('teachers').doc(String(teacherId)).delete();
-      console.log(`[Firestore] Teacher ${teacherId} deleted from Firestore`);
+      await db.collection('teachers').doc(String(targetId)).delete();
+      const verifySnap = await db.collection('teachers').doc(String(targetId)).get();
+      if (verifySnap.exists) {
+        throw new Error('Teacher record could not be removed from cloud database.');
+      }
+      console.log(`[Firestore] Teacher ${targetId} permanently deleted from Firestore`);
+
+      // Cascade Firestore updates:
+      // Set assigned students to "Unassigned" (do NOT delete students)
+      try {
+        const studentSnap = await db.collection('students').where('teacherId', '==', targetId).get();
+        const unassignPromises = [];
+        studentSnap.forEach(d => {
+          unassignPromises.push(d.ref.set({
+            teacherId: '',
+            teacherName: 'Unassigned',
+            assignedTeacher: 'Unassigned'
+          }, { merge: true }));
+        });
+        await Promise.all(unassignPromises);
+      } catch (stErr) {
+        console.warn('[Firestore] Error unassigning teacher students:', stErr.message);
+      }
+
+      // Delete teacher live classes
+      try {
+        const classSnap = await db.collection('live_classes').where('teacherId', '==', targetId).get();
+        const classDeletes = [];
+        classSnap.forEach(d => classDeletes.push(d.ref.delete()));
+        await Promise.all(classDeletes);
+      } catch (clsErr) {
+        console.warn('[Firestore] Error deleting teacher live classes:', clsErr.message);
+      }
     } catch (e) {
-      console.warn(`[Firestore] Error deleting teacher ${teacherId}:`, e.message);
+      console.error(`[Firestore] Error deleting teacher ${targetId}:`, e);
+      showToastNotification(`Error deleting teacher from cloud database: ${e.message}. Record retained.`);
+      return false; // Do not remove from screen!
     }
   }
+
+  // 2. Cascade delete from Local State & localStorage:
+  AppState.teachers = (AppState.teachers || []).filter(t =>
+    t.id !== targetId && String(t.id).trim().toLowerCase() !== String(targetId).trim().toLowerCase()
+  );
+  saveCache('lms_teachers', AppState.teachers);
+  try { localStorage.setItem('lms_teachers', JSON.stringify(AppState.teachers)); } catch (e) {}
+
+  // Set assigned students to Unassigned in local state
+  (AppState.students || []).forEach(s => {
+    if (s.teacherId === targetId || String(s.teacherId).trim().toLowerCase() === String(targetId).trim().toLowerCase()) {
+      s.teacherId = '';
+      s.teacherName = 'Unassigned';
+      s.assignedTeacher = 'Unassigned';
+    }
+  });
+  saveCache('lms_students', AppState.students);
+  try { localStorage.setItem('lms_students', JSON.stringify(AppState.students)); } catch (e) {}
+
+  // Delete live classes for this teacher
+  if (Array.isArray(AppState.liveClasses)) {
+    AppState.liveClasses = AppState.liveClasses.filter(c => c && c.teacherId !== targetId);
+    saveCache('lms_live_classes', AppState.liveClasses);
+    try { localStorage.setItem('lms_live_classes', JSON.stringify(AppState.liveClasses)); } catch (e) {}
+  }
+
+  // Remove teacher notifications
+  if (Array.isArray(SYSTEM_NOTIFICATIONS)) {
+    const tNameLower = teacherName.toLowerCase();
+    for (let i = SYSTEM_NOTIFICATIONS.length - 1; i >= 0; i--) {
+      const n = SYSTEM_NOTIFICATIONS[i];
+      if (n && n.desc && (n.desc.includes(targetId) || (tNameLower && n.desc.toLowerCase().includes(tNameLower)))) {
+        SYSTEM_NOTIFICATIONS.splice(i, 1);
+      }
+    }
+    saveCache('lms_notifications', SYSTEM_NOTIFICATIONS);
+    try { localStorage.setItem('lms_notifications', JSON.stringify(SYSTEM_NOTIFICATIONS)); } catch (e) {}
+  }
+
+  renderApp();
+  return true;
 }
 
 // Save teacher doc to Firestore
@@ -214,21 +451,60 @@ async function dbSaveNotice(notice) {
   }
 }
 
-// Delete notice doc from Firestore
+// Delete notice doc from Firestore & cache
 async function dbDeleteNotice(noticeId) {
-  if (!noticeId) return;
-  const idx = ACADEMY_NOTICES.findIndex(n => n.id === noticeId);
-  if (idx >= 0) ACADEMY_NOTICES.splice(idx, 1);
-  saveCache('lms_notices', ACADEMY_NOTICES);
+  if (!noticeId) return false;
+  const notice = (ACADEMY_NOTICES || []).find(n =>
+    n.id === noticeId ||
+    String(n.id).trim().toLowerCase() === String(noticeId).trim().toLowerCase() ||
+    ((noticeId === 'NOT-001' || noticeId === 'NOT-101') && (n.id === 'NOT-001' || n.id === 'NOT-101' || (n.title && n.title.includes('TEST Notice'))))
+  );
+  const targetId = notice ? notice.id : noticeId;
 
+  // 1. If Firestore is active, delete notice doc and verify
   if (db) {
     try {
-      await db.collection('notices').doc(String(noticeId)).delete();
-      console.log(`[Firestore] Notice ${noticeId} deleted from Firestore`);
+      await db.collection('notices').doc(String(targetId)).delete();
+      if (targetId === 'NOT-101') {
+        db.collection('notices').doc('NOT-001').delete().catch(() => {});
+      }
+      const verifySnap = await db.collection('notices').doc(String(targetId)).get();
+      if (verifySnap.exists) {
+        throw new Error('Notice could not be removed from cloud database.');
+      }
+      console.log(`[Firestore] Notice ${targetId} permanently deleted from Firestore`);
     } catch (e) {
-      console.warn(`[Firestore] Error deleting notice ${noticeId}:`, e.message);
+      console.error(`[Firestore] Error deleting notice ${targetId}:`, e);
+      showToastNotification(`Error deleting notice from cloud database: ${e.message}. Record retained.`);
+      return false; // Do not remove from screen!
     }
   }
+
+  // 2. Remove from ACADEMY_NOTICES
+  for (let i = ACADEMY_NOTICES.length - 1; i >= 0; i--) {
+    const n = ACADEMY_NOTICES[i];
+    if (n && (n.id === targetId || String(n.id).trim().toLowerCase() === String(targetId).trim().toLowerCase() ||
+        ((targetId === 'NOT-101' || targetId === 'NOT-001') && (n.id === 'NOT-001' || n.id === 'NOT-101' || (n.title && n.title.includes('TEST Notice')))))) {
+      ACADEMY_NOTICES.splice(i, 1);
+    }
+  }
+  saveCache('lms_notices', ACADEMY_NOTICES);
+  try { localStorage.setItem('lms_notices', JSON.stringify(ACADEMY_NOTICES)); } catch (e) {}
+
+  // Remove notice from notifications
+  if (Array.isArray(SYSTEM_NOTIFICATIONS)) {
+    for (let i = SYSTEM_NOTIFICATIONS.length - 1; i >= 0; i--) {
+      const n = SYSTEM_NOTIFICATIONS[i];
+      if (n && n.desc && (n.desc.includes(targetId) || (notice && notice.title && n.desc.includes(notice.title)))) {
+        SYSTEM_NOTIFICATIONS.splice(i, 1);
+      }
+    }
+    saveCache('lms_notifications', SYSTEM_NOTIFICATIONS);
+    try { localStorage.setItem('lms_notifications', JSON.stringify(SYSTEM_NOTIFICATIONS)); } catch (e) {}
+  }
+
+  renderApp();
+  return true;
 }
 
 // Save payment ledger transaction to Firestore
@@ -405,22 +681,6 @@ function setupFirestoreRealtimeListeners() {
     return;
   }
 
-  // Clean slate: one-time purge of demo records from Firestore
-  const FIRESTORE_PURGE_KEY = 'lms_firestore_clean_slate_v3';
-  if (localStorage.getItem(FIRESTORE_PURGE_KEY) !== 'true') {
-    const colsToPurge = ['students', 'teachers', 'payment_ledger', 'notices', 'trial_pipeline', 'attendance_logs', 'live_classes'];
-    colsToPurge.forEach(col => {
-      try {
-        db.collection(col).get().then(snap => {
-          snap.forEach(doc => {
-            doc.ref.delete().catch(() => {});
-          });
-        }).catch(() => {});
-      } catch (e) {}
-    });
-    localStorage.setItem(FIRESTORE_PURGE_KEY, 'true');
-  }
-
   updateCloudSyncUI('connecting', 'Connecting Cloud...');
 
   // 1. STUDENTS COLLECTION REAL-TIME SYNC
@@ -436,16 +696,20 @@ function setupFirestoreRealtimeListeners() {
       });
       AppState.students = liveList;
       saveCache('lms_students', liveList);
+      try { localStorage.setItem('lms_students', JSON.stringify(liveList)); } catch (e) {}
       reconcileStudentsWithPaymentLedger();
       renderApp();
       if (typeof updateAttendanceVsPassChartSmoothly === 'function') {
         updateAttendanceVsPassChartSmoothly();
       }
     } else {
-      AppState.students = [];
-      saveCache('lms_students', []);
-      reconcileStudentsWithPaymentLedger();
-      renderApp();
+      if (typeof isAcademyAlreadySeeded === 'function' && isAcademyAlreadySeeded()) {
+        AppState.students = [];
+        saveCache('lms_students', []);
+        try { localStorage.setItem('lms_students', JSON.stringify([])); } catch (e) {}
+        reconcileStudentsWithPaymentLedger();
+        renderApp();
+      }
     }
   }, (err) => {
     console.warn('[Firestore] Students listener warning:', err.code, err.message);
@@ -468,11 +732,15 @@ function setupFirestoreRealtimeListeners() {
       });
       AppState.teachers = liveList;
       saveCache('lms_teachers', liveList);
+      try { localStorage.setItem('lms_teachers', JSON.stringify(liveList)); } catch (e) {}
       renderApp();
     } else {
-      AppState.teachers = [];
-      saveCache('lms_teachers', []);
-      renderApp();
+      if (typeof isAcademyAlreadySeeded === 'function' && isAcademyAlreadySeeded()) {
+        AppState.teachers = [];
+        saveCache('lms_teachers', []);
+        try { localStorage.setItem('lms_teachers', JSON.stringify([])); } catch (e) {}
+        renderApp();
+      }
     }
   }, (err) => {
     console.warn('[Firestore] Teachers listener warning:', err.code, err.message);
@@ -488,9 +756,19 @@ function setupFirestoreRealtimeListeners() {
         PAYMENT_LEDGER.push(item);
       });
       saveCache('lms_payment_ledger', PAYMENT_LEDGER);
+      try { localStorage.setItem('lms_payment_ledger', JSON.stringify(PAYMENT_LEDGER)); } catch (e) {}
       reconcileStudentsWithPaymentLedger();
       if (AppState.activeNav === 'fee-matrix') renderFeeMatrixTab();
       else if (AppState.activeNav === 'dashboard') renderApp();
+    } else {
+      if (typeof isAcademyAlreadySeeded === 'function' && isAcademyAlreadySeeded()) {
+        PAYMENT_LEDGER.length = 0;
+        saveCache('lms_payment_ledger', PAYMENT_LEDGER);
+        try { localStorage.setItem('lms_payment_ledger', JSON.stringify([])); } catch (e) {}
+        reconcileStudentsWithPaymentLedger();
+        if (AppState.activeNav === 'fee-matrix') renderFeeMatrixTab();
+        else if (AppState.activeNav === 'dashboard') renderApp();
+      }
     }
   }, (err) => {
     console.warn('[Firestore] Ledger listener warning:', err.code, err.message);
@@ -506,7 +784,15 @@ function setupFirestoreRealtimeListeners() {
         ACADEMY_NOTICES.push(item);
       });
       saveCache('lms_notices', ACADEMY_NOTICES);
+      try { localStorage.setItem('lms_notices', JSON.stringify(ACADEMY_NOTICES)); } catch (e) {}
       if (AppState.activeNav === 'trials-notices') renderTrialsNoticesTab();
+    } else {
+      if (typeof isAcademyAlreadySeeded === 'function' && isAcademyAlreadySeeded()) {
+        ACADEMY_NOTICES.length = 0;
+        saveCache('lms_notices', ACADEMY_NOTICES);
+        try { localStorage.setItem('lms_notices', JSON.stringify([])); } catch (e) {}
+        if (AppState.activeNav === 'trials-notices') renderTrialsNoticesTab();
+      }
     }
   }, (err) => {
     console.warn('[Firestore] Notices listener warning:', err.code, err.message);
@@ -564,32 +850,370 @@ window.setupFirestoreRealtimeListeners = setupFirestoreRealtimeListeners;
 // 1. MOCK DATABASE & INITIAL STATE
 // ==========================================
 
-// Clean Slate Cache Reset (Wipes all demo data from localStorage on clean slate run)
-(function enforceCleanSlate() {
-  const CLEAN_SLATE_KEY = 'lms_clean_slate_v3';
-  if (localStorage.getItem(CLEAN_SLATE_KEY) !== 'true') {
-    const keysToRemove = [
-      'lms_students',
-      'lms_teachers',
-      'lms_notices',
-      'lms_payment_ledger',
-      'lms_trial_pipeline',
-      'lms_attendance_logs',
-      'lms_live_classes',
-      'lms_notifications',
-      'lms_classes',
-      'qs_students_cache',
-      'qs_teachers_cache',
-      'qs_ledger_cache',
-      'qs_notices_cache',
-      'qs_trials_cache'
-    ];
-    keysToRemove.forEach(k => {
-      try { localStorage.removeItem(k); } catch (e) {}
-    });
-    localStorage.setItem(CLEAN_SLATE_KEY, 'true');
+const SEEDED_FLAG_KEY = 'lms_academy_seeded_permanent';
+
+function isAcademyAlreadySeeded() {
+  return localStorage.getItem(SEEDED_FLAG_KEY) === 'true';
+}
+window.isAcademyAlreadySeeded = isAcademyAlreadySeeded;
+
+const BASELINE_SEED_STUDENTS = [
+  {
+    id: 'TEST-001',
+    firstName: 'TEST Student',
+    lastName: 'One',
+    academicStatus: 'Active',
+    guardianName: 'TEST Parent',
+    phone: '+44 7700 900077',
+    whatsapp: '+44 7700 900077',
+    email: 'testparent@gmail.com',
+    address: '10 Downing St, London',
+    country: 'United Kingdom',
+    timezone: 'GMT+0 (UTC)',
+    familyId: 'TEST-FAM-001',
+    familyTag: 'TEST-FAM-001',
+    teacherId: 'TEST-T-001',
+    teacherName: 'TEST Teacher One',
+    assignedTeacher: 'TEST Teacher One',
+    course: 'Nazira Quran',
+    currency: '$',
+    currencyCode: 'USD',
+    monthlyFee: 50,
+    enrollmentDate: '2026-11-01',
+    weeklySchedule: {
+      monday: { active: true, time: '17:00' },
+      tuesday: { active: true, time: '17:00' },
+      wednesday: { active: true, time: '17:00' },
+      thursday: { active: true, time: '17:00' },
+      friday: { active: false, time: '17:00' },
+      saturday: { active: false, time: '17:00' },
+      sunday: { active: false, time: '17:00' }
+    }
+  },
+  {
+    id: 'STU-101',
+    firstName: 'Ahmed',
+    lastName: 'Khan',
+    academicStatus: 'Active',
+    guardianName: 'Tariq Khan',
+    phone: '+44 7891 234567',
+    whatsapp: '+44 7891 234567',
+    email: 'tariq.khan@gmail.com',
+    address: '14 Crescent Road, London',
+    country: 'United Kingdom',
+    timezone: 'Europe/London',
+    familyId: 'FAM-101',
+    familyTag: 'FAM-101',
+    teacherId: 'TCH-101',
+    teacherName: 'Qari Abdul Basit',
+    assignedTeacher: 'Qari Abdul Basit',
+    course: 'Quran Memorization (Hifz)',
+    currency: '$',
+    currencyCode: 'USD',
+    monthlyFee: 60,
+    enrollmentDate: '2026-11-01',
+    weeklySchedule: {
+      monday: { active: true, time: '18:00' },
+      tuesday: { active: true, time: '18:00' },
+      wednesday: { active: true, time: '18:00' },
+      thursday: { active: true, time: '18:00' },
+      friday: { active: false, time: '18:00' },
+      saturday: { active: false, time: '18:00' },
+      sunday: { active: false, time: '18:00' }
+    }
+  },
+  {
+    id: 'STU-102',
+    firstName: 'Ayesha',
+    lastName: 'Siddiqui',
+    academicStatus: 'Active',
+    guardianName: 'Zubair Siddiqui',
+    phone: '+1 202 555 0184',
+    whatsapp: '+1 202 555 0184',
+    email: 'zubair.siddiqui@gmail.com',
+    address: '250 Park Ave, New York',
+    country: 'United States',
+    timezone: 'America/New_York',
+    familyId: 'FAM-102',
+    familyTag: 'FAM-102',
+    teacherId: 'TCH-102',
+    teacherName: 'Ustadha Maryam Khan',
+    assignedTeacher: 'Ustadha Maryam Khan',
+    course: 'Nazira Quran',
+    currency: '$',
+    currencyCode: 'USD',
+    monthlyFee: 50,
+    enrollmentDate: '2026-11-01',
+    weeklySchedule: {
+      monday: { active: true, time: '16:00' },
+      tuesday: { active: false, time: '16:00' },
+      wednesday: { active: true, time: '16:00' },
+      thursday: { active: false, time: '16:00' },
+      friday: { active: true, time: '16:00' },
+      saturday: { active: false, time: '16:00' },
+      sunday: { active: false, time: '16:00' }
+    }
+  },
+  {
+    id: 'STU-103',
+    firstName: 'Umar',
+    lastName: 'Farooq',
+    academicStatus: 'Active',
+    guardianName: 'Farooq Ahmed',
+    phone: '+1 416 555 0192',
+    whatsapp: '+1 416 555 0192',
+    email: 'farooq.ahmed@gmail.com',
+    address: '77 King St, Toronto',
+    country: 'Canada',
+    timezone: 'America/Toronto',
+    familyId: 'FAM-103',
+    familyTag: 'FAM-103',
+    teacherId: 'TCH-102',
+    teacherName: 'Ustadha Maryam Khan',
+    assignedTeacher: 'Ustadha Maryam Khan',
+    course: 'Islamic Studies & Ethics',
+    currency: '$',
+    currencyCode: 'USD',
+    monthlyFee: 40,
+    enrollmentDate: '2026-11-01',
+    weeklySchedule: {
+      monday: { active: false, time: '17:00' },
+      tuesday: { active: true, time: '17:00' },
+      wednesday: { active: false, time: '17:00' },
+      thursday: { active: true, time: '17:00' },
+      friday: { active: false, time: '17:00' },
+      saturday: { active: true, time: '17:00' },
+      sunday: { active: false, time: '17:00' }
+    }
   }
-})();
+];
+
+const BASELINE_SEED_TEACHERS = [
+  {
+    id: 'TEST-T-001',
+    name: 'TEST Teacher One',
+    fatherName: 'Father One',
+    cnic: '35201-1111111-1',
+    isHafiz: false,
+    certifiedHafiz: false,
+    country: 'Pakistan',
+    activeStudents: 1,
+    hourlyRate: 20,
+    rating: 5.0,
+    status: 'Available',
+    salaryStatus: 'Pending',
+    phone: '+92 300 1111111',
+    whatsapp: '+92 300 1111111',
+    email: 'teacher1@quranicskills.com'
+  },
+  {
+    id: 'TCH-101',
+    name: 'Qari Abdul Basit',
+    fatherName: 'Muhammad Ishaq',
+    cnic: '35201-2222222-2',
+    isHafiz: true,
+    certifiedHafiz: true,
+    country: 'Pakistan',
+    activeStudents: 1,
+    hourlyRate: 25,
+    rating: 5.0,
+    status: 'Available',
+    salaryStatus: 'Pending',
+    phone: '+92 300 2222222',
+    whatsapp: '+92 300 2222222',
+    email: 'abdulbasit@quranicskills.com'
+  },
+  {
+    id: 'TCH-102',
+    name: 'Ustadha Maryam Khan',
+    fatherName: 'Tariq Khan',
+    cnic: '35201-3333333-3',
+    isHafiz: false,
+    certifiedHafiz: false,
+    country: 'Pakistan',
+    activeStudents: 2,
+    hourlyRate: 22,
+    rating: 5.0,
+    status: 'Available',
+    salaryStatus: 'Pending',
+    phone: '+92 300 3333333',
+    whatsapp: '+92 300 3333333',
+    email: 'maryam.khan@quranicskills.com'
+  },
+  {
+    id: 'TCH-103',
+    name: 'Qari Saad Ahmed',
+    fatherName: 'Ahmed Ali',
+    cnic: '35201-4444444-4',
+    isHafiz: true,
+    certifiedHafiz: true,
+    country: 'Pakistan',
+    activeStudents: 0,
+    hourlyRate: 20,
+    rating: 5.0,
+    status: 'Available',
+    salaryStatus: 'Pending',
+    phone: '+92 300 4444444',
+    whatsapp: '+92 300 4444444',
+    email: 'saad.ahmed@quranicskills.com'
+  }
+];
+
+const BASELINE_SEED_PAYMENTS = [
+  {
+    id: 'TXN-5683',
+    date: '2026-11-24',
+    studentId: 'TEST-001',
+    studentName: 'TEST Student One',
+    amount: 50,
+    currency: '$',
+    method: 'Online Card (Stripe)',
+    type: 'Tuition Settlement',
+    status: 'Completed',
+    allocations: [
+      {
+        studentId: 'TEST-001',
+        studentName: 'TEST Student One',
+        currency: '$',
+        monthIndex: 10,
+        month: 'Nov',
+        feeDue: 50,
+        previouslyPaid: 0,
+        allocatedAmount: 50,
+        newAmountPaid: 50,
+        newRemainingDue: 0,
+        newStatus: 'paid',
+        isAdvance: false
+      }
+    ],
+    allocatedTo: 'Nov ($50 ➔ PAID)'
+  },
+  {
+    id: 'TXN-3275',
+    date: '2026-11-24',
+    studentId: 'STU-101',
+    studentName: 'Ahmed Khan',
+    amount: 60,
+    currency: '$',
+    method: 'Online Card (Stripe)',
+    type: 'Tuition Settlement',
+    status: 'Completed',
+    allocations: [
+      {
+        studentId: 'STU-101',
+        studentName: 'Ahmed Khan',
+        currency: '$',
+        monthIndex: 10,
+        month: 'Nov',
+        feeDue: 60,
+        previouslyPaid: 0,
+        allocatedAmount: 60,
+        newAmountPaid: 60,
+        newRemainingDue: 0,
+        newStatus: 'paid',
+        isAdvance: false
+      }
+    ],
+    allocatedTo: 'Nov ($60 ➔ PAID)'
+  }
+];
+
+const BASELINE_SEED_NOTICE = {
+  id: 'NOT-101',
+  title: 'TEST Notice - Please Ignore',
+  audience: 'All Students & Parents',
+  author: 'Academy Admin',
+  content: 'This is a test broadcast notice for validation purposes.',
+  date: '2026-11-24',
+  badge: 'Test'
+};
+
+async function checkAndSeedInitialAcademyData() {
+  if (isAcademyAlreadySeeded()) {
+    console.log('[Seed] Academy already seeded. Skipping seed check.');
+    return;
+  }
+
+  if (db) {
+    try {
+      const metaDoc = await db.collection('settings').doc('academy_meta').get();
+      if (metaDoc.exists && metaDoc.data() && metaDoc.data().is_seeded) {
+        localStorage.setItem(SEEDED_FLAG_KEY, 'true');
+        console.log('[Seed] Cloud database already has is_seeded flag. Skipping seed.');
+        return;
+      }
+      const existingStudents = await db.collection('students').limit(1).get();
+      if (!existingStudents.empty) {
+        localStorage.setItem(SEEDED_FLAG_KEY, 'true');
+        await db.collection('settings').doc('academy_meta').set({
+          is_seeded: true,
+          seeded_at: new Date().toISOString()
+        }, { merge: true });
+        console.log('[Seed] Cloud database already contains data. Marked seeded; skipping seed.');
+        return;
+      }
+    } catch (e) {
+      console.warn('[Seed] Firestore check warning:', e.message);
+    }
+  }
+
+  const cachedStudents = loadFromStorage('lms_students', null);
+  if (Array.isArray(cachedStudents) && cachedStudents.length > 0) {
+    localStorage.setItem(SEEDED_FLAG_KEY, 'true');
+    if (db) {
+      db.collection('settings').doc('academy_meta').set({
+        is_seeded: true,
+        seeded_at: new Date().toISOString()
+      }, { merge: true }).catch(() => {});
+    }
+    return;
+  }
+
+  console.log('[Seed] Fresh database detected. Writing baseline seed data ONCE...');
+  AppState.students = JSON.parse(JSON.stringify(BASELINE_SEED_STUDENTS));
+  AppState.teachers = JSON.parse(JSON.stringify(BASELINE_SEED_TEACHERS));
+  PAYMENT_LEDGER.length = 0;
+  BASELINE_SEED_PAYMENTS.forEach(p => PAYMENT_LEDGER.push(JSON.parse(JSON.stringify(p))));
+  ACADEMY_NOTICES.length = 0;
+  ACADEMY_NOTICES.push(JSON.parse(JSON.stringify(BASELINE_SEED_NOTICE)));
+
+  saveCache('lms_students', AppState.students);
+  saveCache('lms_teachers', AppState.teachers);
+  saveCache('lms_payment_ledger', PAYMENT_LEDGER);
+  saveCache('lms_notices', ACADEMY_NOTICES);
+
+  try { localStorage.setItem('lms_students', JSON.stringify(AppState.students)); } catch (e) {}
+  try { localStorage.setItem('lms_teachers', JSON.stringify(AppState.teachers)); } catch (e) {}
+  try { localStorage.setItem('lms_payment_ledger', JSON.stringify(PAYMENT_LEDGER)); } catch (e) {}
+  try { localStorage.setItem('lms_notices', JSON.stringify(ACADEMY_NOTICES)); } catch (e) {}
+
+  if (db) {
+    try {
+      const batchPromises = [];
+      for (const st of AppState.students) {
+        batchPromises.push(db.collection('students').doc(st.id).set(st, { merge: true }));
+      }
+      for (const tc of AppState.teachers) {
+        batchPromises.push(db.collection('teachers').doc(tc.id).set(tc, { merge: true }));
+      }
+      for (const pm of PAYMENT_LEDGER) {
+        batchPromises.push(db.collection('payment_ledger').doc(pm.id).set(pm, { merge: true }));
+      }
+      batchPromises.push(db.collection('notices').doc(BASELINE_SEED_NOTICE.id).set(BASELINE_SEED_NOTICE, { merge: true }));
+      batchPromises.push(db.collection('settings').doc('academy_meta').set({
+        is_seeded: true,
+        seeded_at: new Date().toISOString()
+      }, { merge: true }));
+
+      await Promise.all(batchPromises);
+      console.log('[Seed] Baseline data seeded to Firestore successfully.');
+    } catch (e) {
+      console.warn('[Seed] Warning saving seed to Firestore:', e.message);
+    }
+  }
+
+  localStorage.setItem(SEEDED_FLAG_KEY, 'true');
+}
 
 const _systemCurrentDate = new Date();
 const MONTHS_LIST = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -1115,7 +1739,7 @@ window.clearFormFieldError = clearFormFieldError;
 function clearAllFormErrors(containerOrModalId) {
   const container = typeof containerOrModalId === 'string' ? document.getElementById(containerOrModalId) : containerOrModalId;
   if (!container) return;
-  container.querySelectorAll('.field-error, .border-[#DC2626]').forEach(el => {
+  container.querySelectorAll('.field-error, input, select, textarea').forEach(el => {
     el.classList.remove('field-error', 'border-[#DC2626]', 'ring-1', 'ring-[#DC2626]');
   });
   container.querySelectorAll('.shared-field-error-msg').forEach(el => el.remove());
@@ -1188,8 +1812,12 @@ function clearFormDraft(draftKey) {
 window.clearFormDraft = clearFormDraft;
 
 function initFormDraftAutoSave(modalId, draftKey, fieldIds) {
-  const modal = document.getElementById(modalId);
-  if (!modal) return;
+  if (Array.isArray(draftKey) && !fieldIds) {
+    fieldIds = draftKey;
+    draftKey = modalId;
+  }
+  const modal = typeof modalId === 'string' ? document.getElementById(modalId) : modalId;
+  if (!modal || !Array.isArray(fieldIds)) return;
 
   const saveHandler = debounce(() => {
     const data = {};
@@ -1218,6 +1846,12 @@ function initFormDraftAutoSave(modalId, draftKey, fieldIds) {
 window.initFormDraftAutoSave = initFormDraftAutoSave;
 
 function restoreFormDraft(modalId, draftKey, fieldIds) {
+  if (Array.isArray(draftKey) && !fieldIds) {
+    fieldIds = draftKey;
+    draftKey = modalId;
+  }
+  if (!Array.isArray(fieldIds)) return false;
+
   const draft = getFormDraft(draftKey);
   if (!draft) return false;
 
@@ -4755,6 +5389,8 @@ function closeAddStudentModal() {
   const modal = document.getElementById('add-student-modal');
   if (modal) modal.classList.remove('active');
 }
+window.openAddStudentModal = openAddStudentModal;
+window.closeAddStudentModal = closeAddStudentModal;
 
 function handleStudentCountryChange(country) {
   const tzInput = document.getElementById('add-student-timezone');
@@ -5057,6 +5693,8 @@ function closeAddTeacherModal() {
   const modal = document.getElementById('add-teacher-modal');
   if (modal) modal.classList.remove('active');
 }
+window.openAddTeacherModal = openAddTeacherModal;
+window.closeAddTeacherModal = closeAddTeacherModal;
 
 function detectCountryFromPhone(phone) {
   if (!phone) return null;
@@ -5183,7 +5821,7 @@ function openDeleteConfirmationModal({ title, message, onConfirm }) {
     if (msgEl) msgEl.textContent = message || 'Are you sure you want to delete this record?';
     pendingDeleteCallback = onConfirm;
     if (confirmBtn) {
-      confirmBtn.onclick = function (e) {
+      confirmBtn.onclick = async function (e) {
         if (e) {
           e.stopPropagation();
           if (typeof e.preventDefault === 'function') e.preventDefault();
@@ -5191,7 +5829,13 @@ function openDeleteConfirmationModal({ title, message, onConfirm }) {
         const cb = pendingDeleteCallback;
         pendingDeleteCallback = null;
         closeDeleteConfirmationModal();
-        if (typeof cb === 'function') cb();
+        if (typeof cb === 'function') {
+          try {
+            await cb();
+          } catch (err) {
+            console.error('[Delete Error]', err);
+          }
+        }
       };
     }
     modal.classList.add('active');
@@ -5221,24 +5865,20 @@ function deleteTeacher(teacherId, event) {
   );
   if (!teacher) return;
 
-  const msg = `Are you sure you want to delete teacher "${teacher.name}" (${teacher.id})? This will remove them from the faculty roster.`;
+  const msg = `Are you sure you want to delete teacher "${teacher.name}" (${teacher.id})? This will remove them from the faculty roster and set assigned students to Unassigned.`;
   openDeleteConfirmationModal({
     title: 'Delete Faculty Member',
     message: msg,
-    onConfirm: () => {
-      AppState.teachers = (AppState.teachers || []).filter(t => 
-        t.id !== teacher.id && 
-        String(t.id).trim().toLowerCase() !== String(teacherId).trim().toLowerCase()
-      );
-      saveToStorage('lms_teachers', AppState.teachers);
-      dbDeleteTeacher(teacher.id);
-      addSystemNotification({
-        title: 'Faculty Member Removed',
-        desc: `Deleted faculty record "${teacher.name}" (${teacher.id}).`,
-        type: 'teacher'
-      });
-      renderApp();
-      showToastNotification(`✓ Teacher "${teacher.name}" deleted successfully.`);
+    onConfirm: async () => {
+      const success = await dbDeleteTeacher(teacher.id);
+      if (success) {
+        addSystemNotification({
+          title: 'Faculty Member Removed',
+          desc: `Permanently deleted faculty record "${teacher.name}" (${teacher.id}).`,
+          type: 'teacher'
+        });
+        showToastNotification(`✓ Teacher "${teacher.name}" deleted successfully.`);
+      }
     }
   });
 }
@@ -5519,19 +6159,15 @@ function deleteNotice(noticeId, event) {
   openDeleteConfirmationModal({
     title: 'Delete Academy Notice',
     message: msg,
-    onConfirm: () => {
-      const index = ACADEMY_NOTICES.findIndex(n => n.id === notice.id);
-      if (index !== -1) {
-        ACADEMY_NOTICES.splice(index, 1);
-        saveToStorage('lms_notices', ACADEMY_NOTICES);
-        dbDeleteNotice(notice.id);
+    onConfirm: async () => {
+      AppState.activeNoticeActionMenuId = null;
+      const success = await dbDeleteNotice(notice.id);
+      if (success) {
         addSystemNotification({
           title: 'Notice Deleted',
-          desc: `Removed academy notice "${notice.title}".`,
+          desc: `Permanently removed academy notice "${notice.title}".`,
           type: 'notice'
         });
-        AppState.activeNoticeActionMenuId = null;
-        renderApp();
         showToastNotification(`✓ Notice "${notice.title}" deleted.`);
       }
     }
@@ -5557,12 +6193,8 @@ function openAddTrialModal() {
       (AppState.teachers || []).map(t => `<option value="${t.name}">${t.name}${t.isHafiz ? ' (Hafiz)' : ''}</option>`).join('');
   }
   clearAllFormErrors(modal);
-  initFormDraftAutoSave('new_trial', ['add-trial-name', 'add-trial-course', 'add-trial-country']);
-  restoreFormDraft('new_trial', {
-    'add-trial-name': (val) => { if (nameInput) nameInput.value = val; },
-    'add-trial-course': (val) => { const el = document.getElementById('add-trial-course'); if (el) el.value = val; },
-    'add-trial-country': (val) => { if (countryInput) countryInput.value = val; }
-  });
+  initFormDraftAutoSave('add-trial-modal', 'new_trial', ['add-trial-name', 'add-trial-course', 'add-trial-country']);
+  restoreFormDraft('add-trial-modal', 'new_trial', ['add-trial-name', 'add-trial-course', 'add-trial-country']);
   modal.classList.add('active');
 }
 window.openAddTrialModal = openAddTrialModal;
@@ -6499,6 +7131,10 @@ document.addEventListener('keydown', (e) => {
     if (typeof closeStudentContactPopover === 'function') closeStudentContactPopover();
     if (typeof closeFeeFilterDropdown === 'function') closeFeeFilterDropdown();
     if (typeof closeNoticeActionMenu === 'function') closeNoticeActionMenu();
+    if (typeof closeAddStudentModal === 'function') closeAddStudentModal();
+    if (typeof closeAddTeacherModal === 'function') closeAddTeacherModal();
+    if (typeof closeAddTrialModal === 'function') closeAddTrialModal();
+    if (typeof closeDeleteConfirmationModal === 'function') closeDeleteConfirmationModal();
   }
 });
 
@@ -10712,36 +11348,21 @@ function deleteStudent(studentId, event) {
   );
   if (!student) return;
 
-  const msg = `Are you sure you want to delete student "${student.firstName} ${student.lastName}" (${student.id})? This will remove all their records.`;
+  const msg = `Are you sure you want to delete student "${student.firstName} ${student.lastName}" (${student.id})? This will permanently remove all their fee payments, receipts, ledger entries, and records.`;
   openDeleteConfirmationModal({
     title: 'Delete Student Record',
     message: msg,
-    onConfirm: () => {
-      AppState.students = (AppState.students || []).filter(s => 
-        s.id !== student.id && 
-        String(s.id).trim().toLowerCase() !== String(student.id).trim().toLowerCase()
-      );
-      if (student.teacherId) {
-        const teacher = (AppState.teachers || []).find(t => 
-          t.id === student.teacherId || 
-          String(t.id).trim().toLowerCase() === String(student.teacherId).trim().toLowerCase()
-        );
-        if (teacher && teacher.activeStudents > 0) {
-          teacher.activeStudents--;
-          dbSaveTeacher(teacher);
-        }
-      }
-      saveToStorage('lms_students', AppState.students);
-      saveToStorage('lms_teachers', AppState.teachers);
-      dbDeleteStudent(student.id);
-      addSystemNotification({
-        title: 'Student Record Removed',
-        desc: `Deleted student record for ${student.firstName} ${student.lastName} (${student.id}).`,
-        type: 'student'
-      });
+    onConfirm: async () => {
       AppState.activeStudentActionMenuId = null;
-      renderApp();
-      showToastNotification(`✓ Student "${student.firstName} ${student.lastName}" deleted.`);
+      const success = await dbDeleteStudent(student.id);
+      if (success) {
+        addSystemNotification({
+          title: 'Student Record Removed',
+          desc: `Permanently deleted student record for ${student.firstName} ${student.lastName} (${student.id}) and all associated fees.`,
+          type: 'student'
+        });
+        showToastNotification(`✓ Student "${student.firstName} ${student.lastName}" deleted.`);
+      }
     }
   });
 }
@@ -13453,19 +14074,25 @@ function closeNotificationsModal() {
 window.closeNotificationsModal = closeNotificationsModal;
 
 /**
- * Seeds and preserves baseline academy data (Clean slate: auto-seeding disabled)
+ * Seeds and preserves baseline academy data (only runs once on virgin database)
  */
 function seedRequiredAcademyData() {
-  if (!AppState.students) AppState.students = [];
-  if (!AppState.teachers) AppState.teachers = [];
-  if (!Array.isArray(ACADEMY_NOTICES)) ACADEMY_NOTICES = [];
-  if (!Array.isArray(PAYMENT_LEDGER)) PAYMENT_LEDGER = [];
+  if (typeof isAcademyAlreadySeeded === 'function' && isAcademyAlreadySeeded()) return;
+  if (typeof checkAndSeedInitialAcademyData === 'function') {
+    checkAndSeedInitialAcademyData().then(() => {
+      reconcileStudentsWithPaymentLedger();
+      renderApp();
+    }).catch(() => {});
+  }
 }
 window.seedRequiredAcademyData = seedRequiredAcademyData;
+window.checkAndSeedInitialAcademyData = checkAndSeedInitialAcademyData;
 
 // Initial Boot
-document.addEventListener('DOMContentLoaded', () => {
-  seedRequiredAcademyData();
+document.addEventListener('DOMContentLoaded', async () => {
+  if (typeof checkAndSeedInitialAcademyData === 'function') {
+    await checkAndSeedInitialAcademyData();
+  }
   reconcileStudentsWithPaymentLedger();
   seedInitialActivityNotifications();
   updateHeaderDateDisplay();

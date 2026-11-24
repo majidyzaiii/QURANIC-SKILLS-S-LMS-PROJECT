@@ -133,6 +133,13 @@ body {
 }
 
 /* Month Matrix Visual Cells - Minimalist Stripe / Linear SaaS Aesthetic */
+/* PKR amount line inside a month cell never wraps mid-amount
+   ("Rs." alone on a line). The column's min-content grows instead,
+   so auto-layout widens that month column to fit it. */
+.month-cell .pkr-line {
+  white-space: nowrap;
+}
+
 .month-cell {
   height: auto;
   min-height: 26px;

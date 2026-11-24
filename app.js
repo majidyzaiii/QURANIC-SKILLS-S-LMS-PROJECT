@@ -10544,8 +10544,8 @@ function renderStudentFeeLedgerRow(student, isChildOfFamily = false, isLastChild
         const cellOrigAmount = (m.status === 'defaulter') ? (m.feeDue || student.monthlyFee) : m.amountPaid;
         const cellOrigText = student.currency + cellOrigAmount;
         const cellLabelHtml = cellPKR.hasRate
-          ? '<span class="flex flex-col items-center leading-none gap-0.5"><span>' + formatPKRAmount(cellPKR.pkr) + '</span><span class="text-[9px] font-normal opacity-70">(' + cellOrigText + ')</span></span>'
-          : '<span class="flex flex-col items-center leading-none gap-0.5"><span>' + cellOrigText + '</span><span class="text-[9px] font-normal opacity-70">rate not set</span></span>';
+          ? '<span class="flex flex-col items-center leading-none gap-0.5"><span class="pkr-line">' + formatPKRAmount(cellPKR.pkr) + '</span><span class="text-[9px] font-normal opacity-70">(' + cellOrigText + ')</span></span>'
+          : '<span class="flex flex-col items-center leading-none gap-0.5"><span class="pkr-line">' + cellOrigText + '</span><span class="text-[9px] font-normal opacity-70">rate not set</span></span>';
         
         if (m.status === 'paid') {
           cellContent = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>${cellLabelHtml}`;

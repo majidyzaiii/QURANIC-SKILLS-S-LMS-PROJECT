@@ -7938,8 +7938,8 @@ function renderAdminDashboardView() {
     <!-- Currency: every fee amount on this Dashboard is shown in PKR -->
     <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 mb-4 px-1 text-[11px] text-[#7A8684]">
       <span class="inline-flex items-center gap-1.5 font-bold text-[#0E4D45]">All amounts in PKR</span>
-      ${usdRateNow ? `<span>1 USD = ${formatPKRAmount(usdRateNow)}</span>` : ''}
-      ${gbpRateNow ? `<span>1 GBP = ${formatPKRAmount(gbpRateNow)}</span>` : ''}
+      ${usdRateNow ? `<span>1 USD = Rs. ${Number(usdRateNow).toFixed(2)}</span>` : ''}
+      ${gbpRateNow ? `<span>1 GBP = Rs. ${Number(gbpRateNow).toFixed(2)}</span>` : ''}
       <span>Rates ${currencyMonthText}${currencyRatesStale ? ' — could not update' : ''}</span>
     </div>
     <!-- 5 Top KPI Cards sitting cleanly below header on #F8F6F1 -->

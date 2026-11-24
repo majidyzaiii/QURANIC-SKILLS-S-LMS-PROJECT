@@ -10246,7 +10246,7 @@ function renderAdminFeeMatrixView() {
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
             </svg>
             <span>Filter</span>
-            ${(AppState.selectedFilter !== 'all' || AppState.selectedCurrency !== 'all' || isFamilyGrouped) ? `
+            ${(AppState.selectedFilter !== 'all' || AppState.selectedCurrency !== 'all' || !AppState.groupByFamily) ? `
               <span class="w-2 h-2 rounded-full bg-[#0E4D45]"></span>
             ` : ''}
           </button>
@@ -10263,7 +10263,7 @@ function renderAdminFeeMatrixView() {
         <div class="flex items-center justify-between pb-2.5 mb-3 border-b border-[#ECEAE4]">
           <span class="text-xs font-bold text-[#141F1E]">Filter Ledger</span>
           <div class="flex items-center gap-3">
-            ${(AppState.selectedFilter !== 'all' || AppState.selectedCurrency !== 'all' || !isFamilyGrouped) ? `
+            ${(AppState.selectedFilter !== 'all' || AppState.selectedCurrency !== 'all' || !AppState.groupByFamily) ? `
               <button type="button" onclick="resetFeeFilters();" class="text-[11px] font-semibold text-[#0E4D45] hover:underline cursor-pointer">Reset Filters</button>
             ` : ''}
             <button type="button" onclick="closeFeeFilterDropdown();" class="text-[#7A8684] hover:text-[#141F1E] text-xs font-bold cursor-pointer" title="Close Filters">✕</button>
@@ -10956,7 +10956,7 @@ function updateFeeFilterBottomSheetUI() {
 function resetFeeFilters() {
   AppState.selectedFilter = 'all';
   AppState.selectedCurrency = 'all';
-  AppState.groupByFamily = false;
+  AppState.groupByFamily = true;
   AppState.searchQuery = '';
   closeFeeFilterDropdown();
   renderApp();

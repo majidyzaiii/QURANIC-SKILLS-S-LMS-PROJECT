@@ -4195,6 +4195,7 @@ function handleSaveNewTeacher() {
   });
 
   closeAddTeacherModal();
+  clearFormDraft('lms_draft_add_teacher');
   renderApp();
   showToastNotification(`✓ Teacher ${name} (${teacherId}) successfully added to Academy faculty!`);
 }

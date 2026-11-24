@@ -7941,7 +7941,6 @@ function renderAdminDashboardView() {
       ${usdRateNow ? `<span>1 USD = ${formatPKRAmount(usdRateNow)}</span>` : ''}
       ${gbpRateNow ? `<span>1 GBP = ${formatPKRAmount(gbpRateNow)}</span>` : ''}
       <span>Rates ${currencyMonthText}${currencyRatesStale ? ' — could not update' : ''}</span>
-      <button onclick="openCurrencySettingsModal()" class="px-3 py-1.5 rounded-full bg-white border border-[#0E4D45] text-[#0E4D45] text-[11px] font-bold hover:bg-[#E8EFEE] transition-all whitespace-nowrap cursor-pointer">Currency Settings</button>
     </div>
     <!-- 5 Top KPI Cards sitting cleanly below header on #F8F6F1 -->
     <div class="kpi-cards-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 w-full mb-8" style="gap: 16px;">

@@ -8190,7 +8190,7 @@ let quranLayoutPromise = null;
 function quranEnsureLayout() {
   if (QuranLibrary.layout) return Promise.resolve(QuranLibrary.layout);
   if (quranLayoutPromise) return quranLayoutPromise;
-  quranLayoutPromise = fetch('quran-16line-layout.json?v=20261124-16line')
+  quranLayoutPromise = fetch('quran-16line-layout.json?v=20261124-pagefix')
     .then(r => { if (!r.ok) throw new Error('Page layout could not be loaded (' + r.status + ')'); return r.json(); })
     .then(data => { QuranLibrary.layout = data; return data; })
     .catch(e => { quranLayoutPromise = null; throw e; });
@@ -8404,6 +8404,28 @@ async function quranEnsurePageTranslations() {
   if (changed) renderApp();
 }
 
+// Standard Juz (Para) names, 1-30. Used for the Juz header band at the
+// top of the page where a Juz starts.
+const QURAN_JUZ_NAMES = {
+  1: 'Alif Lam Meem', 2: 'Sayaqool', 3: 'Tilkar Rusul', 4: 'Lan Tanalu',
+  5: 'Wal Mohsanat', 6: 'La Yuhibbullah', 7: 'Wa Iza Samiu',
+  8: 'Wa Lau Annana', 9: 'Qalal Malao', 10: "Wa'lamu",
+  11: "Ya'taziroon", 12: "Wa Mamin Da'bbah", 13: "Wa Ma Ubarri'u",
+  14: 'Rubama', 15: 'Subhanallazi', 16: 'Qal Alam', 17: 'Iqtaraba',
+  18: 'Qad Aflaha', 19: 'Wa Qalallazina', 20: 'Amman Khalaq',
+  21: 'Utlu Ma Uhiya', 22: 'Wa Manyaqnut', 23: 'Wa Mali',
+  24: 'Faman Azlam', 25: 'Ilaihi Yuraddu', 26: 'Ha Meem',
+  27: 'Qala Fama Khatbukum', 28: "Qad Sami'allah", 29: 'Tabarakallazi',
+  30: "Amma Yatasa'aloon"
+};
+
+// Which Juz starts on printed page n (0 if none starts on this page)?
+function quranJuzStartingOnPage(n) {
+  const jp = (QuranLibrary.layout && QuranLibrary.layout.juzPages) || {};
+  for (let j = 1; j <= 30; j++) { if (jp[j] === n) return j; }
+  return 0;
+}
+
 function quranPageLinesHtml(n) {
   const page = QuranLibrary.layout.pages[n - 1];
   const meta = QuranLibrary.meta || [];
@@ -8425,7 +8447,7 @@ function quranPageLinesHtml(n) {
     if (type === 'h' || type === 'hb') {
       const m = meta.find(s => s.number === ln[4]);
       return `
-      <div class="quran-page-line quran-page-line-center" style="flex-direction:column;gap:0.25rem">
+      <div class="quran-page-line-header">
         <div class="quran-page-surah-header">
           <p class="quran-page-arabic" dir="rtl" style="font-size:1.5rem;line-height:1.6">${m ? quranEscapeHtml(m.name || '') : ''}</p>
           <p class="text-xs font-bold text-[#0E4D45]">${m ? quranEscapeHtml(m.englishName || '') : ('Surah ' + ln[4])} • Surah ${ln[4]}</p>
@@ -8433,21 +8455,47 @@ function quranPageLinesHtml(n) {
         ${type === 'hb' ? `<div class="quran-page-bismillah">﷽</div>` : ''}
       </div>`;
     }
-    if (type === 'b') return `<div class="quran-page-line quran-page-line-center"><div class="quran-page-bismillah">﷽</div></div>`;
+    if (type === 'b') return `<div class="quran-page-line-bismillah"><div class="quran-page-bismillah">﷽</div></div>`;
     if (type === '') return `<div class="quran-page-line quran-page-empty"></div>`;
+    // One inline span per ayah, words joined with plain spaces inside
+    // it: Arabic letters join across inline span boundaries, so the line
+    // renders as continuous connected Mushaf script. The old per-word
+    // flex boxes broke the joining and looked like separate chips.
+    // (Tajweed mode still colours words: quranPageWordHtml returns
+    // colour-only inline spans, which do not break the joining.)
     let html = '';
+    let curKey = null, curSurah = 0, curAyah = 0, curWords = [];
+    const flushAyah = () => {
+      if (!curKey) return;
+      const selected = QuranLibrary.pageSelected && QuranLibrary.pageSelected.surah === curSurah && QuranLibrary.pageSelected.ayah === curAyah;
+      html += `<span class="quran-page-ayah${selected ? ' quran-page-word-selected' : ''}" data-quran-page-ayah="${curKey}" onmouseover="quranPageHoverAyah('${curKey}',true)" onmouseout="quranPageHoverAyah('${curKey}',false)" onclick="quranPageSelectAyah(${curSurah},${curAyah})">${curWords.join(' ')}</span>`;
+      curKey = null; curWords = [];
+    };
     for (let wi = ln[0]; wi < ln[1]; wi++) {
       const a = quranPageAyahOfWord(wi);
       const key = a.surah + ':' + a.ayah;
       ayahSeen[key] = (ayahSeen[key] || 0) + 1;
-      const selected = QuranLibrary.pageSelected && QuranLibrary.pageSelected.surah === a.surah && QuranLibrary.pageSelected.ayah === a.ayah;
-      html += `<span class="quran-page-word${selected ? ' quran-page-word-selected' : ''}" data-quran-page-ayah="${key}" data-w="${wi}" onmouseover="quranPageHoverAyah('${key}',true)" onmouseout="quranPageHoverAyah('${key}',false)" onclick="quranPageSelectAyah(${a.surah},${a.ayah})">${quranPageWordHtml(wi, a.surah, a.ayah, ayahSeen[key], ayahTotal[key])}</span>`;
+      if (key !== curKey) { flushAyah(); curKey = key; curSurah = a.surah; curAyah = a.ayah; }
+      curWords.push(quranPageWordHtml(wi, a.surah, a.ayah, ayahSeen[key], ayahTotal[key]));
       if (endWords.has(wi)) {
-        html += `<span class="quran-page-ayah-end" data-quran-page-ayah="${key}" onmouseover="quranPageHoverAyah('${key}',true)" onmouseout="quranPageHoverAyah('${key}',false)" onclick="quranPageSelectAyah(${a.surah},${a.ayah})">${quranArabicNumeral(a.ayah)}</span>`;
+        flushAyah();
+        html += `<span class="quran-page-ayah-end" data-quran-page-ayah="${key}" onmouseover="quranPageHoverAyah('${key}',true)" onmouseout="quranPageHoverAyah('${key}',false)" onclick="quranPageSelectAyah(${a.surah},${a.ayah})">${quranArabicNumeral(a.ayah)}</span> `;
       }
     }
+    flushAyah();
     const alignCls = ln[3] === 'c' ? ' quran-page-line-center' : '';
-    return `<div class="quran-page-line${alignCls}" dir="rtl">${html}</div>`;
+    // Printed-page margin marks, placed from data only (never guessed):
+    // a Ruku ends where its last ayah ends, a Sajda sits on its ayah.
+    // rukuEnds = [lastWordIndex, rukuNumber]; sajdaWords = [lastWordIndex].
+    const marks = [];
+    for (const re of (QuranLibrary.layout.rukuEnds || [])) {
+      if (re[0] >= ln[0] && re[0] < ln[1]) marks.push(`<span class="quran-page-mark quran-page-mark-ruku" title="Ruku ${re[1]} ends here">ع<small>${re[1]}</small></span>`);
+    }
+    for (const w of (QuranLibrary.layout.sajdaWords || [])) {
+      if (w >= ln[0] && w < ln[1]) marks.push(`<span class="quran-page-mark quran-page-mark-sajda" title="Sajda — prostration here">۩</span>`);
+    }
+    const marksHtml = marks.length ? `<span class="quran-page-margin-marks">${marks.join('')}</span>` : '';
+    return `<div class="quran-page-line${alignCls}" dir="rtl">${html}${marksHtml}</div>`;
   }).join('');
 }
 
@@ -8557,13 +8605,17 @@ function renderQuranPageView(isAdmin) {
       <button onclick="openQuranPage(${n})" class="mt-4 px-5 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors cursor-pointer">Retry</button>
     </div>`;
   } else {
+    const juzStart = quranJuzStartingOnPage(n);
+    const juzBand = juzStart ? `<div class="quran-page-juz-band">Juz ${juzStart} &bull; ${quranEscapeHtml(QURAN_JUZ_NAMES[juzStart] || '')}</div>` : '';
     body = `
     <div class="p-4 sm:p-6 bg-white rounded-2xl border border-[#ECEAE4] shadow-xs">
       <div class="quran-page">
+        ${juzBand}
         <p class="text-center text-[11px] text-[#7A8684] mb-3">Page ${n} of 548 • ${quranEscapeHtml(quranPageRangeText(info))} • Juz ${info.juz}</p>
         <div class="quran-page-arabic" dir="rtl">
           ${quranPageLinesHtml(n)}
         </div>
+        <div class="quran-page-number"><span>Page ${n} of 548</span></div>
       </div>
       ${sel ? quranPageSelectedBarHtml(sel) : ''}
       ${QuranLibrary.showTranslation ? quranPageTranslationHtml(info) : ''}

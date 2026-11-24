@@ -561,6 +561,27 @@ const FULL_MONTHS_LIST = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
+// P0-4: Single source of truth for course names. The dropdown values in
+// index.html (Add Student / Edit Student / Add Trial) are these exact strings.
+// Any legacy variant must be converted with normalizeCourseName() before it is
+// stored, logged or displayed, so Directory, forms, Ledger and Activity Log agree.
+const COURSES = [
+  'Hifz-ul-Quran (Memorization)',
+  'Nazra Quran with Tajweed',
+  'Noorani Qaida for Beginners',
+  'Advanced Tajweed & Makharij',
+  'Ten Qiraat Certification',
+  'Islamic Studies & Daily Duas'
+];
+const COURSE_ISLAMIC_STUDIES = 'Islamic Studies & Daily Duas';
+function normalizeCourseName(course) {
+  if (!course || typeof course !== 'string') return course;
+  const trimmed = course.trim();
+  if (trimmed === 'Islamic Studies & Dua' || trimmed === 'Islamic Studies & Daily Duaa' || trimmed === 'Islamic Studies & Duaa') {
+    return COURSE_ISLAMIC_STUDIES;
+  }
+  return trimmed;
+}
 let CURRENT_MONTH_INDEX = _systemCurrentDate.getMonth(); // Dynamically detects current system month (0-indexed: 0=Jan, 10=Nov, etc.)
 let CURRENT_YEAR = _systemCurrentDate.getFullYear(); // Dynamically detects current system year (e.g., 2026)
 
@@ -1285,7 +1306,7 @@ function renderWeeklyMatrixEditor(containerId, scheduleData, studentTz) {
   container.innerHTML = `
     <!-- Quick Preset Buttons -->
     <div class="flex flex-wrap items-center gap-1.5 p-2 bg-[#F8F6F1]/50 rounded-xl border border-[#E5E7EB] mb-2.5">
-      <span class="text-[10px] font-bold uppercase text-[#7A8684] mr-1">Presets:</span>
+      <span class="text-[10px] font-bold text-[#7A8684] mr-1">Presets:</span>
       <button type="button" onclick="applySchedulePreset('${containerId}', 'mon-thu', '${tz}')" class="px-2.5 py-1 text-[11px] font-semibold rounded-full bg-white border border-[#CBD5E1] text-[#0E4D45] hover:bg-[#0E4D45] hover:text-white transition-all cursor-pointer">Mon–Thu (4d)</button>
       <button type="button" onclick="applySchedulePreset('${containerId}', 'mon-wed-fri', '${tz}')" class="px-2.5 py-1 text-[11px] font-semibold rounded-full bg-white border border-[#CBD5E1] text-[#0E4D45] hover:bg-[#0E4D45] hover:text-white transition-all cursor-pointer">Mon, Wed, Fri (3d)</button>
       <button type="button" onclick="applySchedulePreset('${containerId}', 'weekend', '${tz}')" class="px-2.5 py-1 text-[11px] font-semibold rounded-full bg-white border border-[#CBD5E1] text-[#0E4D45] hover:bg-[#0E4D45] hover:text-white transition-all cursor-pointer">Weekend (Sat–Sun)</button>
@@ -1534,7 +1555,7 @@ function openViewWeeklyScheduleModal(studentId) {
     <div class="rounded-2xl border border-[#ECEAE4] overflow-hidden bg-white shadow-2xs">
       <table class="w-full text-left border-collapse responsive-table-cards">
         <thead>
-          <tr class="bg-[#F8F6F1] border-b border-[#ECEAE4] text-[11px] font-bold text-[#7A8684] uppercase tracking-wider">
+          <tr class="bg-[#F8F6F1] border-b border-[#ECEAE4] text-[11px] font-bold text-[#7A8684] tracking-wider">
             <th class="py-3 px-4">Day of Week</th>
             <th class="py-3 px-3">Class Status</th>
             <th class="py-3 px-3">Student Local Time (${student.timezone.split(' ')[0]})</th>
@@ -3191,7 +3212,9 @@ function openEditScheduleModal(studentId) {
   // Set course
   const courseSelect = document.getElementById('edit-schedule-course');
   if (courseSelect) {
-    const targetCourse = (student.course === 'Islamic Studies & Daily Duaa' || student.course === 'Islamic Studies & Duaa') ? 'Islamic Studies & Daily Duas' : (student.course || 'Hifz-ul-Quran (Memorization)');
+    // P0-4: Canonical course name (maps legacy 'Islamic Studies & Dua' /
+    // 'Daily Duaa' / 'Duaa' variants to 'Islamic Studies & Daily Duas').
+    const targetCourse = normalizeCourseName(student.course) || 'Hifz-ul-Quran (Memorization)';
     courseSelect.value = targetCourse;
   }
 
@@ -3832,58 +3855,32 @@ function handleSaveNewStudent() {
   const country = document.getElementById('add-student-country')?.value;
   const timezone = document.getElementById('add-student-timezone')?.value?.trim();
   const familyId = document.getElementById('add-student-family-id')?.value?.trim();
-  const course = document.getElementById('add-student-course')?.value;
+  const course = normalizeCourseName(document.getElementById('add-student-course')?.value);
   const currencyCode = document.getElementById('add-student-currency')?.value;
   const rawFee = document.getElementById('add-student-fee')?.value;
   const monthlyFee = Number(rawFee);
 
-  if (!studentId) {
-    alert('Please enter Student ID.');
-    return;
-  }
-  if (!fullName) {
-    alert('Please enter Student Full Name.');
-    return;
-  }
-  if (!guardianName) {
-    alert('Please enter Father / Guardian Name.');
-    return;
-  }
-  if (!whatsapp) {
-    alert('Please enter WhatsApp Number.');
-    return;
-  }
-  if (!email) {
-    alert('Please enter Email Address.');
-    return;
-  }
-  if (!country) {
-    alert('Please select a Country.');
-    return;
-  }
-  if (!timezone) {
-    alert('Please enter or verify Timezone.');
-    return;
-  }
-  if (!familyId) {
-    alert('Please enter Family ID Tag.');
-    return;
-  }
-  if (!course) {
-    alert('Please select a Course / Track.');
-    return;
-  }
-  if (!currencyCode) {
-    alert('Please select a Currency.');
-    return;
-  }
-  if (!rawFee || isNaN(monthlyFee) || monthlyFee <= 0) {
-    alert('Please enter a valid Monthly Fee.');
-    return;
-  }
+  // B-4: Smart inline validation — error shown next to the exact field.
+  const idInput = document.getElementById('add-student-id');
+  let firstInvalid = null;
+  const check = (el, fn, msg) => { const ok = validateField(el, fn, msg); if (!ok && !firstInvalid) firstInvalid = el; return ok; };
+  let valid = true;
+  valid = check(idInput, v => !!v.trim(), 'Student ID is required.') && valid;
+  valid = check(document.getElementById('add-student-full-name'), v => !!v.trim(), 'Student full name is required.') && valid;
+  valid = check(document.getElementById('add-student-guardian-name'), v => !!v.trim(), 'Father / guardian name is required.') && valid;
+  valid = check(document.getElementById('add-student-whatsapp'), v => !!v.trim(), 'WhatsApp number is required.') && valid;
+  valid = check(document.getElementById('add-student-email'), v => !!v.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()), 'Enter a valid email address.') && valid;
+  valid = check(document.getElementById('add-student-country'), v => !!v, 'Please select a country.') && valid;
+  valid = check(document.getElementById('add-student-timezone'), v => !!v.trim(), 'Please enter or verify the timezone.') && valid;
+  valid = check(document.getElementById('add-student-family-id'), v => !!v.trim(), 'Family ID tag is required.') && valid;
+  valid = check(document.getElementById('add-student-course'), v => !!v, 'Please select a course / track.') && valid;
+  valid = check(document.getElementById('add-student-currency'), v => !!v, 'Please select a currency.') && valid;
+  valid = check(document.getElementById('add-student-fee'), v => !!v && !isNaN(Number(v)) && Number(v) > 0, 'Enter a valid monthly fee greater than 0.') && valid;
+  if (!valid) { if (firstInvalid) firstInvalid.focus(); return; }
 
   if (AppState.students.some(s => s.id.toLowerCase() === studentId.toLowerCase())) {
-    alert(`Student ID "${studentId}" already exists! Please choose a unique ID.`);
+    validateField(idInput, () => false, 'Student ID "' + studentId + '" already exists. Please choose a unique ID.');
+    if (idInput) idInput.focus();
     return;
   }
 
@@ -3920,7 +3917,10 @@ function handleSaveNewStudent() {
   const address = addressVal || '';
 
   const selectedTeacherId = document.getElementById('add-student-teacher')?.value;
-  const teacherId = selectedTeacherId || ((AppState.teachers && AppState.teachers.length > 0) ? AppState.teachers[0].id : 'T-UNASSIGNED');
+  // P0-1: Never default a new student to the first teacher in the list
+  // (TEST Teacher One). No selection means Unassigned; the enrollment log
+  // below then records the student's actual assigned teacher, not a default.
+  const teacherId = selectedTeacherId || '';
   const teacherObj = (AppState.teachers || []).find(t => 
     String(t.id).trim().toLowerCase() === String(teacherId).trim().toLowerCase() ||
     String(t.name).trim().toLowerCase() === String(teacherId).trim().toLowerCase()
@@ -3972,19 +3972,64 @@ function handleSaveNewStudent() {
 
   saveToStorage('lms_students', AppState.students);
   saveToStorage('lms_teachers', AppState.teachers);
-  dbSaveStudent(newStudent);
+  // B-3 (Optimistic UI): the student is already visible (renderApp below runs
+  // before the cloud write resolves). If the cloud save fails, roll the local
+  // record back and offer a retry instead of silently losing it.
+  Promise.resolve(dbSaveStudent(newStudent)).catch(() => {
+    AppState.students = AppState.students.filter(s => s.id !== newStudent.id);
+    if (teacherObj) teacherObj.activeStudents = Math.max(0, (teacherObj.activeStudents || 1) - 1);
+    saveToStorage('lms_students', AppState.students);
+    saveToStorage('lms_teachers', AppState.teachers);
+    renderApp();
+    showErrorWithRetry('Could not save ' + fullName + ' to the cloud. The record was removed locally.', function () { dbSaveStudent(newStudent); renderApp(); });
+  });
   if (teacherObj) dbSaveTeacher(teacherObj);
 
   addSystemNotification({
     title: 'Student Enrolled',
     desc: `Enrolled ${firstName} ${lastName} (${studentId}) in ${course} with faculty ${teacherName} (${currency}${monthlyFee}/mo).`,
-    type: 'student'
+    type: 'student',
+    // P0-1: Snapshot the assigned teacher/course at event time so the log
+    // keeps matching the Directory even if the assignment changes later.
+    studentId: studentId,
+    teacherName: teacherName,
+    course: course
   });
 
   closeAddStudentModal();
+  clearFormDraft('lms_draft_add_student');
   renderApp();
   showToastNotification(`✓ Student ${fullName} (${studentId}) successfully enrolled and registered!`);
 }
+
+// P3-18: dial-code -> country suggestion for the Add Teacher form.
+// Suggestion only: suggestTeacherCountryFromPhone() never runs once a
+// country has been chosen (manually or by an earlier suggestion).
+const TEACHER_DIAL_CODE_COUNTRY = {
+  '44': 'United Kingdom',
+  '92': 'Pakistan',
+  '971': 'United Arab Emirates',
+  '1': 'United States'
+};
+
+function suggestTeacherCountryFromPhone() {
+  const phoneInput = document.getElementById('add-teacher-phone');
+  const countrySelect = document.getElementById('add-teacher-country');
+  if (!phoneInput || !countrySelect) return;
+  if (countrySelect.value) return; // never overwrite a chosen country
+  const rawPhone = (phoneInput.value || '').trim();
+  if (!rawPhone.startsWith('+')) return;
+  const digits = rawPhone.replace(/[^0-9]/g, '');
+  for (const len of [3, 2, 1]) {
+    const code = digits.slice(0, len);
+    const suggested = TEACHER_DIAL_CODE_COUNTRY[code];
+    if (suggested && Array.from(countrySelect.options).some(o => o.value === suggested)) {
+      countrySelect.value = suggested;
+      return;
+    }
+  }
+}
+window.suggestTeacherCountryFromPhone = suggestTeacherCountryFromPhone;
 
 function openAddTeacherModal() {
   const modal = document.getElementById('add-teacher-modal');
@@ -4012,6 +4057,14 @@ function openAddTeacherModal() {
   const phoneInput = document.getElementById('add-teacher-phone');
   if (phoneInput) phoneInput.value = '';
 
+  // P3-18: suggest a country from the phone dial code as the teacher types
+  // (+44 United Kingdom, +92 Pakistan, +971 UAE, +1 United States).
+  // Suggestion only — it never overwrites a country the user already picked.
+  if (phoneInput && !phoneInput.dataset.countrySuggestAttached) {
+    phoneInput.dataset.countrySuggestAttached = 'true';
+    phoneInput.addEventListener('input', suggestTeacherCountryFromPhone);
+  }
+
   const specSelect = document.getElementById('add-teacher-spec');
   if (specSelect) specSelect.value = '';
 
@@ -4019,7 +4072,9 @@ function openAddTeacherModal() {
   if (rateInput) rateInput.value = '';
 
   const countrySelect = document.getElementById('add-teacher-country');
-  if (countrySelect) countrySelect.value = 'Pakistan';
+  // P3-18: no hard country default — leave the "Select country" placeholder
+  // until the user picks one (or the dial-code suggestion fills it in).
+  if (countrySelect) countrySelect.value = '';
 
   // Completely blank photo preview reset (no dummy faces)
   const photoPlaceholder = document.getElementById('add-teacher-photo-placeholder');
@@ -4099,7 +4154,11 @@ function handleSaveNewTeacher() {
     return;
   }
 
-  const country = document.getElementById('add-teacher-country')?.value || 'Pakistan';
+  const country = document.getElementById('add-teacher-country')?.value || '';
+  if (!country) {
+    alert('Please select Country.');
+    return;
+  }
   const customAvatar = document.getElementById('add-teacher-avatar')?.value?.trim();
   const avatar = customAvatar || getAvatarUrl(name);
 
@@ -4111,6 +4170,10 @@ function handleSaveNewTeacher() {
     specialization: spec,
     country: country,
     activeStudents: 0,
+    // P0-3: New teachers are not Huffaz unless flagged; the flag is set only
+    // for the seeded Hifz/Qiraat specialists (see seedRequiredAcademyData).
+    isHafiz: false,
+    certifiedHafiz: false,
     hourlyRate: hourlyRate,
     rating: 5.0,
     status: 'Available',
@@ -4282,9 +4345,9 @@ function approveTrialToStudent(trialId) {
     country: trial.country.split(' ')[0] || 'UK',
     timezone: trial.preferredTime.includes('CST') ? 'GMT-5 (CST)' : (trial.preferredTime.includes('BST') ? 'GMT+1 (BST)' : 'GMT+10 (AEST)'),
     familyId: 'FAM-' + (125 + AppState.students.length),
-    teacherId: AppState.teachers.find(t => t.name === trial.assignedTeacher)?.id || AppState.teachers[0]?.id || 'T-UNASSIGNED',
-    teacherName: trial.assignedTeacher || AppState.teachers[0]?.name || 'Unassigned',
-    assignedTeacher: trial.assignedTeacher || AppState.teachers[0]?.name || 'Unassigned',
+    teacherId: AppState.teachers.find(t => t.name === trial.assignedTeacher)?.id || '',
+    teacherName: trial.assignedTeacher || 'Unassigned',
+    assignedTeacher: trial.assignedTeacher || 'Unassigned',
     course: 'Noorani Qaida & Tajweed Track',
     currency: '$',
     currencyCode: 'USD',
@@ -4488,7 +4551,7 @@ window.closeAddTrialModal = closeAddTrialModal;
 
 function handleSaveNewTrial() {
   const name = document.getElementById('add-trial-name')?.value?.trim();
-  const course = document.getElementById('add-trial-course')?.value || 'Nazra Quran with Tajweed';
+  const course = normalizeCourseName(document.getElementById('add-trial-course')?.value || 'Nazra Quran with Tajweed');
   const teacherName = document.getElementById('add-trial-teacher')?.value || 'Unassigned';
   const dateTime = document.getElementById('add-trial-datetime')?.value?.trim() || `${new Date().toISOString().split('T')[0]} 04:30 PM (PKT)`;
   const country = document.getElementById('add-trial-country')?.value?.trim() || 'Global';
@@ -4719,7 +4782,7 @@ function commitFIFOPayment(targetId, amount, paymentMethod = 'Online Portal', ta
 
   // Summary of allocation text
   const allocationSummary = result.allocations
-    .map(a => `${isFamily ? a.studentName.split(' ')[0] + ' ' : ''}${a.month} (${currency}${a.allocatedAmount} ➔ ${a.newStatus.toUpperCase()})`)
+    .map(a => `${isFamily ? a.studentName.split(' ')[0] + ' ' : ''}${a.month} (${currency}${a.allocatedAmount} ➔ ${formatFeeStatusLabel(a.newStatus)})`)
     .join(', ');
 
   // Add to Payment Ledger
@@ -4823,7 +4886,7 @@ function getStudentFeeStatus(student) {
     if (student.months[i] && student.months[i].status === 'advance') hasAdvance = true;
   }
 
-  if (hasDefaulter) return { code: 'defaulter', label: 'Overdue / Defaulter', badgeClass: 'ts-badge-defaulter' };
+  if (hasDefaulter) return { code: 'defaulter', label: 'Overdue', badgeClass: 'ts-badge-defaulter' };
   if (hasPartial) return { code: 'partial', label: 'Partial Paid (Due)', badgeClass: 'ts-badge-partial' };
   if (hasAdvance) return { code: 'advance', label: 'Advance Paid', badgeClass: 'ts-badge-advance' };
   return { code: 'paid', label: 'Paid (Clear)', badgeClass: 'ts-badge-paid' };
@@ -4987,20 +5050,41 @@ function seedInitialActivityNotifications() {
   }
 
   // 4. Ensure student enrollment entries exist
+  // P0-1: Each entry snapshots the student's ACTUAL assigned teacher and
+  // canonical course (from the Directory / seedRequiredAcademyData), so the
+  // log agrees with the Directory. Ahmed = Qari Abdul Basit; Ayesha and Umar
+  // = Ustadha Maryam Khan. TEST Student One keeps TEST Teacher One.
   const requiredStudents = [
-    { id: 'TEST-001', name: 'TEST Student One', course: 'Nazra Quran with Tajweed ($50/month)' },
-    { id: 'STU-101', name: 'Ahmed Khan', course: 'Hifz-ul-Quran ($60/month)' },
-    { id: 'STU-102', name: 'Ayesha Siddiqui', course: 'Noorani Qaida & Nazra ($50/month)' },
-    { id: 'STU-103', name: 'Umar Farooq', course: 'Islamic Studies & Dua ($40/month)' }
+    { id: 'TEST-001', name: 'TEST Student One', course: 'Nazra Quran with Tajweed ($50/month)', teacher: 'TEST Teacher One' },
+    { id: 'STU-101', name: 'Ahmed Khan', course: 'Hifz-ul-Quran ($60/month)', teacher: 'Qari Abdul Basit' },
+    { id: 'STU-102', name: 'Ayesha Siddiqui', course: 'Noorani Qaida & Nazra ($50/month)', teacher: 'Ustadha Maryam Khan' },
+    { id: 'STU-103', name: 'Umar Farooq', course: 'Islamic Studies & Daily Duas ($40/month)', teacher: 'Ustadha Maryam Khan' }
   ];
+  // P0-1 repair: stored enrollment entries created before this fix recorded
+  // the first teacher in the list (TEST Teacher One) for every student, and
+  // Umar's course under a legacy name. Rewrite those entries from the
+  // snapshot above; entries already correct are left untouched.
+  SYSTEM_NOTIFICATIONS.forEach(n => {
+    if (!n || n.title !== 'Student Enrolled' || typeof n.desc !== 'string') return;
+    const match = requiredStudents.find(st => n.desc.includes(st.id) || n.desc.includes(st.name));
+    if (!match) return;
+    const correctDesc = `Enrolled ${match.name} (${match.id}) in ${match.course} with faculty ${match.teacher}.`;
+    if (n.desc !== correctDesc) n.desc = correctDesc;
+    n.studentId = match.id;
+    n.teacherName = match.teacher;
+    n.course = match.course;
+  });
   requiredStudents.forEach((st, idx) => {
     const hasS = SYSTEM_NOTIFICATIONS.some(n => n.title === 'Student Enrolled' && n.desc && (n.desc.includes(st.id) || n.desc.includes(st.name)));
     if (!hasS) {
       SYSTEM_NOTIFICATIONS.push({
         id: `NOTIF-STU-${st.id}`,
         title: 'Student Enrolled',
-        desc: `Enrolled ${st.name} (${st.id}) in ${st.course}.`,
+        desc: `Enrolled ${st.name} (${st.id}) in ${st.course} with faculty ${st.teacher}.`,
         type: 'student',
+        studentId: st.id,
+        teacherName: st.teacher,
+        course: st.course,
         time: 'Nov 24, 2026',
         date: 'Nov 24, 2026',
         unread: false,
@@ -5064,6 +5148,11 @@ function addSystemNotification(item) {
     unread: true,
     timestamp: Date.now()
   };
+  // P0-1: Preserve the event-time snapshot (student / assigned teacher / course)
+  // when the caller supplies one, so the log keeps matching the Directory.
+  if (item.studentId) notif.studentId = item.studentId;
+  if (item.teacherName) notif.teacherName = item.teacherName;
+  if (item.course) notif.course = item.course;
   SYSTEM_NOTIFICATIONS.unshift(notif);
   if (SYSTEM_NOTIFICATIONS.length > 80) SYSTEM_NOTIFICATIONS.length = 80;
   saveToStorage('lms_notifications', SYSTEM_NOTIFICATIONS);
@@ -5346,6 +5435,12 @@ function closeProfileDropdown() {
   if (menu) menu.classList.add('hidden');
 }
 
+// P1-7: Escape closes the profile / portal-switcher dropdown.
+// (Click-outside is already handled by the global click listener.)
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeProfileDropdown();
+});
+
 function selectRoleFromDropdown(roleId) {
   closeProfileDropdown();
   switchRole(roleId);
@@ -5420,7 +5515,7 @@ function renderProfileDropdownContent() {
 
     <!-- Section Title: SWITCH PORTAL VIEW -->
     <div class="mt-2">
-      <div class="text-[9.5px] font-bold text-[#7A8684] uppercase tracking-wider px-2 py-1 flex items-center justify-between">
+      <div class="text-[9.5px] font-bold text-[#7A8684] tracking-wider px-2 py-1 flex items-center justify-between">
         <span>SWITCH PORTAL VIEW</span>
         <span class="text-[8.5px] font-normal text-[#A3C2BE] bg-[#0E4D45]/10 px-1.5 py-0.5 rounded text-[#0E4D45]">4 Portals</span>
       </div>
@@ -5528,6 +5623,14 @@ function renderApp() {
   const container = document.getElementById('main-dynamic-content');
   if (!container) return;
 
+  // B-14: Unknown route — show the themed 404 page.
+  if (AppState.showNotFound) {
+    container.innerHTML = notFoundViewHtml();
+    renderNavLinks();
+    updateHeaderDateDisplay();
+    return;
+  }
+
   // Render based on active role and nav
   if (AppState.currentRole === 'admin') {
     if (AppState.activeNav === 'dashboard') {
@@ -5556,6 +5659,16 @@ function renderApp() {
   // Update Top Navigation Bar active links
   renderNavLinks();
   updateHeaderDateDisplay();
+
+  // P1-10: on the 12-Month Fee Ledger page the Ledger toolbar already has its
+  // own month stepper, so hide the duplicate month stepper in the top header
+  // hero. It stays visible on every other page, where it is the only control.
+  const heroStepper = document.getElementById('hero-month-stepper');
+  if (heroStepper) {
+    const onLedgerPage = AppState.currentRole === 'admin' && AppState.activeNav === 'fee-matrix';
+    heroStepper.style.display = onLedgerPage ? 'none' : '';
+    if (onLedgerPage) closeMonthYearDropdown();
+  }
 }
 
 function renderNavLinks() {
@@ -5646,6 +5759,7 @@ function renderNavLinks() {
 }
 
 function setNavTab(tabId) {
+  AppState.showNotFound = false;
   AppState.activeNav = tabId;
   renderApp();
   window.scrollTo({ top: 0, behavior: 'instant' });
@@ -5760,8 +5874,22 @@ function renderAdminDashboardView() {
   const advPct = grandTotal > 0 ? Math.min(100, Math.round((dynamicAdvanceCount / grandTotal) * 100)) : 0;
   const partPct = grandTotal > 0 ? Math.min(100, Math.round((dynamicPartialCount / grandTotal) * 100)) : 0;
   const defPct = grandTotal > 0 ? Math.min(100, Math.round((dynamicDefaulterCount / grandTotal) * 100)) : 0;
-  const trialPct = grandTotal > 0 ? Math.max(0, 100 - (paidPct + advPct + partPct + defPct)) : 0;
+  // P0-2: Trial share is computed from the actual trial count, never as the
+  // leftover of the other segments. With 0 trials it is 0% (previously the
+  // residual formula showed 100% with 0 trials when nothing else was paid).
+  const trialPct = grandTotal > 0 ? Math.min(100, Math.round((trialsCount / grandTotal) * 100)) : 0;
   const collectionPercentage = grandTotal > 0 ? Math.min(100, Math.round(((dynamicPaidCount + dynamicAdvanceCount) / grandTotal) * 100)) : 0;
+
+  // P0-2: Class Attendance Rate comes only from logged attendance records
+  // (same source as the "Total Attendance vs Total Pass" card). No attendance
+  // data is logged yet, so the KPI shows "No data" instead of an invented
+  // percentage, and never divides by zero (getAttendanceVsPassData guards
+  // totalAttend > 0 when computing its rate). When records do exist, the KPI
+  // shows that card's guarded AVG Passing Rate with the attended-session count.
+  const attendanceData = (typeof getAttendanceVsPassData === 'function') ? getAttendanceVsPassData(AppState.attendanceTimeframe || 'month') : null;
+  const hasAttendanceData = !!(attendanceData && attendanceData.hasData);
+  const attendanceRateText = hasAttendanceData ? (attendanceData.avgPassingRate + '%') : 'No data';
+  const attendanceBadgeText = hasAttendanceData ? ((attendanceData.totalAttend || 0) + ' attended') : '';
 
   return `
     <!-- 5 Top KPI Cards sitting cleanly below header on #F8F6F1 -->
@@ -5830,8 +5958,8 @@ function renderAdminDashboardView() {
         </div>
         <div>
           <div class="flex items-baseline gap-2 mb-1">
-            <span class="text-2xl sm:text-3xl font-semibold tracking-tight text-[#141F1E] tabular-nums">${totalStudents > 0 ? '96.8%' : '—'}</span>
-            ${totalStudents > 0 ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium bg-[#E0F2F1] text-[#0E4D45] tabular-nums">+1.5%</span>` : ''}
+            <span class="text-2xl sm:text-3xl font-semibold tracking-tight text-[#141F1E] tabular-nums">${attendanceRateText}</span>
+            ${attendanceBadgeText ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium bg-[#E0F2F1] text-[#0E4D45] tabular-nums">${attendanceBadgeText}</span>` : ''}
           </div>
           <p class="text-xs font-medium text-[#7A8684]">Class Attendance Rate</p>
         </div>
@@ -5847,7 +5975,7 @@ function renderAdminDashboardView() {
         <div class="flex items-center justify-between mb-4">
           <div>
             <h3 class="text-base font-bold text-[#141F1E]">Active Classes</h3>
-            <p class="text-xs text-[#7A8684] font-medium"><span class="font-bold text-[#141F1E] mr-1.5">${ACTIVE_CLASSES.length}</span> Classes Live &amp; Scheduled</p>
+            <p class="text-xs text-[#7A8684] font-medium">${ACTIVE_CLASSES.length === 0 ? 'No classes scheduled yet' : `<span class="font-bold text-[#141F1E] mr-1.5">${ACTIVE_CLASSES.length}</span> Classes Live &amp; Scheduled`}</p>
           </div>
           ${ACTIVE_CLASSES.length > 0 ? `
           <div class="flex items-center gap-1.5">
@@ -5890,7 +6018,7 @@ function renderAdminDashboardView() {
         <div class="flex items-center justify-between mb-4">
           <div>
             <h3 class="text-base font-bold text-[#141F1E]">Upcoming Sessions</h3>
-            <p class="text-xs text-[#7A8684] font-medium"><span class="font-bold text-[#141F1E] mr-1.5">${UPCOMING_SESSIONS.length}</span> Scheduled Today</p>
+            <p class="text-xs text-[#7A8684] font-medium">${UPCOMING_SESSIONS.length === 0 ? 'No sessions scheduled today' : `<span class="font-bold text-[#141F1E] mr-1.5">${UPCOMING_SESSIONS.length}</span> Scheduled Today`}</p>
           </div>
           ${UPCOMING_SESSIONS.length > 0 ? `
           <div class="flex items-center gap-1.5">
@@ -6695,7 +6823,7 @@ function renderLiveClassMonitoringMarkup() {
         <input type="text"
           placeholder="Search student or teacher..."
           value="${AppState.liveClassSearch || ''}"
-          oninput="handleLiveClassSearch(this.value)"
+          oninput="debouncedLiveClassSearch(this.value)"
           class="w-full pl-9 pr-3 py-2 bg-white border border-[#ECEAE4] rounded-xl text-xs text-[#141F1E] placeholder-[#7A8684] outline-none focus:border-[#0E4D45] transition-colors"
         />
       </div>
@@ -6876,15 +7004,15 @@ function renderLiveClassMonitoringMarkup() {
               <!-- 3-Column Time Grid -->
               <div class="grid grid-cols-3 gap-1 bg-[#F8F6F1] rounded-xl p-2.5 text-center border border-[#ECEAE4]">
                 <div class="px-1">
-                  <span class="block text-[9px] font-bold text-[#7A8684] uppercase tracking-wider">A-Time</span>
+                  <span class="block text-[9px] font-bold text-[#7A8684] tracking-wider">A-Time</span>
                   <span class="text-xs font-bold text-[#0E4D45] tabular-nums block truncate">${times.aTime}</span>
                 </div>
                 <div class="px-1 border-x border-[#ECEAE4]">
-                  <span class="block text-[9px] font-bold text-[#7A8684] uppercase tracking-wider">T-Time</span>
+                  <span class="block text-[9px] font-bold text-[#7A8684] tracking-wider">T-Time</span>
                   <span class="text-xs font-semibold text-[#141F1E] tabular-nums block truncate">${times.tTime}</span>
                 </div>
                 <div class="px-1">
-                  <span class="block text-[9px] font-bold text-[#7A8684] uppercase tracking-wider">S-Time</span>
+                  <span class="block text-[9px] font-bold text-[#7A8684] tracking-wider">S-Time</span>
                   <span class="text-xs font-semibold text-[#141F1E] tabular-nums block truncate">${times.sTime}</span>
                 </div>
               </div>
@@ -8026,7 +8154,7 @@ function renderStudentFeeLedgerRow(student, isChildOfFamily = false, isLastChild
             </div>
             <!-- Secondary Line: Muted Course & Country -->
             <div class="text-[11px] text-gray-500 mt-0.5 flex items-center gap-1.5 font-normal">
-              <span class="truncate max-w-[170px]">${student.course || 'Quran Studies'}</span>
+              <span class="block leading-snug" title="${student.course || 'Quran Studies'}">${student.course || 'Quran Studies'}</span>
               <span class="text-gray-300">·</span>
               <span>${student.country || 'Global'}</span>
             </div>
@@ -8050,7 +8178,7 @@ function renderStudentFeeLedgerRow(student, isChildOfFamily = false, isLastChild
       <!-- 12 Clean Month Cells: Subtle dot + amount, breathing room (No heavy solid blocks) -->
       ${student.months.map((m, idx) => {
         let cellContent = '';
-        let tooltip = `${m.month} ${CURRENT_YEAR}: ${m.status.toUpperCase()}`;
+        let tooltip = `${m.month} ${CURRENT_YEAR}: ${formatFeeStatusLabel(m.status)}`;
         
         if (m.status === 'paid') {
           cellContent = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span><span>${student.currency}${m.amountPaid}</span>`;
@@ -8208,7 +8336,7 @@ function renderAdminFeeMatrixView() {
               type="text" 
               id="fee-matrix-search-input"
               placeholder="Search student..." 
-              oninput="setSearchQuery(this.value)" 
+              oninput="debouncedSetSearchQuery(this.value)" 
               onkeyup="setSearchQuery(this.value)"
               value="${AppState.searchQuery}" 
               class="h-9 w-full text-xs bg-white border border-[#ECEAE4] rounded-xl pl-8 pr-7 text-[#141F1E] outline-none focus:border-[#0E4D45] shadow-2xs font-medium transition-colors"
@@ -8240,16 +8368,7 @@ function renderAdminFeeMatrixView() {
           </button>
         </div>
 
-        <!-- Right: Active Month Stepper < Nov 2026 > -->
-        <div class="inline-flex items-center h-9 rounded-xl border border-[#ECEAE4] bg-white px-1 shadow-2xs">
-          <button type="button" onclick="stepAcademicMonth(-1)" class="w-7 h-7 rounded-lg flex items-center justify-center text-[#7A8684] hover:text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer" title="Previous Month">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-          </button>
-          <span class="text-xs font-bold text-[#141F1E] px-2.5 whitespace-nowrap">${MONTHS_LIST[CURRENT_MONTH_INDEX]} ${CURRENT_YEAR}</span>
-          <button type="button" onclick="stepAcademicMonth(1)" class="w-7 h-7 rounded-lg flex items-center justify-center text-[#7A8684] hover:text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer" title="Next Month">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-          </button>
-        </div>
+<!-- P1-10: duplicate month stepper removed — the top header stepper is the single month control. -->
       </div>
 
       <!-- Collapsible Desktop Filter Panel (Does NOT cover table headers or legend) -->
@@ -8361,7 +8480,7 @@ function renderAdminFeeMatrixView() {
               type="text" 
               id="fee-matrix-mobile-search-input"
               placeholder="Search student or ID..." 
-              oninput="setSearchQuery(this.value)" 
+              oninput="debouncedSetSearchQuery(this.value)" 
               onkeyup="setSearchQuery(this.value)"
               value="${AppState.searchQuery}" 
               class="h-10 w-full min-w-0 text-xs bg-white border border-[#ECEAE4] rounded-xl pl-8 pr-7 text-[#141F1E] outline-none focus:border-[#0E4D45] shadow-2xs font-medium"
@@ -8422,10 +8541,10 @@ function renderAdminFeeMatrixView() {
       <div class="hidden md:block overflow-x-auto w-full max-w-full rounded-2xl touch-pan-x">
         <table class="w-full text-left border-collapse min-w-[980px]">
           <thead>
-            <tr class="border-b border-[#ECEAE4] text-[11px] font-semibold text-[#7A8684] uppercase tracking-wider">
-              <th class="pb-3 w-56 text-[11px] font-semibold text-[#7A8684] uppercase tracking-wider">Student & Family</th>
-              <th class="pb-3 w-28 text-[11px] font-semibold text-[#7A8684] uppercase tracking-wider">Monthly Fee</th>
-              <th class="pb-3 w-24 text-[11px] font-semibold text-[#7A8684] uppercase tracking-wider">Status</th>
+            <tr class="border-b border-[#ECEAE4] text-[11px] font-semibold text-[#7A8684] tracking-wider">
+              <th class="pb-3 w-56 text-[11px] font-semibold text-[#7A8684] tracking-wider">Student & Family</th>
+              <th class="pb-3 w-28 text-[11px] font-semibold text-[#7A8684] tracking-wider">Monthly Fee</th>
+              <th class="pb-3 w-24 text-[11px] font-semibold text-[#7A8684] tracking-wider">Status</th>
               <!-- 12 Months Columns -->
               ${MONTHS_LIST.map((m, idx) => `
                 <th class="pb-3 text-center w-12 select-none">
@@ -8434,7 +8553,7 @@ function renderAdminFeeMatrixView() {
                   </span>
                 </th>
               `).join('')}
-              <th class="pb-3 text-right w-28 text-[11px] font-semibold text-[#7A8684] uppercase tracking-wider">Action</th>
+              <th class="pb-3 text-right w-28 text-[11px] font-semibold text-[#7A8684] tracking-wider">Action</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-[#ECEAE4] text-xs">
@@ -8663,7 +8782,7 @@ function renderMobileStudentFeeCard(student, isChildOfFamily = false) {
                 <span class="text-[9px] px-1.5 py-0.2 rounded bg-gray-100 text-gray-600 font-medium">${student.familyId || student.familyTag}</span>
               ` : ''}
               <span class="text-gray-300">·</span>
-              <span class="truncate max-w-[100px] text-gray-500">${student.course || 'Quran'}</span>
+              <span class="text-gray-500" title="${student.course || 'Quran'}">${student.course || 'Quran'}</span>
             </div>
           </div>
         </div>
@@ -8683,7 +8802,7 @@ function renderMobileStudentFeeCard(student, isChildOfFamily = false) {
       <!-- 2. Compact 12-Month Visualization (grid grid-cols-4 gap-2) with colored indicator dots -->
       <div class="pt-3 pb-2">
         <div class="flex items-center justify-between text-[11px] text-[#7A8684] mb-2 font-medium">
-          <span class="text-[10px] uppercase font-bold tracking-wider text-gray-400">12-Month Status (${CURRENT_YEAR})</span>
+          <span class="text-[10px] font-bold tracking-wider text-gray-400">12-Month Status (${CURRENT_YEAR})</span>
           <span class="text-[10px] font-semibold ${balanceDue > 0 ? 'text-red-600' : 'text-emerald-600'}">
             ${balanceDue > 0 ? `-${student.currency || '$'}${balanceDue} Due` : 'Clear ✓'}
           </span>
@@ -8715,7 +8834,7 @@ function renderMobileStudentFeeCard(student, isChildOfFamily = false) {
               amountText = `${student.currency || '$'}${m.feeDue || student.monthlyFee}`;
             }
 
-            let mobileTitle = `${m.month} ${CURRENT_YEAR}: ${m.status.toUpperCase()} (${amountText})`;
+            let mobileTitle = `${m.month} ${CURRENT_YEAR}: ${formatFeeStatusLabel(m.status)} (${amountText})`;
             if (m.status === 'paid') {
               const rcpt = m.receiptNo || (student.id === 'STU-101' && idx === 10 ? 'TXN-3275' : (student.id === 'TEST-001' && idx === 10 ? 'TXN-5683' : ''));
               const pDate = m.paymentDate || 'Nov 24, 2026';
@@ -9083,6 +9202,18 @@ function getFilteredStudentsForDirectory() {
     list = list.filter(s => s.country === AppState.studentDirectoryCountryFilter);
   }
 
+  // B-6: Course Filter
+  if (AppState.directoryCourseFilter && AppState.directoryCourseFilter !== 'all') {
+    list = list.filter(s => normalizeCourseName(s.course) === AppState.directoryCourseFilter);
+  }
+
+  // B-6: Teacher Filter
+  if (AppState.directoryTeacherFilter && AppState.directoryTeacherFilter !== 'all') {
+    const ft = (AppState.teachers || []).find(t => t.id === AppState.directoryTeacherFilter);
+    list = list.filter(s => s.teacherId === AppState.directoryTeacherFilter
+      || (ft && (s.teacherName === ft.name || s.assignedTeacher === ft.name)));
+  }
+
   // Search Filter
   if (AppState.studentDirectorySearchQuery && AppState.studentDirectorySearchQuery.trim() !== '') {
     const q = AppState.studentDirectorySearchQuery.trim().toLowerCase();
@@ -9114,7 +9245,7 @@ function renderStudentDirectoryRows(students) {
   if (!AppState.students || AppState.students.length === 0) {
     return `
       <tr>
-        <td colspan="8" class="py-16 text-center bg-[#F8F6F1]/50">
+        <td colspan="9" class="py-16 text-center bg-[#F8F6F1]/50">
           <div class="max-w-md mx-auto flex flex-col items-center">
             <div class="w-12 h-12 rounded-full bg-[#E8EFEE] text-[#0E4D45] flex items-center justify-center mb-3">
               <svg class="w-6 h-6 text-[#0E4D45]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"/></svg>
@@ -9130,7 +9261,7 @@ function renderStudentDirectoryRows(students) {
   if (!students || students.length === 0) {
     return `
       <tr>
-        <td colspan="8" class="py-12 text-center text-[#7A8684]">
+        <td colspan="9" class="py-12 text-center text-[#7A8684]">
           <div class="flex flex-col items-center justify-center">
             <div class="w-10 h-10 rounded-full bg-[#E8EFEE] text-[#0E4D45] flex items-center justify-center mb-2.5">
               <svg class="w-5 h-5 text-[#0E4D45]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
@@ -9146,7 +9277,7 @@ function renderStudentDirectoryRows(students) {
     `;
   }
 
-  return students.map(s => {
+  return students.map((s, rowIdx) => {
     let teacher = null;
     const rawTid = String(s.teacherId || '').trim();
     const rawTname = String(s.teacherName || '').trim();
@@ -9169,11 +9300,15 @@ function renderStudentDirectoryRows(students) {
                         (Array.isArray(s.months) && s.months.some(m => m.status === 'defaulter'));
     const scheduleSlots = getStudentScheduleSlots(s);
     const isMenuOpen = AppState.activeStudentActionMenuId === s.id;
+    // P1-6: the last rows sit at the bottom of the card, so their action menu
+    // opens upward instead of being clipped by the card's bottom edge.
+    const menuOpensUpward = rowIdx >= students.length - 2;
     const isSchedOpen = AppState.activeStudentSchedulePopoverId === s.id;
     const isContactOpen = AppState.activeStudentContactPopoverId === s.id;
 
     return `
       <tr class="hover:bg-[#F8F6F1]/50 transition-colors border-b border-[#F1EFEA]">
+        <td class="py-3.5 px-2.5" data-label="Select"><input type="checkbox" ${((AppState.selectedStudentIds || []).includes(s.id)) ? 'checked' : ''} onchange="toggleStudentSelection('${s.id}', this.checked)" class="accent-[#0E4D45] w-4 h-4 cursor-pointer" title="Select student"></td>
         <!-- 1. Student Name (Avatar + Full Name + Subtle QA-1008 Badge + Family Tag Pill) -->
         <td class="py-3.5 px-2.5" data-label="Student">
           <div class="flex items-center gap-1.5 whitespace-nowrap">
@@ -9195,7 +9330,7 @@ function renderStudentDirectoryRows(students) {
 
         <!-- 2. Course Track (Single-Line Text with clean max width) -->
         <td class="py-3.5 px-2.5" data-label="Course Track">
-          <span class="text-xs text-[#141F1E] font-medium truncate block max-w-[140px]" title="${s.course || 'Quran Studies'}">
+          <span class="text-xs text-[#141F1E] font-medium block whitespace-normal leading-snug" title="${s.course || 'Quran Studies'}">
             ${s.course || 'Quran Studies'}
           </span>
         </td>
@@ -9230,7 +9365,7 @@ function renderStudentDirectoryRows(students) {
               <svg class="w-3 h-3 ${isContactOpen ? 'text-white' : isDefaulter ? 'text-[#B91C1C]' : 'text-[#0E4D45]'}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
                 <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
               </svg>
-              <span>${s.phone ? (s.phone.length > 13 ? s.phone.slice(0, 11) + '…' : s.phone) : 'Contact'} ▾</span>
+              <span title="${s.phone || ''}">${s.phone || 'Contact'} ▾</span>
             </button>
 
             ${isContactOpen ? `
@@ -9260,7 +9395,7 @@ function renderStudentDirectoryRows(students) {
                       </div>
                       <div class="min-w-0">
                         <span class="text-[10px] text-[#7A8684] block font-medium">WhatsApp / Phone</span>
-                        <span class="text-xs font-bold text-[#141F1E] truncate block">${s.phone}</span>
+                        <span class="text-xs font-bold text-[#141F1E] block break-all" title="${s.phone}">${s.phone}</span>
                       </div>
                     </div>
                     <a 
@@ -9376,7 +9511,7 @@ function renderStudentDirectoryRows(students) {
           </button>
 
           ${isMenuOpen ? `
-            <div class="absolute right-0 top-11 rounded-2xl shadow-xl border border-[#ECEAE4] p-1.5 w-48 bg-white z-50 text-left animate-in fade-in zoom-in-95 duration-150">
+            <div class="absolute right-0 ${menuOpensUpward ? 'bottom-11' : 'top-11'} rounded-2xl shadow-xl border border-[#ECEAE4] p-1.5 w-48 bg-white z-50 text-left animate-in fade-in zoom-in-95 duration-150">
               <button onclick="closeStudentActionMenu(); openViewWeeklyScheduleModal('${s.id}')" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer whitespace-nowrap">
                 <svg class="w-4 h-4 text-[#7A8684] shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
@@ -9424,7 +9559,7 @@ function renderStudentDirectoryRows(students) {
                   id="status-submenu-${s.id}" 
                   class="hidden group-hover/status:block absolute right-full top-0 mr-1.5 w-48 bg-white rounded-2xl shadow-2xl border border-[#ECEAE4] p-1.5 z-50 text-left animate-in fade-in zoom-in-95 duration-100 before:absolute before:right-[-10px] before:top-0 before:w-[15px] before:h-full before:content-['']"
                 >
-                  <div class="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[#94A3B8] border-b border-[#F1EFEA] mb-1">
+                  <div class="px-2.5 py-1 text-[10px] font-bold tracking-wider text-[#94A3B8] border-b border-[#F1EFEA] mb-1">
                     Select Status
                   </div>
 
@@ -9511,7 +9646,7 @@ function handleStudentDirectorySearch(q) {
   const countEl = document.getElementById('student-directory-count-pill');
   if (countEl) {
     const filtered = getFilteredStudentsForDirectory();
-    countEl.textContent = `${filtered.length} Total Students`;
+    countEl.textContent = `${pluralize(filtered.length, 'Total Student', 'Total Students')}`;
   }
 }
 
@@ -9535,7 +9670,10 @@ function handleStudentDirectoryCountryFilter(country) {
 function resetStudentDirectoryFilters() {
   AppState.studentDirectoryStatusFilter = 'all';
   AppState.studentDirectoryCountryFilter = 'all';
+  AppState.directoryCourseFilter = 'all';
+  AppState.directoryTeacherFilter = 'all';
   AppState.studentDirectorySearchQuery = '';
+  AppState.selectedStudentIds = [];
   renderApp();
 }
 
@@ -9669,10 +9807,13 @@ function deleteStudent(studentId, event) {
 }
 window.deleteStudent = deleteStudent;
 
-function exportStudentsToCSV() {
-  const studentsToExport = (typeof getFilteredStudentsForDirectory === 'function') 
-    ? getFilteredStudentsForDirectory() 
-    : (AppState.students || []);
+function exportStudentsToCSV(listOverride) {
+  let studentsToExport = (AppState.students || []);
+  if (Array.isArray(listOverride) && listOverride.length) {
+    studentsToExport = listOverride;
+  } else if (typeof getFilteredStudentsForDirectory === 'function') {
+    studentsToExport = getFilteredStudentsForDirectory();
+  }
   if (!studentsToExport || studentsToExport.length === 0) {
     showToastNotification('No students found to export.');
     return;
@@ -9829,6 +9970,18 @@ function renderAdminStudentsDirectory() {
           }).join('')}
         </div>
 
+        <!-- Course & Teacher Filters (shared filter style) -->
+        <div class="flex items-center gap-2 shrink-0">
+          <select id="directory-course-filter" onchange="setStudentDirectoryCourseFilter(this.value)" class="px-3 py-2 text-xs rounded-full border border-[#ECEAE4] bg-white text-[#141F1E] focus:outline-none focus:border-[#0E4D45] cursor-pointer" title="Filter by course">
+            <option value="all">All courses</option>
+            ${COURSES.map(c => `<option value="${c}" ${AppState.directoryCourseFilter === c ? 'selected' : ''}>${c}</option>`).join('')}
+          </select>
+          <select id="directory-teacher-filter" onchange="setStudentDirectoryTeacherFilter(this.value)" class="px-3 py-2 text-xs rounded-full border border-[#ECEAE4] bg-white text-[#141F1E] focus:outline-none focus:border-[#0E4D45] cursor-pointer" title="Filter by teacher">
+            <option value="all">All teachers</option>
+            ${(AppState.teachers || []).map(t => `<option value="${t.id}" ${AppState.directoryTeacherFilter === t.id ? 'selected' : ''}>${t.name}</option>`).join('')}
+          </select>
+        </div>
+
         <!-- Sleek Rounded Search Bar -->
         <div class="relative w-full md:w-80">
           <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-[#94A3B8]">
@@ -9838,7 +9991,7 @@ function renderAdminStudentsDirectory() {
             type="text" 
             id="student-directory-search-input" 
             value="${AppState.studentDirectorySearchQuery || ''}" 
-            oninput="handleStudentDirectorySearch(this.value)" 
+            oninput="debouncedDirectorySearchWithSkeleton(this.value)" 
             placeholder="Search students, IDs, or teachers..." 
             class="w-full pl-10 pr-8 py-2 text-xs rounded-full border border-[#ECEAE4] bg-white text-[#141F1E] placeholder-[#94A3B8] focus:outline-none focus:border-[#0E4D45] focus:ring-1 focus:ring-[#0E4D45] transition-all shadow-2xs"
           />
@@ -9849,25 +10002,18 @@ function renderAdminStudentsDirectory() {
       </div>
 
       <!-- 2. Ultra-Clean Single-Line Table (Converts to Cards on Mobile) -->
-      <div class="overflow-x-auto min-h-[380px]">
-        <table class="w-full text-left border-collapse responsive-table-cards">
-          <thead>
-            <tr class="border-b border-[#ECEAE4] text-[11px] font-bold text-[#7A8684] uppercase tracking-wider">
-              <th class="py-3 px-2.5">Student Name</th>
-              <th class="py-3 px-2.5">Course Track</th>
-              <th class="py-3 px-2.5">Assigned Teacher</th>
-              <th class="py-3 px-2.5">Guardian Contact</th>
-              <th class="py-3 px-2.5">Agreed Fee</th>
-              <th class="py-3 px-2.5">Timetable</th>
-              <th class="py-3 px-2.5">Status</th>
-              <th class="py-3 px-2.5 w-10 text-right"></th>
-            </tr>
-          </thead>
-          <tbody id="student-directory-table-body" class="divide-y divide-[#F1EFEA] text-xs">
-            ${renderStudentDirectoryRows(filteredStudents)}
-          </tbody>
-        </table>
-      </div>
+      ${renderDirectoryBulkBar()}
+      ${dataTableShell({
+        tbodyId: 'student-directory-table-body',
+        minHeight: '380px',
+        columns: [
+          '<input type="checkbox" onchange="toggleSelectAllDirectory(this.checked)" title="Select all students" class="accent-[#0E4D45] w-4 h-4 cursor-pointer">',
+          'Student Name', 'Course Track', 'Assigned Teacher', 'Guardian Contact',
+          'Agreed Fee', 'Timetable', 'Status', ''
+        ],
+        rowsHtml: renderStudentDirectoryRows(filteredStudents),
+        empty: { title: 'No students yet', hint: 'Use the "+ Add Student" button above to enroll your first student.', actionLabel: 'Add Student', actionOnclick: 'openAddStudentModal()' }
+      })}
     </div>
   `;
 }
@@ -9877,7 +10023,9 @@ function renderAdminStudentsDirectory() {
 // ==========================================
 
 function renderAdminTeacherPayrollView() {
-  const totalTeachers = AppState.teachers.length;
+  // P0-3: Count only teachers flagged as Huffaz. A missing flag defaults to
+  // false (strict === true check), so the old "all teachers" count is gone.
+  const certifiedHafizCount = (AppState.teachers || []).filter(t => t.isHafiz === true || t.certifiedHafiz === true).length;
   let totalPayroll = 0;
   let paidPayroll = 0;
   let pendingPayroll = 0;
@@ -9914,7 +10062,7 @@ function renderAdminTeacherPayrollView() {
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div class="p-4 bg-[#F8F6F1] rounded-2xl border border-[#ECEAE4]">
           <span class="text-xs text-[#7A8684] font-medium">Total Teachers</span>
-          <p class="text-2xl font-bold text-[#141F1E] mt-1">${totalTeachers} Certified Huffaz</p>
+          <p class="text-2xl font-bold text-[#141F1E] mt-1" title="Teachers who have memorised the Quran">${certifiedHafizCount} Certified Huffaz</p>
         </div>
         <div class="p-4 bg-[#F8F6F1] rounded-2xl border border-[#ECEAE4]">
           <span class="text-xs text-[#7A8684] font-medium">Estimated Payroll (${MONTHS_LIST[CURRENT_MONTH_INDEX]})</span>
@@ -9927,14 +10075,14 @@ function renderAdminTeacherPayrollView() {
         </div>
         <div class="p-4 bg-[#F8F6F1] rounded-2xl border border-[#ECEAE4]">
           <span class="text-xs text-[#7A8684] font-medium">Classes Logged</span>
-          <p class="text-2xl font-bold text-[#141F1E] mt-1">${totalHours} Hours (${Math.round(totalHours * 1.3)} Sessions)</p>
+          <p class="text-2xl font-bold text-[#141F1E] mt-1">${totalHours} Hours</p>
         </div>
       </div>
 
       <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse min-w-0 md:min-w-[850px] responsive-table-cards">
           <thead>
-            <tr class="border-b border-[#ECEAE4] text-[11px] font-bold text-[#7A8684] uppercase tracking-wider">
+            <tr class="border-b border-[#ECEAE4] text-[11px] font-bold text-[#7A8684] tracking-wider">
               <th class="pb-3">Teacher Name</th>
               <th class="pb-3">Specialization</th>
               <th class="pb-3">Country</th>
@@ -9977,11 +10125,12 @@ function renderAdminTeacherPayrollView() {
                         onerror="this.onerror=null; this.src='${getAvatarUrl(t.name)}';"
                       />
                       <span>${t.name}</span>
+                      ${(t.isHafiz === true || t.certifiedHafiz === true) ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#E0F2F1] text-[#0E4D45] border border-[#B2DFDB]/60 shrink-0">Hafiz</span>` : ''}
                     </div>
                   </td>
                   <td class="py-3.5 text-[#334E4B]" data-label="Specialization">${t.specialization}</td>
                   <td class="py-3.5 text-[#7A8684]" data-label="Country">${t.country}</td>
-                  <td class="py-3.5 font-semibold text-[#0E4D45] tabular-nums" data-label="Active Students">${dynamicActiveCount} Students</td>
+                  <td class="py-3.5 font-semibold text-[#0E4D45] tabular-nums" data-label="Active Students">${pluralize(dynamicActiveCount, 'Student', 'Students')}</td>
                   <td class="py-3.5 text-[#141F1E] font-medium tabular-nums" data-label="Hourly Rate">$${rate}/hr</td>
                   <td class="py-3.5 text-[#7A8684] tabular-nums" data-label="Hours Logged">${hours} hrs</td>
                   <td class="py-3.5 font-semibold text-[#0E4D45] tabular-nums" data-label="Honorarium">$${totalPay.toLocaleString()}</td>
@@ -10080,7 +10229,7 @@ function renderAdminTrialsAndNoticesView() {
         <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse min-w-0 md:min-w-[760px] responsive-table-cards">
             <thead>
-              <tr class="border-b border-[#ECEAE4] text-[11px] font-semibold text-[#7A8684] uppercase tracking-wider">
+              <tr class="border-b border-[#ECEAE4] text-[11px] font-semibold text-[#7A8684] tracking-wider">
                 <th class="pb-3 pl-2">Candidate Student</th>
                 <th class="pb-3">Location & Timezone</th>
                 <th class="pb-3">Preferred Time Slot</th>
@@ -10362,7 +10511,7 @@ function renderManagerPortalView() {
         <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse min-w-0 md:min-w-[700px] responsive-table-cards">
             <thead>
-              <tr class="border-b border-[#ECEAE4] text-[11px] font-semibold text-[#7A8684] uppercase tracking-wider">
+              <tr class="border-b border-[#ECEAE4] text-[11px] font-semibold text-[#7A8684] tracking-wider">
                 <th class="pb-3 pl-2">Candidate Student</th>
                 <th class="pb-3">Location & Timezone</th>
                 <th class="pb-3">Preferred Time</th>
@@ -10495,7 +10644,7 @@ function renderManagerPortalView() {
         <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse min-w-0 md:min-w-[750px] responsive-table-cards">
             <thead>
-              <tr class="border-b border-[#ECEAE4] text-[11px] font-bold text-[#7A8684] uppercase tracking-wider">
+              <tr class="border-b border-[#ECEAE4] text-[11px] font-bold text-[#7A8684] tracking-wider">
                 <th class="pb-3">Student Token</th>
                 <th class="pb-3">Guardian</th>
                 <th class="pb-3">Contact Details</th>
@@ -10639,7 +10788,7 @@ function renderTeacherPortalView() {
       <div class="ts-card p-6">
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-[#ECEAE4]">
           <div>
-            <h3 class="text-base font-bold text-[#141F1E]">Rapid Zero-Typing Sabaq Logger</h3>
+            <h3 class="text-base font-bold text-[#141F1E]">Rapid zero-typing lesson logger</h3>
             <p class="text-xs text-[#7A8684]">Log Sabaq, Sabqi, and Manzil in under 30 seconds using one-tap pills</p>
           </div>
           <button onclick="openSabaqLoggerModal()" class="px-5 py-2.5 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors shadow-sm flex items-center gap-2">
@@ -10648,7 +10797,7 @@ function renderTeacherPortalView() {
         </div>
 
         <div class="space-y-4">
-          <h4 class="text-xs font-bold text-[#7A8684] uppercase tracking-wider">Recent Sabaq Submissions</h4>
+          <h4 class="text-xs font-bold text-[#7A8684] tracking-wider" title="Daily lesson (Sabaq) submissions">Recent lesson submissions</h4>
           ${AppState.students.filter(s => s.lastSabaq).map(s => {
             const display = getStudentDisplay(s, 'teacher');
             return `
@@ -10688,13 +10837,13 @@ function renderTeacherPortalView() {
             <h3 class="text-base font-bold text-[#141F1E]">My Assigned Students (Privacy Protected)</h3>
             <p class="text-xs text-[#7A8684]">Student contact PII is locked by Academy Admin policy</p>
           </div>
-          <span class="ts-badge ts-badge-paid">${AppState.students.length} Students Assigned</span>
+          <span class="ts-badge ts-badge-paid">${pluralize(AppState.students.length, 'Student Assigned', 'Students Assigned')}</span>
         </div>
 
         <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse min-w-0 md:min-w-[700px] responsive-table-cards">
             <thead>
-              <tr class="border-b border-[#ECEAE4] text-[11px] font-bold text-[#7A8684] uppercase tracking-wider">
+              <tr class="border-b border-[#ECEAE4] text-[11px] font-bold text-[#7A8684] tracking-wider">
                 <th class="pb-3">Student Token</th>
                 <th class="pb-3">Course Track</th>
                 <th class="pb-3">Current Lesson</th>
@@ -10922,13 +11071,13 @@ function renderStudentParentPortalView() {
             <h3 class="text-base font-bold text-[#141F1E]">Official Academy Receipts & Tax Invoices</h3>
             <p class="text-xs text-[#7A8684]">Verified payment documentation with downloadable and printable official seals</p>
           </div>
-          <span class="ts-badge ts-badge-paid">${displayReceipts.length} Receipts Issued</span>
+          <span class="ts-badge ts-badge-paid">${pluralize(displayReceipts.length, 'Receipt Issued', 'Receipts Issued')}</span>
         </div>
 
         <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse min-w-0 md:min-w-[700px] responsive-table-cards">
             <thead>
-              <tr class="border-b border-[#ECEAE4] text-[11px] font-bold text-[#7A8684] uppercase tracking-wider">
+              <tr class="border-b border-[#ECEAE4] text-[11px] font-bold text-[#7A8684] tracking-wider">
                 <th class="pb-3">Receipt / Invoice #</th>
                 <th class="pb-3">Payment Date</th>
                 <th class="pb-3">Allocated Session</th>
@@ -10993,7 +11142,7 @@ function renderStudentParentPortalView() {
         <div class="p-4 rounded-2xl bg-[#F8F6F1] border border-[#ECEAE4]">
           <div class="flex items-start justify-between">
             <div>
-              <span class="text-xs text-[#7A8684] uppercase font-bold tracking-wider">${activeStudent.lastSabaq ? activeStudent.lastSabaq.type : 'Daily Recitation'}</span>
+              <span class="text-xs text-[#7A8684] font-bold tracking-wider">${activeStudent.lastSabaq ? activeStudent.lastSabaq.type : 'Daily Recitation'}</span>
               <h4 class="text-base font-bold text-[#141F1E] mt-0.5">${activeStudent.lastSabaq ? activeStudent.lastSabaq.surah : 'Surah Al-Fatiha'}</h4>
               <p class="text-xs text-[#334E4B] mt-2 italic">"${activeStudent.lastSabaq ? activeStudent.lastSabaq.teacherNote : 'Continuous improvement in Tajweed articulation rules.'}"</p>
             </div>
@@ -11028,8 +11177,49 @@ function switchSiblingChild(studentId) {
 // ==========================================
 
 /**
- * Populates the Target Academic Month selector inside Receive Tuition Fee modal
- * Defaults to current academic month (November 2026)
+ * P3-17: First unpaid/unsettled month for a student (or family group).
+ * Scans the 12-month ledger from January, skipping months before enrolment,
+ * and returns the first month with a remaining balance. If every enrolled
+ * month through the current month is settled, returns the next month, so a
+ * payment for it is recorded as advance. Falls back to the current month.
+ * Used so the Receive Fee Target defaults to the month the payment will
+ * actually settle (e.g. December 2026 for Ahmed Khan, STU-101, whose
+ * November 2026 fee is already paid) instead of always the current month.
+ */
+function getNextDueMonth(studentOrTarget) {
+  let students = [];
+  if (typeof studentOrTarget === 'string') {
+    if (isFamilyTarget(studentOrTarget)) {
+      students = (AppState.students || []).filter(s => s.familyId === studentOrTarget || s.familyTag === studentOrTarget);
+    } else {
+      const found = (AppState.students || []).find(st => st.id === studentOrTarget);
+      if (found) students = [found];
+    }
+  } else if (studentOrTarget) {
+    students = [studentOrTarget];
+  }
+  if (students.length === 0) return CURRENT_MONTH_INDEX;
+  let earliest = null;
+  students.forEach(s => {
+    if (!Array.isArray(s.months)) return;
+    for (let i = 0; i < 12; i++) {
+      const m = s.months[i];
+      if (!m || m.status === 'not_enrolled') continue;
+      if (Number(m.remainingDue || 0) > 0) {
+        if (earliest === null || i < earliest) earliest = i;
+        break;
+      }
+    }
+  });
+  if (earliest !== null) return earliest;
+  return CURRENT_MONTH_INDEX < 11 ? CURRENT_MONTH_INDEX + 1 : CURRENT_MONTH_INDEX;
+}
+window.getNextDueMonth = getNextDueMonth;
+
+/**
+ * Populates the Target Academic Month selector inside Receive Tuition Fee modal.
+ * The selected month is chosen by the caller (see getNextDueMonth for the
+ * Receive Fee default: first unpaid/unsettled month, not the current month).
  */
 function populateModalFeeMonthSelect(targetId = null, selectedMonthIdx = CURRENT_MONTH_INDEX) {
   const monthSelect = document.getElementById('modal-fee-month-select');
@@ -11159,8 +11349,10 @@ function openReceiveFeeModal(preselectedTarget = null) {
     selectEl.value = preselectedTarget;
   }
 
-  // Populate Target Academic Month dropdown (defaults to current month)
-  populateModalFeeMonthSelect(preselectedTarget, CURRENT_MONTH_INDEX);
+  // P3-17: Populate Target Academic Month dropdown, defaulting to the first
+  // unpaid/unsettled month for this student so Target matches the FIFO preview.
+  const nextDueMonthIdx = getNextDueMonth(preselectedTarget);
+  populateModalFeeMonthSelect(preselectedTarget, nextDueMonthIdx);
 
   // Set default amount intelligently based on selection
   const amountInput = document.getElementById('modal-fee-amount-input');
@@ -11170,9 +11362,9 @@ function openReceiveFeeModal(preselectedTarget = null) {
       amountInput.value = (fam && fam.totalDue > 0 ? fam.totalDue : (fam ? fam.totalMonthlyFee : 50)).toString();
     } else {
       const student = (AppState.students || []).find(s => s.id === preselectedTarget) || AppState.students[0];
-      const curMonth = student?.months ? student.months[CURRENT_MONTH_INDEX] : null;
-      const curDue = curMonth ? (curMonth.remainingDue > 0 ? curMonth.remainingDue : curMonth.feeDue) : (Number(student?.monthlyFee) || 50);
-      amountInput.value = (curDue > 0 ? curDue : (Number(student?.monthlyFee) || 50)).toString();
+      const targetMonth = student?.months ? student.months[nextDueMonthIdx] : null;
+      const targetDue = targetMonth ? (targetMonth.remainingDue > 0 ? targetMonth.remainingDue : targetMonth.feeDue) : (Number(student?.monthlyFee) || 50);
+      amountInput.value = (targetDue > 0 ? targetDue : (Number(student?.monthlyFee) || 50)).toString();
     }
   }
 
@@ -11193,6 +11385,8 @@ function handleFeeTargetChange() {
   const amountInput = document.getElementById('modal-fee-amount-input');
   if (selectEl && amountInput) {
     const val = selectEl.value;
+    // P3-17: Target month follows the newly selected student: first unpaid month.
+    populateModalFeeMonthSelect(val, getNextDueMonth(val));
     if (val && isFamilyTarget(val)) {
       const famStudents = (AppState.students || []).filter(s => s.familyId === val || s.familyTag === val);
       let totalDue = 0;
@@ -11205,9 +11399,10 @@ function handleFeeTargetChange() {
     } else if (val) {
       const student = (AppState.students || []).find(s => s.id === val);
       if (student) {
-        const curMonth = student.months ? student.months[CURRENT_MONTH_INDEX] : null;
-        const curDue = curMonth ? (curMonth.remainingDue > 0 ? curMonth.remainingDue : curMonth.feeDue) : (Number(student.monthlyFee) || 50);
-        amountInput.value = (curDue > 0 ? curDue : (Number(student.monthlyFee) || 50)).toString();
+        const nextDueIdx = getNextDueMonth(student);
+        const targetMonth = student.months ? student.months[nextDueIdx] : null;
+        const targetDue = targetMonth ? (targetMonth.remainingDue > 0 ? targetMonth.remainingDue : targetMonth.feeDue) : (Number(student.monthlyFee) || 50);
+        amountInput.value = (targetDue > 0 ? targetDue : (Number(student.monthlyFee) || 50)).toString();
       }
     }
     updateModalFeePresets(val);
@@ -11290,7 +11485,7 @@ function updateFIFOPreview() {
         <span class="text-[#0E4D45] font-semibold">${currency}${amount} Allocated</span>
       </div>
       <table class="w-full text-xs text-left responsive-table-cards">
-        <thead class="bg-[#FFFFFF] border-b border-[#ECEAE4] text-[10px] uppercase font-bold text-[#7A8684]">
+        <thead class="bg-[#FFFFFF] border-b border-[#ECEAE4] text-[10px] font-bold text-[#7A8684]">
           <tr>
             <th class="p-2.5">Month</th>
             ${isFamily ? '<th class="p-2.5">Student</th>' : ''}
@@ -11308,10 +11503,10 @@ function updateFIFOPreview() {
               ${isFamily ? `<td class="p-2.5 font-medium text-[#0E4D45]" data-label="Student">${a.studentName.split(' ')[0]}</td>` : ''}
               <td class="p-2.5 text-[#7A8684]" data-label="Monthly Fee">${a.currency}${a.feeDue}</td>
               <td class="p-2.5 font-bold text-[#0E4D45]" data-label="Allocated">+${a.currency}${a.allocatedAmount}</td>
-              <td class="p-2.5" data-label="Previous Status"><span class="text-[10px] uppercase font-semibold text-[#7A8684]">${a.prevStatus}</span></td>
+              <td class="p-2.5" data-label="Previous Status"><span class="text-[10px] font-semibold text-[#7A8684]">${a.prevStatus}</span></td>
               <td class="p-2.5" data-label="New Status">
                 <span class="ts-badge ${a.newStatus === 'paid' ? 'ts-badge-paid' : (a.newStatus === 'advance' ? 'ts-badge-advance' : 'ts-badge-partial')}">
-                  ${a.newStatus.toUpperCase()}
+                  ${formatFeeStatusLabel(a.newStatus)}
                 </span>
               </td>
               <td class="p-2.5 text-right font-bold ${a.newRemainingDue > 0 ? 'text-[#991B1B]' : 'text-[#065F46]'}" data-label="Remaining Due">
@@ -11589,15 +11784,15 @@ function openMonthDetailModal(studentId, monthIndex) {
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
               <div>
-                <span class="text-[10px] text-[#7A8684] uppercase font-semibold block">Payment Date</span>
+                <span class="text-[10px] text-[#7A8684] font-semibold block">Payment Date</span>
                 <span class="font-semibold text-[#141F1E] mt-0.5 block">${matchedPayment.date}</span>
               </div>
               <div>
-                <span class="text-[10px] text-[#7A8684] uppercase font-semibold block">Payment Method</span>
+                <span class="text-[10px] text-[#7A8684] font-semibold block">Payment Method</span>
                 <span class="font-semibold text-[#141F1E] mt-0.5 block">${matchedPayment.method}</span>
               </div>
               <div>
-                <span class="text-[10px] text-[#7A8684] uppercase font-semibold block">Settled Amount</span>
+                <span class="text-[10px] text-[#7A8684] font-semibold block">Settled Amount</span>
                 <span class="font-bold text-[#0E4D45] mt-0.5 block">${matchedPayment.currency || student.currency}${matchedPayment.amount}</span>
               </div>
             </div>
@@ -11612,7 +11807,7 @@ function openMonthDetailModal(studentId, monthIndex) {
 
         <!-- Quick Actions Panel -->
         <div class="space-y-2">
-          <span class="text-[11px] font-semibold text-[#7A8684] uppercase tracking-wider block mb-1">Quick Ledger Actions:</span>
+          <span class="text-[11px] font-semibold text-[#7A8684] tracking-wider block mb-1">Quick Ledger Actions:</span>
           
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <!-- Action 1: Settle / Record Payment -->
@@ -11890,7 +12085,7 @@ function openReceiptModal(txnId = 'TXN-9021') {
           <p class="text-[11px] text-[#7A8684]">Tax ID: QSA-98234-LMS • support@quranicskills.com</p>
         </div>
         <div class="text-right">
-          <span class="text-xs font-bold text-[#0E4D45] uppercase tracking-wider">Official Fee Receipt</span>
+          <span class="text-xs font-bold text-[#0E4D45] tracking-wider">Official Fee Receipt</span>
           <p class="text-lg font-bold text-[#141F1E] mt-0.5">${txn.id}</p>
           <p class="text-xs text-[#7A8684]">Date: ${txn.date}</p>
         </div>
@@ -11963,12 +12158,382 @@ function simulateJoinRoom(classId) {
   showToastNotification(`Connecting to secure encrypted Quran Classroom (${classId})...`);
 }
 
+// Shared helpers (P2): plain-language fee-status labels and pluralization.
+function formatFeeStatusLabel(status) {
+  const labels = { defaulter: 'Overdue', not_enrolled: 'Not enrolled', paid: 'Paid', partial: 'Partial', upcoming: 'Upcoming', advance: 'Advance', settled: 'Settled', unpaid: 'Unpaid' };
+  const key = String(status || '').toLowerCase();
+  return labels[key] || String(status || '');
+}
+function pluralize(n, singular, plural) {
+  return n + ' ' + (n === 1 ? singular : plural);
+}
+
+// ==========================================
+// PART B — SHARED UX PATTERNS (one implementation, reused by all four portals)
+// ==========================================
+
+// B-8: Shared debounce helper for every search box.
+function debounce(fn, wait) {
+  let timer = null;
+  return function (...args) {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), wait || 300);
+  };
+}
+
+// B-1: Skeleton loader rows (theme colours) for lists while they load.
+function skeletonRows(count, cols) {
+  const rows = [];
+  for (let i = 0; i < (count || 5); i++) {
+    let cells = '';
+    for (let c = 0; c < (cols || 4); c++) {
+      cells += '<td class="py-3.5 px-2.5"><div class="skeleton" style="height:14px;width:' + (c === 0 ? '70%' : '55%') + '"></div></td>';
+    }
+    rows.push('<tr class="border-b border-[#F1EFEA]">' + cells + '</tr>');
+  }
+  return rows.join('');
+}
+
+// B-2: One shared empty-state component for every empty list.
+function emptyStateHtml(opts) {
+  const o = opts || {};
+  return '<div class="py-12 text-center flex flex-col items-center justify-center">'
+    + '<div class="w-10 h-10 rounded-full bg-[#E8EFEE] text-[#0E4D45] flex items-center justify-center mb-2.5">'
+    + '<svg class="w-5 h-5 text-[#0E4D45]" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></div>'
+    + '<p class="font-semibold text-sm text-[#141F1E]">' + (o.title || 'Nothing here yet') + '</p>'
+    + '<p class="text-xs text-[#7A8684] mt-1">' + (o.hint || '') + '</p>'
+    + (o.actionLabel ? '<button onclick="' + o.actionOnclick + '" class="mt-3 px-4 py-1.5 rounded-lg bg-[#0E4D45] text-white text-xs font-semibold hover:bg-[#14534B] transition-colors cursor-pointer">' + o.actionLabel + '</button>' : '')
+    + '</div>';
+}
+
+// B-4: Smart form validation — inline error next to the exact field.
+function validateField(inputEl, checkFn, message) {
+  if (!inputEl) return false;
+  clearFieldError(inputEl);
+  const value = inputEl.value;
+  let ok = false;
+  try { ok = !!checkFn(value, inputEl); } catch (e) { ok = false; }
+  if (!ok) {
+    inputEl.classList.add('field-invalid');
+    const err = document.createElement('p');
+    err.className = 'field-error';
+    err.textContent = message || 'This field is not valid.';
+    inputEl.insertAdjacentElement('afterend', err);
+    return false;
+  }
+  inputEl.classList.remove('field-invalid');
+  return true;
+}
+function clearFieldError(inputEl) {
+  if (!inputEl) return;
+  inputEl.classList.remove('field-invalid');
+  const next = inputEl.nextElementSibling;
+  if (next && next.classList && next.classList.contains('field-error')) next.remove();
+}
+
+// B-12: Graceful error recovery — plain-language message + Retry, input preserved.
+function showErrorWithRetry(message, retryFn) {
+  window._lastRetryFn = (typeof retryFn === 'function') ? retryFn : null;
+  let container = document.getElementById('toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toast-container';
+    container.className = 'fixed top-20 right-6 z-[9999] flex flex-col gap-2.5 pointer-events-none';
+    document.body.appendChild(container);
+  }
+  const toast = document.createElement('div');
+  toast.className = 'pointer-events-auto bg-white border border-red-200 text-[#141F1E] shadow-2xl rounded-2xl px-4 py-3 flex items-center gap-3 max-w-sm sm:max-w-md';
+  toast.innerHTML = '<div class="w-7 h-7 rounded-full bg-red-50 text-[#DC2626] flex items-center justify-center font-bold text-xs shrink-0 border border-red-200">!</div>'
+    + '<div class="text-xs font-semibold text-[#141F1E] leading-relaxed flex-1">' + message + '</div>'
+    + (window._lastRetryFn ? '<button onclick="window._lastRetryFn && window._lastRetryFn(); this.parentElement.remove();" class="px-3 py-1.5 rounded-lg bg-[#0E4D45] text-white text-xs font-bold cursor-pointer shrink-0">Retry</button>' : '')
+    + '<button onclick="this.parentElement.remove()" class="text-[#7A8684] hover:text-[#141F1E] text-xs font-bold ml-1 cursor-pointer">✕</button>';
+  container.appendChild(toast);
+  setTimeout(() => { if (toast.parentElement) toast.remove(); }, 8000);
+}
+
+// B-13: Autosave drafts (local only — never auto-submits).
+function saveFormDraft(key, fieldIds) {
+  try {
+    const data = {};
+    (fieldIds || []).forEach(id => { const el = document.getElementById(id); if (el) data[id] = el.value; });
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (e) { /* storage unavailable — drafts are best-effort */ }
+}
+function loadFormDraft(key) {
+  try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { return null; }
+}
+function clearFormDraft(key) { try { localStorage.removeItem(key); } catch (e) {} }
+function attachDraftAutosave(fieldIds, key) {
+  (fieldIds || []).forEach(id => {
+    const el = document.getElementById(id);
+    if (!el || el.dataset.draftBound) return;
+    el.dataset.draftBound = '1';
+    el.addEventListener('input', () => saveFormDraft(key, fieldIds));
+    el.addEventListener('change', () => saveFormDraft(key, fieldIds));
+  });
+}
+function restoreFormDraft(key, fieldIds) {
+  const d = loadFormDraft(key);
+  if (!d) return false;
+  let restored = false;
+  (fieldIds || []).forEach(id => {
+    const el = document.getElementById(id);
+    if (el && d[id] !== undefined && d[id] !== null && d[id] !== '') { el.value = d[id]; restored = true; }
+  });
+  return restored;
+}
+const STUDENT_DRAFT_FIELDS = ['add-student-id', 'add-student-full-name', 'add-student-guardian-name', 'add-student-whatsapp', 'add-student-email', 'add-student-country', 'add-student-timezone', 'add-student-address', 'add-student-family-id', 'add-student-course', 'add-student-currency', 'add-student-fee'];
+const TEACHER_DRAFT_FIELDS = ['add-teacher-id', 'add-teacher-name', 'add-teacher-father-name', 'add-teacher-cnic', 'add-teacher-email', 'add-teacher-phone', 'add-teacher-spec', 'add-teacher-rate', 'add-teacher-country'];
+function clearStudentDraft() {
+  confirmDestructiveAction({
+    title: 'Clear draft?',
+    message: 'This will discard the unsaved student details you typed in this form.',
+    confirmLabel: 'Clear draft',
+    onConfirm: function () {
+      clearFormDraft('lms_draft_add_student');
+      STUDENT_DRAFT_FIELDS.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+      const n = document.getElementById('add-student-draft-note'); if (n) n.classList.add('hidden');
+    }
+  });
+}
+function clearTeacherDraft() {
+  confirmDestructiveAction({
+    title: 'Clear draft?',
+    message: 'This will discard the unsaved teacher details you typed in this form.',
+    confirmLabel: 'Clear draft',
+    onConfirm: function () {
+      clearFormDraft('lms_draft_add_teacher');
+      TEACHER_DRAFT_FIELDS.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+      const n = document.getElementById('add-teacher-draft-note'); if (n) n.classList.add('hidden');
+    }
+  });
+}
+// Wrap the open-modal functions (defined above) so drafts restore after the
+// form is reset, without editing the open functions themselves.
+const _openAddStudentModalOrig = openAddStudentModal;
+window.openAddStudentModal = function () {
+  _openAddStudentModalOrig();
+  attachDraftAutosave(STUDENT_DRAFT_FIELDS, 'lms_draft_add_student');
+  const restored = restoreFormDraft('lms_draft_add_student', STUDENT_DRAFT_FIELDS);
+  const note = document.getElementById('add-student-draft-note');
+  if (note) note.classList.toggle('hidden', !restored);
+};
+const _openAddTeacherModalOrig = openAddTeacherModal;
+window.openAddTeacherModal = function () {
+  _openAddTeacherModalOrig();
+  attachDraftAutosave(TEACHER_DRAFT_FIELDS, 'lms_draft_add_teacher');
+  const restored = restoreFormDraft('lms_draft_add_teacher', TEACHER_DRAFT_FIELDS);
+  const note = document.getElementById('add-teacher-draft-note');
+  if (note) note.classList.toggle('hidden', !restored);
+};
+
+// B-11: Destructive-action protection — same confirmation style as Delete,
+// reused for any other destructive action (e.g. clearing a draft).
+function confirmDestructiveAction(opts) {
+  const o = opts || {};
+  const modal = document.getElementById('delete-confirmation-modal');
+  if (!modal || typeof openDeleteConfirmationModal !== 'function') {
+    if (window.confirm(o.message || 'Are you sure?')) { if (typeof o.onConfirm === 'function') o.onConfirm(); }
+    return;
+  }
+  openDeleteConfirmationModal(o.title || 'Are you sure?', o.message || 'This action cannot be undone.', o.onConfirm);
+  const confirmBtn = document.getElementById('delete-modal-confirm-btn');
+  if (confirmBtn) confirmBtn.textContent = o.confirmLabel || 'Delete Record';
+  const cancelBtn = document.getElementById('delete-modal-cancel-btn');
+  if (cancelBtn) {
+    const prev = cancelBtn.onclick;
+    cancelBtn.onclick = function () {
+      const b = document.getElementById('delete-modal-confirm-btn');
+      if (b) b.textContent = 'Delete Record';
+      closeDeleteConfirmationModal();
+    };
+  }
+}
+
+// B-5: One shared data-table shell (same header style, wrapper, empty state)
+// used by the Student Directory, Teacher Payroll and Fee Ledger.
+function dataTableShell(opts) {
+  const o = opts || {};
+  const cols = o.columns || [];
+  const head = cols.map(c => {
+    const label = (typeof c === 'string') ? c : c.label;
+    // P1-5: give the Course Track column room so full course names are not cut off.
+    const extra = (label === 'Course Track') ? ' w-48 min-w-[180px]' : '';
+    return '<th class="py-3 px-2.5' + extra + '">' + label + '</th>';
+  }).join('');
+  const body = (o.rowsHtml && o.rowsHtml.trim() !== '')
+    ? o.rowsHtml
+    : '<tr><td colspan="' + cols.length + '" class="py-4">' + emptyStateHtml(o.empty || {}) + '</td></tr>';
+  return '<div class="overflow-x-auto table-scroll-x" style="min-height:' + (o.minHeight || '200px') + '">'
+    + '<table class="w-full text-left border-collapse responsive-table-cards">'
+    + '<thead><tr class="border-b border-[#ECEAE4] text-[11px] font-bold text-[#7A8684] tracking-wider">' + head + '</tr></thead>'
+    + '<tbody id="' + (o.tbodyId || '') + '" class="divide-y divide-[#F1EFEA] text-xs">' + body + '</tbody>'
+    + '</table></div>';
+}
+
+// B-7: Bulk actions on the Student Directory.
+function toggleStudentSelection(id, checked) {
+  if (!Array.isArray(AppState.selectedStudentIds)) AppState.selectedStudentIds = [];
+  if (checked) { if (!AppState.selectedStudentIds.includes(id)) AppState.selectedStudentIds.push(id); }
+  else { AppState.selectedStudentIds = AppState.selectedStudentIds.filter(x => x !== id); }
+  renderApp();
+}
+function toggleSelectAllDirectory(checked) {
+  const filtered = (typeof getFilteredStudentsForDirectory === 'function') ? getFilteredStudentsForDirectory() : (AppState.students || []);
+  AppState.selectedStudentIds = checked ? filtered.map(s => s.id) : [];
+  renderApp();
+}
+function clearStudentSelection() { AppState.selectedStudentIds = []; renderApp(); }
+function renderDirectoryBulkBar() {
+  const sel = AppState.selectedStudentIds || [];
+  if (!sel.length) return '';
+  return '<div class="mt-3 mb-1 flex flex-wrap items-center gap-2 px-4 py-2.5 rounded-xl bg-[#E8EFEE] border border-[#B2DFDB]/60 text-xs">'
+    + '<span class="font-bold text-[#0E4D45]">' + sel.length + ' selected</span>'
+    + '<button onclick="exportSelectedStudentsToCSV()" class="px-3.5 py-1.5 rounded-lg bg-[#0E4D45] text-white font-bold hover:bg-[#14534B] transition-colors cursor-pointer">Export selected</button>'
+    + '<button onclick="clearStudentSelection()" class="px-3.5 py-1.5 rounded-lg bg-white border border-[#ECEAE4] text-[#141F1E] font-semibold hover:bg-[#F8F6F1] transition-colors cursor-pointer">Clear selection</button>'
+    + '</div>';
+}
+function exportSelectedStudentsToCSV() {
+  const sel = AppState.selectedStudentIds || [];
+  if (!sel.length) { showToastNotification('No students selected.'); return; }
+  exportStudentsToCSV((AppState.students || []).filter(s => sel.includes(s.id)));
+}
+
+// B-6: Directory course + teacher filters (same filter-chip style).
+function setStudentDirectoryCourseFilter(v) { AppState.directoryCourseFilter = v; renderApp(); }
+function setStudentDirectoryTeacherFilter(v) { AppState.directoryTeacherFilter = v; renderApp(); }
+
+// B-9/B-10: Command palette (Ctrl+K) + global keyboard shortcuts.
+let commandPaletteSelectedIndex = 0;
+let commandPaletteCurrentItems = [];
+function commandPalettePages() {
+  return [
+    { label: 'Dashboard', hint: 'Admin portal', run: function () { setNavTab('dashboard'); } },
+    { label: '12-Month Fee Ledger', hint: 'Admin portal', run: function () { setNavTab('fee-matrix'); } },
+    { label: 'Student Directory', hint: 'Admin portal', run: function () { setNavTab('students'); } },
+    { label: 'Teacher Payroll', hint: 'Admin portal', run: function () { setNavTab('teachers'); } },
+    { label: 'Trials & Notices', hint: 'Admin portal', run: function () { setNavTab('trials-notices'); } }
+  ];
+}
+function toggleCommandPalette(open) {
+  const palette = document.getElementById('command-palette');
+  if (!palette) return;
+  if (open) {
+    palette.classList.add('active');
+    commandPaletteSelectedIndex = 0;
+    renderCommandPaletteResults('');
+    const input = document.getElementById('command-palette-input');
+    if (input) { input.value = ''; setTimeout(() => input.focus(), 50); }
+  } else {
+    palette.classList.remove('active');
+  }
+}
+function renderCommandPaletteResults(q) {
+  const box = document.getElementById('command-palette-results');
+  if (!box) return;
+  const query = (q || '').trim().toLowerCase();
+  let items = [];
+  commandPalettePages().forEach(p => {
+    if (!query || p.label.toLowerCase().includes(query)) items.push({ label: p.label, hint: p.hint, run: p.run });
+  });
+  (AppState.students || []).forEach(s => {
+    const name = (s.firstName || '') + ' ' + (s.lastName || '');
+    if (query && (name.toLowerCase().includes(query) || (s.id || '').toLowerCase().includes(query))) {
+      items.push({ label: name.trim() + ' (' + s.id + ')', hint: 'Student — ' + (s.course || ''), run: function () { AppState.studentDirectorySearchQuery = name.trim(); setNavTab('students'); } });
+    }
+  });
+  (AppState.teachers || []).forEach(t => {
+    if (query && ((t.name || '').toLowerCase().includes(query) || (t.id || '').toLowerCase().includes(query))) {
+      items.push({ label: t.name + ' (' + t.id + ')', hint: 'Teacher — ' + (t.specialization || ''), run: function () { setNavTab('teachers'); } });
+    }
+  });
+  commandPaletteCurrentItems = items.slice(0, 8);
+  if (!commandPaletteCurrentItems.length) {
+    box.innerHTML = emptyStateHtml({ title: 'No results', hint: 'Try a student, teacher or page name.' });
+    return;
+  }
+  box.innerHTML = commandPaletteCurrentItems.map((it, i) => {
+    const active = i === commandPaletteSelectedIndex;
+    return '<button type="button" onclick="commandPaletteChoose(' + i + ')" onmouseenter="commandPaletteSelectedIndex=' + i + ';renderCommandPaletteResults(document.getElementById(\'command-palette-input\').value)" class="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-left text-xs cursor-pointer transition-colors ' + (active ? 'bg-[#E8EFEE] text-[#0E4D45] font-bold' : 'text-[#141F1E] hover:bg-[#F8F6F1] font-medium') + '">'
+      + '<span class="truncate">' + it.label + '</span><span class="text-[11px] text-[#7A8684] shrink-0">' + (it.hint || '') + '</span></button>';
+  }).join('');
+}
+function commandPaletteChoose(i) {
+  const item = commandPaletteCurrentItems[i];
+  toggleCommandPalette(false);
+  if (item && typeof item.run === 'function') item.run();
+}
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    const palette = document.getElementById('command-palette');
+    toggleCommandPalette(!(palette && palette.classList.contains('active')));
+    return;
+  }
+  const palette = document.getElementById('command-palette');
+  const paletteOpen = palette && palette.classList.contains('active');
+  if (paletteOpen && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+    e.preventDefault();
+    const n = commandPaletteCurrentItems.length;
+    if (n) {
+      commandPaletteSelectedIndex = e.key === 'ArrowDown'
+        ? (commandPaletteSelectedIndex + 1) % n
+        : (commandPaletteSelectedIndex - 1 + n) % n;
+      renderCommandPaletteResults(document.getElementById('command-palette-input').value);
+    }
+    return;
+  }
+  if (paletteOpen && e.key === 'Enter') {
+    e.preventDefault();
+    commandPaletteChoose(commandPaletteSelectedIndex);
+    return;
+  }
+  if (e.key === 'Escape') {
+    if (paletteOpen) { toggleCommandPalette(false); return; }
+    const openModal = document.querySelector('.modal-backdrop.active');
+    if (openModal) {
+      if (openModal.id === 'delete-confirmation-modal' && typeof closeDeleteConfirmationModal === 'function') closeDeleteConfirmationModal();
+      else openModal.classList.remove('active');
+      return;
+    }
+    ['profile-dropdown-menu', 'notifications-dropdown-menu', 'month-year-dropdown', 'live-class-filter-popover'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.classList.add('hidden');
+    });
+  }
+});
+
+// B-8: Debounced search wrappers (300ms) for every search box.
+const debouncedSetSearchQuery = debounce(function (v) { setSearchQuery(v); }, 300);
+const debouncedLiveClassSearch = debounce(function (v) { handleLiveClassSearch(v); }, 300);
+const debouncedDirectorySearch = debounce(function (v) { handleStudentDirectorySearch(v); }, 300);
+function debouncedDirectorySearchWithSkeleton(q) {
+  const tbody = document.getElementById('student-directory-table-body');
+  if (tbody) tbody.innerHTML = skeletonRows(5, 9);
+  debouncedDirectorySearch(q);
+}
+
+// B-14: Custom 404 view (in-app) for unknown routes.
+function notFoundViewHtml() {
+  return '<div class="py-20 text-center flex flex-col items-center justify-center">'
+    + '<p class="text-6xl font-bold text-[#0E4D45]">404</p>'
+    + '<p class="text-base font-bold text-[#141F1E] mt-3">Page not found</p>'
+    + '<p class="text-xs text-[#7A8684] mt-1">This page does not exist in the LMS.</p>'
+    + '<button onclick="goToDashboardFromNotFound()" class="mt-5 px-5 py-2.5 rounded-lg bg-[#0E4D45] text-white text-xs font-bold hover:bg-[#14534B] transition-colors cursor-pointer">Go to Dashboard</button>'
+    + '</div>';
+}
+function goToDashboardFromNotFound() {
+  AppState.showNotFound = false;
+  try { history.replaceState(null, '', window.location.pathname); } catch (e) {}
+  setNavTab('dashboard');
+}
+
 function showToastNotification(message, type = 'success') {
   let toastContainer = document.getElementById('toast-container');
   if (!toastContainer) {
     toastContainer = document.createElement('div');
     toastContainer.id = 'toast-container';
-    toastContainer.className = 'fixed bottom-6 right-6 z-[9999] flex flex-col gap-2.5 pointer-events-none';
+    toastContainer.className = 'fixed top-20 right-6 z-[9999] flex flex-col gap-2.5 pointer-events-none';
     document.body.appendChild(toastContainer);
   }
 
@@ -12008,9 +12573,44 @@ const showToast = showToastNotification;
 // ACADEMY SETTINGS & NOTIFICATIONS CONTROLLERS
 // ==========================================
 
+// P3-16: academy settings store (localStorage key 'lms_academy_settings').
+// Late Fee defaults to 5%. Read the late fee anywhere with
+// getAcademySettings().lateFee — there is currently no other late-fee
+// display in the app; the Settings field itself is the display.
+function getAcademySettings() {
+  const stored = loadFromStorage('lms_academy_settings', null) || {};
+  const lateFeeRaw = (stored.lateFee === undefined || stored.lateFee === null || stored.lateFee === '') ? 5 : Number(stored.lateFee);
+  return {
+    academyName: stored.academyName || 'Quranic Skills Academy',
+    timezone: stored.timezone || 'GMT+5 (PKT)',
+    dueDay: stored.dueDay || '5',
+    graceDays: stored.graceDays || '5',
+    feeAllocation: stored.feeAllocation || 'enabled',
+    lateFee: isNaN(lateFeeRaw) ? 5 : Math.min(100, Math.max(0, lateFeeRaw)),
+    whatsappAlerts: stored.whatsappAlerts !== false,
+    whatsapp: stored.whatsapp || '+44 7700 900123',
+    email: stored.email || 'admin@quranicskills.com'
+  };
+}
+window.getAcademySettings = getAcademySettings;
+
 function openSettingsModal() {
   const modal = document.getElementById('settings-modal');
-  if (modal) modal.classList.add('active');
+  if (!modal) return;
+  // P3-16: restore saved settings (including Late Fee) into the form.
+  const s = getAcademySettings();
+  const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+  setVal('setting-academy-name', s.academyName);
+  setVal('setting-academy-timezone', s.timezone);
+  setVal('setting-fee-due-day', s.dueDay);
+  setVal('setting-fee-grace', s.graceDays);
+  setVal('setting-fee-fifo', s.feeAllocation);
+  setVal('setting-fee-late', String(s.lateFee));
+  const waToggle = document.getElementById('setting-toggle-whatsapp');
+  if (waToggle) waToggle.checked = s.whatsappAlerts;
+  setVal('setting-academy-whatsapp', s.whatsapp);
+  setVal('setting-academy-email', s.email);
+  modal.classList.add('active');
 }
 
 function closeSettingsModal() {
@@ -12022,9 +12622,20 @@ function saveAcademySettings() {
   const academyName = document.getElementById('setting-academy-name')?.value?.trim() || 'Quranic Skills Academy';
   const timezone = document.getElementById('setting-academy-timezone')?.value || 'GMT+5 (PKT)';
   const dueDay = document.getElementById('setting-fee-due-day')?.value || '5';
-  
+  const graceDays = document.getElementById('setting-fee-grace')?.value || '5';
+  const feeAllocation = document.getElementById('setting-fee-fifo')?.value || 'enabled';
+  // P3-16: configurable Late Fee, default 5%. Grace period is unchanged.
+  const rawLateFee = Number(document.getElementById('setting-fee-late')?.value);
+  const lateFee = isNaN(rawLateFee) ? 5 : Math.min(100, Math.max(0, rawLateFee));
+  const whatsappAlerts = document.getElementById('setting-toggle-whatsapp')?.checked !== false;
+  const whatsapp = document.getElementById('setting-academy-whatsapp')?.value?.trim() || '+44 7700 900123';
+  const email = document.getElementById('setting-academy-email')?.value?.trim() || 'admin@quranicskills.com';
+
+  // Persist with the other academy settings so the value survives reload.
+  saveToStorage('lms_academy_settings', { academyName, timezone, dueDay, graceDays, feeAllocation, lateFee, whatsappAlerts, whatsapp, email });
+
   closeSettingsModal();
-  showToastNotification(`\u2713 Settings Saved: ${academyName} (${timezone}, Due: ${dueDay}th)`);
+  showToastNotification(`\u2713 Settings Saved: ${academyName} (${timezone}, Due: ${dueDay}th, Late Fee: ${lateFee}%)`);
 }
 
 function getNotificationIconHtml(type) {
@@ -12126,6 +12737,9 @@ function seedRequiredAcademyData() {
       fatherName: 'Father One',
       cnic: '35201-1111111-1',
       specialization: 'General Quran',
+      // P0-3: Not a Hafiz.
+      isHafiz: false,
+      certifiedHafiz: false,
       country: 'Pakistan',
       activeStudents: 1,
       hourlyRate: 20,
@@ -12142,6 +12756,9 @@ function seedRequiredAcademyData() {
       fatherName: 'Muhammad Ishaq',
       cnic: '35201-2222222-2',
       specialization: 'Advanced Qiraat & Ijazah',
+      // P0-3: Hifz/Qiraat specialist — Certified Hafiz.
+      isHafiz: true,
+      certifiedHafiz: true,
       country: 'Pakistan',
       activeStudents: 1,
       hourlyRate: 25,
@@ -12158,6 +12775,9 @@ function seedRequiredAcademyData() {
       fatherName: 'Tariq Khan',
       cnic: '35201-3333333-3',
       specialization: 'Female & Kids Tajweed',
+      // P0-3: Not a Hafiz.
+      isHafiz: false,
+      certifiedHafiz: false,
       country: 'Pakistan',
       activeStudents: 1,
       hourlyRate: 22,
@@ -12174,6 +12794,9 @@ function seedRequiredAcademyData() {
       fatherName: 'Ahmed Ali',
       cnic: '35201-4444444-4',
       specialization: 'Advanced Tajweed & Makharij',
+      // P0-3: Hifz/Qiraat specialist — Certified Hafiz.
+      isHafiz: true,
+      certifiedHafiz: true,
       country: 'Pakistan',
       activeStudents: 1,
       hourlyRate: 20,
@@ -12197,6 +12820,21 @@ function seedRequiredAcademyData() {
       if (existing.id === 'TCH-103' && existing.specialization !== 'Advanced Tajweed & Makharij') {
         existing.specialization = 'Advanced Tajweed & Makharij';
         dbSaveTeacher(existing);
+      }
+      // P0-3: Certified Hafiz flag. True only for the Hifz/Qiraat specialists
+      // (Qari Abdul Basit, Qari Saad Ahmed); false for Ustadha Maryam Khan and
+      // TEST Teacher One. Other (non-seed) teachers keep their own flag, and
+      // a missing flag defaults to false.
+      const HAFIZ_BY_ID = { 'TEST-T-001': false, 'TCH-101': true, 'TCH-102': false, 'TCH-103': true };
+      if (Object.prototype.hasOwnProperty.call(HAFIZ_BY_ID, existing.id)) {
+        if (existing.isHafiz !== HAFIZ_BY_ID[existing.id] || existing.certifiedHafiz !== HAFIZ_BY_ID[existing.id]) {
+          existing.isHafiz = HAFIZ_BY_ID[existing.id];
+          existing.certifiedHafiz = HAFIZ_BY_ID[existing.id];
+          dbSaveTeacher(existing);
+        }
+      } else if (typeof existing.isHafiz !== 'boolean') {
+        existing.isHafiz = false;
+        existing.certifiedHafiz = false;
       }
     }
     // Fix avatar initials (Bug 6): strip honorifics like Ustadha, Qari
@@ -12320,7 +12958,7 @@ function seedRequiredAcademyData() {
       teacherId: 'TCH-102',
       teacherName: 'Ustadha Maryam Khan',
       assignedTeacher: 'Ustadha Maryam Khan',
-      course: 'Islamic Studies & Dua',
+      course: 'Islamic Studies & Daily Duas',
       currency: '$',
       currencyCode: 'USD',
       monthlyFee: 40,
@@ -12365,7 +13003,7 @@ function seedRequiredAcademyData() {
         existing.teacherId = 'TCH-102';
         existing.teacherName = 'Ustadha Maryam Khan';
         existing.assignedTeacher = 'Ustadha Maryam Khan';
-        existing.course = 'Islamic Studies & Dua';
+        existing.course = 'Islamic Studies & Daily Duas';
       }
       if (existing.id === 'TEST-001') {
         // Fix Part 1: Ensure saved teacher in TEST-001 is consistent between record and directory
@@ -12382,6 +13020,17 @@ function seedRequiredAcademyData() {
     }
     if (!existing.avatar || existing.avatar.includes('ui-avatars.com')) {
       existing.avatar = getAvatarUrl(`${existing.firstName} ${existing.lastName || ''}`);
+    }
+  });
+
+  // P0-4: Normalize any legacy 'Islamic Studies & Dua' / 'Daily Duaa' / 'Duaa'
+  // course name stored on existing student records to the canonical
+  // 'Islamic Studies & Daily Duas', so Directory, Ledger and profiles agree.
+  AppState.students.forEach(s => {
+    const canonicalCourse = normalizeCourseName(s.course);
+    if (canonicalCourse && canonicalCourse !== s.course) {
+      s.course = canonicalCourse;
+      dbSaveStudent(s);
     }
   });
 
@@ -12545,6 +13194,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const hash = window.location.hash.replace('#', '');
     if (['dashboard', 'fee-matrix', 'students', 'teachers', 'trials-notices'].includes(hash)) {
       AppState.activeNav = hash;
+    } else {
+      AppState.showNotFound = true;
     }
   }
   setupFirestoreRealtimeListeners();

@@ -59,7 +59,7 @@
   <!-- ==========================================================================
        TOP DARK FOREST TEAL HEADER & HERO BANNER (#0E4D45) - EXACT TALENTSYNC GEOMETRY
        ========================================================================== -->
-  <header class="bg-[#0E4D45] text-white pt-6 pb-6 sm:pb-8 w-full transition-colors overflow-x-hidden">
+  <header class="bg-[#0E4D45] text-white pt-6 pb-6 sm:pb-8 w-full transition-colors overflow-x-clip">
     <div class="max-w-7xl w-full mx-auto px-3.5 sm:px-6 lg:px-10">
       
       <!-- Row 1: Brand Logo & User Profile Controls -->
@@ -124,7 +124,7 @@
             </button>
 
             <!-- Floating White Dropdown Menu -->
-            <div id="profile-dropdown-menu" class="hidden absolute right-0 mt-2 w-72 bg-[#FFFFFF] rounded-2xl border border-[#ECEAE4] shadow-2xl p-3 z-50 text-[#141F1E]">
+            <div id="profile-dropdown-menu" class="hidden absolute right-0 mt-2 w-72 max-h-[calc(100vh-90px)] overflow-y-auto bg-[#FFFFFF] rounded-2xl border border-[#ECEAE4] shadow-2xl p-3 z-50 text-[#141F1E]">
               <!-- Dynamically populated by renderProfileDropdownContent() -->
             </div>
           </div>
@@ -151,7 +151,7 @@
         <div class="flex items-center gap-2.5 w-full sm:w-auto justify-end">
           
           <!-- Interactive Calendar / Month & Year Selector Popover Trigger -->
-          <div class="relative flex items-center justify-between sm:justify-start bg-[#14534B]/90 border border-[#236058] rounded-full p-0.5 shadow-sm w-full sm:w-auto">
+          <div id="hero-month-stepper" class="relative flex items-center justify-between sm:justify-start bg-[#14534B]/90 border border-[#236058] rounded-full p-0.5 shadow-sm w-full sm:w-auto">
             <button type="button" onclick="stepAcademicMonth(-1)" class="w-7 h-7 rounded-full flex items-center justify-center text-[#A3C2BE] hover:text-white hover:bg-[#236058] transition-colors cursor-pointer" title="Previous Month">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
             </button>
@@ -736,6 +736,7 @@
 
       <!-- Modal Footer -->
       <div class="px-6 py-4 bg-white border-t border-[#ECEAE4] flex items-center justify-end gap-4">
+        <p id="add-student-draft-note" class="hidden text-[11px] text-[#7A8684] mr-auto">Draft restored. <button type="button" onclick="clearStudentDraft()" class="font-bold text-[#0E4D45] underline cursor-pointer">Clear draft</button></p>
         <button 
           type="button" 
           onclick="closeAddStudentModal()" 
@@ -1654,7 +1655,7 @@
               id="add-teacher-country" 
               class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#141F1E] font-medium outline-none focus:border-[#0E4D45] focus:bg-white transition-all cursor-pointer"
             >
-              <option value="Pakistan" selected>Pakistan</option>
+              <option value="" disabled selected>Select country</option>
               <option value="United Kingdom">United Kingdom</option>
               <option value="United States">United States</option>
               <option value="Canada">Canada</option>
@@ -1703,6 +1704,7 @@
 
       <!-- Modal Footer -->
       <div class="px-6 py-4 bg-white border-t border-[#ECEAE4] flex items-center justify-end gap-4">
+        <p id="add-teacher-draft-note" class="hidden text-[11px] text-[#7A8684] mr-auto">Draft restored. <button type="button" onclick="clearTeacherDraft()" class="font-bold text-[#0E4D45] underline cursor-pointer">Clear draft</button></p>
         <button 
           type="button" 
           onclick="closeAddTeacherModal()" 
@@ -1726,7 +1728,7 @@
        MODAL 8: ACADEMY CONFIGURATION & SYSTEM SETTINGS MODAL
        ========================================================================== -->
   <div id="settings-modal" class="modal-backdrop">
-    <div class="modal-content max-w-2xl max-h-[85vh] sm:max-h-[88vh] flex flex-col overflow-hidden">
+    <div class="modal-content max-w-2xl max-h-[94vh] sm:max-h-[94vh] flex flex-col overflow-hidden">
       <!-- Modal Header -->
       <div class="p-6 border-b border-[#ECEAE4] flex items-center justify-between bg-[#F8F6F1] flex-shrink-0">
         <div class="flex items-center gap-3">
@@ -1742,7 +1744,7 @@
       </div>
 
       <!-- Modal Body (Scrollable) -->
-      <div class="p-6 pb-12 overflow-y-auto space-y-6 text-xs flex-1 min-h-0">
+      <div class="p-6 pb-6 overflow-y-auto space-y-6 text-xs flex-1 min-h-0">
         
         <!-- SECTION 1: ACADEMY PROFILE & GATEWAY -->
         <div class="bg-[#F8F6F1] p-4 rounded-2xl border border-[#ECEAE4] space-y-3">
@@ -1784,7 +1786,7 @@
             <span class="w-2 h-2 rounded-full bg-[#0E4D45]"></span>
             <h4 class="font-bold text-[#141F1E] text-xs">2. Fee Management & Ledger Automation</h4>
           </div>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
             <div>
               <label class="block font-semibold text-[#141F1E] mb-1">Monthly Due Day</label>
               <select id="setting-fee-due-day" class="w-full bg-white border border-[#ECEAE4] rounded-xl px-2.5 py-2 text-xs text-[#141F1E] font-medium outline-none cursor-pointer">
@@ -1806,9 +1808,14 @@
             <div>
               <label class="block font-semibold text-[#141F1E] mb-1">Fee Allocation Method</label>
               <select id="setting-fee-fifo" class="w-full bg-white border border-[#ECEAE4] rounded-xl px-3 py-2 text-[#0E4D45] font-bold outline-none">
-                <option value="enabled" selected>Oldest Due First (Automated)</option>
+                <option value="enabled" selected>Oldest due first (auto)</option>
                 <option value="manual">Manual Allocation</option>
               </select>
+              <p class="text-[11px] text-[#7A8684] mt-1">Pays the oldest unpaid month first.</p>
+            </div>
+            <div>
+              <label class="block font-semibold text-[#141F1E] mb-1">Late Fee (%)</label>
+              <input type="number" id="setting-fee-late" min="0" max="100" step="0.5" value="5" class="w-full bg-white border border-[#ECEAE4] rounded-xl px-3 py-2 text-[#141F1E] font-medium outline-none focus:border-[#0E4D45]">
             </div>
           </div>
           <div class="flex items-center justify-between p-2.5 bg-white rounded-xl border border-[#ECEAE4]">
@@ -1864,7 +1871,7 @@
               </select>
             </div>
             <div>
-              <label class="block font-semibold text-[#141F1E] mb-1">Mandatory Sabaq Log Window</label>
+              <label class="block font-semibold text-[#141F1E] mb-1" title="Daily lesson (Sabaq) log">Mandatory lesson log window</label>
               <select id="setting-sabaq-window" class="w-full bg-white border border-[#ECEAE4] rounded-xl px-3 py-2 text-[#141F1E] font-medium outline-none">
                 <option value="1">Within 1 Hour of Class</option>
                 <option value="2" selected>Within 2 Hours of Class</option>
@@ -2508,5 +2515,25 @@
 
   <!-- Application Logic -->
   <script src="app.js"></script>
+  <!-- ==========================================================================
+       COMMAND PALETTE (Ctrl+K) — shared across all portals
+       ========================================================================== -->
+  <div id="command-palette" class="modal-backdrop">
+    <div class="modal-content max-w-lg w-full bg-white rounded-2xl shadow-2xl overflow-hidden border border-[#ECEAE4]">
+      <div class="flex items-center gap-3 px-4 py-3 border-b border-[#ECEAE4] bg-[#F8F6F1]">
+        <svg class="w-4 h-4 text-[#7A8684] shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <input id="command-palette-input" type="text" placeholder="Search students, teachers, pages..." class="flex-1 bg-transparent outline-none text-sm text-[#141F1E] placeholder-[#94A3B8]" oninput="renderCommandPaletteResults(this.value)" />
+        <kbd class="text-[10px] font-bold text-[#7A8684] border border-[#ECEAE4] rounded px-1.5 py-0.5 bg-white">Esc</kbd>
+      </div>
+      <div id="command-palette-results" class="max-h-80 overflow-y-auto p-2"></div>
+      <div class="px-4 py-2 border-t border-[#ECEAE4] bg-[#F8F6F1] text-[11px] text-[#7A8684] flex flex-wrap items-center gap-x-4 gap-y-1">
+        <span><kbd class="font-bold text-[#141F1E]">↑↓</kbd> Navigate</span>
+        <span><kbd class="font-bold text-[#141F1E]">Enter</kbd> Open</span>
+        <span><kbd class="font-bold text-[#141F1E]">Esc</kbd> Close</span>
+        <span class="ml-auto"><kbd class="font-bold text-[#141F1E]">Ctrl+K</kbd> to open</span>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>

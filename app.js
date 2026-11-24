@@ -7956,7 +7956,9 @@ function renderAdminDashboardView() {
             <span class="kpi-amount text-[#141F1E]">${dynamicTotalStudents}</span>
             ${dynamicTotalStudents > 0 ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium bg-[#E0F2F1] text-[#0E4D45] tabular-nums">+${((dynamicTotalStudents / 300) * 3.5).toFixed(2)}%</span>` : ''}
           </div>
-          <p class="text-xs font-medium text-[#7A8684]">Total Active Students</p>
+          <div class="kpi-labels">
+            <p class="text-xs font-medium text-[#7A8684]">Total Active Students</p>
+          </div>
         </div>
       </div>
 
@@ -7970,8 +7972,10 @@ function renderAdminDashboardView() {
             <span class="kpi-amount text-[#141F1E]"><span class="kpi-amount-cur">Rs.</span>${formatPKRNumber(dynamicFeeCollectedPKR)}</span>
             ${amountCollectionPct > 0 ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium bg-[#E0F2F1] text-[#0E4D45] tabular-nums" title="Share of this month's billed fees collected (in PKR)">${amountCollectionPct}%</span>` : ''}
           </div>
-          <p class="text-xs font-medium text-[#7A8684]">Fee Collected (${MONTHS_LIST[CURRENT_MONTH_INDEX]})</p>
-          <p class="text-[11px] text-[#7A8684] mt-0.5">${paidHeadcount} of ${grandTotal} students paid</p>
+          <div class="kpi-labels">
+            <p class="text-xs font-medium text-[#7A8684]">Fee Collected (${MONTHS_LIST[CURRENT_MONTH_INDEX]})</p>
+            <p class="text-[11px] text-[#7A8684] mt-0.5">${paidHeadcount} of ${grandTotal} students paid</p>
+          </div>
         </div>
       </div>
 
@@ -7985,7 +7989,9 @@ function renderAdminDashboardView() {
             <span class="kpi-amount text-[#141F1E]"><span class="kpi-amount-cur">Rs.</span>${formatPKRNumber(dynamicBalanceDuePKR)}</span>
             ${dynamicPartialCount > 0 ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A] tabular-nums">${dynamicPartialCount} Due</span>` : ''}
           </div>
-          <p class="text-xs font-medium text-[#7A8684]">Partial / Balance Due</p>
+          <div class="kpi-labels">
+            <p class="text-xs font-medium text-[#7A8684]">Partial / Balance Due</p>
+          </div>
         </div>
       </div>
 
@@ -7999,8 +8005,10 @@ function renderAdminDashboardView() {
             <span class="kpi-amount text-[#141F1E]">${dynamicDefaulterCount}</span>
             ${dynamicDefaulterCount > 0 && grandTotal > 0 ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium bg-[#FEE2E2] text-[#991B1B] border border-[#FECACA] tabular-nums">${((dynamicDefaulterCount / grandTotal) * 100).toFixed(1)}%</span>` : ''}
           </div>
-          <p class="text-xs font-medium text-[#7A8684]">Overdue Accounts</p>
-          <p class="text-[11px] text-[#7A8684] mt-0.5">${formatPKRAmount(overdueDuePKR)} overdue</p>
+          <div class="kpi-labels">
+            <p class="text-xs font-medium text-[#7A8684]">Overdue Accounts</p>
+            <p class="text-[11px] text-[#7A8684] mt-0.5">${formatPKRAmount(overdueDuePKR)} overdue</p>
+          </div>
         </div>
       </div>
 
@@ -8014,7 +8022,9 @@ function renderAdminDashboardView() {
             <span class="kpi-amount text-[#141F1E]">${attendanceRateStr}</span>
             ${hasAttendanceLogs ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium bg-[#E0F2F1] text-[#0E4D45] tabular-nums">+1.5%</span>` : ''}
           </div>
-          <p class="text-xs font-medium text-[#7A8684]">Class Attendance Rate</p>
+          <div class="kpi-labels">
+            <p class="text-xs font-medium text-[#7A8684]">Class Attendance Rate</p>
+          </div>
         </div>
       </div>
 

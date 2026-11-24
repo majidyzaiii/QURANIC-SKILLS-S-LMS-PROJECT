@@ -618,6 +618,14 @@ html, body {
   margin-right: 0.15em;
 }
 
+/* KPI labels: reserve two label lines under every card's number row, so the
+   1-line cards (Total Students, Partial Due, Attendance) have the same bottom
+   block height as the 2-line cards (Fee Collected, Overdue) and all five
+   number rows sit on one straight line. 2.25rem = 36px >= 16 + 2 + 17 = 35px. */
+.kpi-labels {
+  min-height: 2.25rem;
+}
+
 /* ==========================================================================
    MOBILE SIDEBAR DRAWER & BOTTOM NAV (max-width: 768px ONLY)
    High-Performance Hardware-Accelerated Mobile Navigation

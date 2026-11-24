@@ -325,6 +325,11 @@ body {
   flex-direction: column;
 }
 
+/* Notifications list: sized to whole items (measured 65px plain /
+   93px with chips, 12px gaps, 24px padding) so the last visible item is
+   never half-cut; min(..., 60vh) keeps the old behaviour on short screens. */
+#notifications-modal-list { max-height: min(568px, 60vh); }
+
 /* Settings modal is wider than other modals so all four sections fit at a
    normal desktop viewport without an inner scroll (Section 4 was cut off). */
 #settings-modal .modal-content {

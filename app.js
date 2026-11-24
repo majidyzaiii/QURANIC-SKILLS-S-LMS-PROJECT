@@ -2219,6 +2219,29 @@ function discardFormDraft(draftKey, modalId) {
 }
 window.discardFormDraft = discardFormDraft;
 
+// "Clear draft" buttons in the Add Student / Add Teacher modal footers
+// (index.html) call these; they did not exist, so clicking threw.
+// Clear the stored draft, hide the draft note, then re-run the modal's
+// fresh-open reset so every field shows exactly what a newly opened modal
+// shows (the draft is already cleared, so nothing is re-restored).
+function clearStudentDraft() {
+  clearFormDraft('new_student');
+  const note = document.getElementById('add-student-draft-note');
+  if (note) note.classList.add('hidden');
+  if (typeof openAddStudentModal === 'function') openAddStudentModal();
+  showToastNotification('Draft cleared');
+}
+window.clearStudentDraft = clearStudentDraft;
+
+function clearTeacherDraft() {
+  clearFormDraft('new_teacher');
+  const note = document.getElementById('add-teacher-draft-note');
+  if (note) note.classList.add('hidden');
+  if (typeof openAddTeacherModal === 'function') openAddTeacherModal();
+  showToastNotification('Draft cleared');
+}
+window.clearTeacherDraft = clearTeacherDraft;
+
 // 6. Graceful Error Recovery Modal
 function showActionErrorModal({ title = 'Action Could Not Be Completed', message = '', errorDetails = '', retryFn = null } = {}) {
   const modal = document.getElementById('shared-error-recovery-modal');
@@ -3522,7 +3545,7 @@ function openViewWeeklyScheduleModal(studentId) {
                       Class Active
                     </span>
                   ` : `
-                    <span class="text-[10px] font-medium text-[#94A3B8] px-2 py-0.5 rounded-full bg-[#F1F4F3]">Off Day (No Class)</span>
+                    <span class="text-[10px] font-medium text-[#94A3B8] px-2 py-0.5 rounded-full bg-[#F1F4F3] whitespace-nowrap">Off Day (No Class)</span>
                   `}
                 </td>
                 <td class="py-3 px-3 font-medium text-[#141F1E]" data-label="Student Time">
@@ -5157,7 +5180,7 @@ function openEditStudentModal(studentId) {
   const durationSelect = document.getElementById('edit-schedule-class-duration');
   if (durationSelect) {
     const d = Number(student.classDuration);
-    durationSelect.value = (d === 15 || d === 30 || d === 60) ? String(d) : '30';
+    durationSelect.value = (d === 15 || d === 30 || d === 45 || d === 60) ? String(d) : '30';
   }
 
   // Tuition Fee & Currency
@@ -5341,7 +5364,7 @@ function handleSaveEditSchedule() {
   student.timezone = newTimezone;
   student.course = newCourse;
   const rawDuration = document.getElementById('edit-schedule-class-duration')?.value;
-  student.classDuration = (rawDuration === '15' || rawDuration === '60') ? Number(rawDuration) : 30;
+  student.classDuration = (rawDuration === '15' || rawDuration === '45' || rawDuration === '60') ? Number(rawDuration) : 30;
   student.familyId = familyId;
   student.weeklySchedule = newWeeklySchedule;
   student.classSchedule = getSchedulePillSummary(student);
@@ -5673,7 +5696,7 @@ function openAddStudentModal() {
   const durationSelect = document.getElementById('add-student-class-duration');
   if (durationSelect) {
     const globalDuration = Number(AppState.settings && AppState.settings.classDuration);
-    durationSelect.value = (globalDuration === 15 || globalDuration === 30 || globalDuration === 60) ? String(globalDuration) : '30';
+    durationSelect.value = (globalDuration === 15 || globalDuration === 30 || globalDuration === 45 || globalDuration === 60) ? String(globalDuration) : '30';
   }
 
   // Completely blank photo preview reset (no dummy faces)
@@ -5832,7 +5855,7 @@ async function handleSaveNewStudent() {
   const rawFee = document.getElementById('add-student-fee')?.value;
   const monthlyFee = Number(rawFee);
   const rawDuration = document.getElementById('add-student-class-duration')?.value;
-  const classDuration = (rawDuration === '15' || rawDuration === '60') ? Number(rawDuration) : 30;
+  const classDuration = (rawDuration === '15' || rawDuration === '45' || rawDuration === '60') ? Number(rawDuration) : 30;
 
   clearAllFormErrors('add-student-modal');
 
@@ -12517,7 +12540,7 @@ const DEFAULT_PAYROLL_SETTINGS = {
 };
 const PAYROLL_SETTINGS_CACHE_KEY = 'lms_payroll_settings';
 // Class duration (minutes) -> student units for payroll weighting.
-const CLASS_DURATION_UNITS = { 15: 0.5, 30: 1, 60: 2 };
+const CLASS_DURATION_UNITS = { 15: 0.5, 30: 1, 45: 1.5, 60: 2 };
 let payrollSettingsLoaded = false;
 let payrollSettingsLoading = false;
 let legacyPayrollMigrated = false;
@@ -12546,7 +12569,7 @@ function getPayrollMonthKey(monthIndex) {
 // count as the standard 30-minute class (1.0 unit).
 function getStudentClassDurationMinutes(student) {
   const d = Number(student && student.classDuration);
-  return (d === 15 || d === 30 || d === 60) ? d : 30;
+  return (d === 15 || d === 30 || d === 45 || d === 60) ? d : 30;
 }
 
 function getStudentClassUnits(student) {
@@ -15004,27 +15027,25 @@ function getNextPayableMonthIndex(targetId) {
   const student = (AppState.students || []).find(s => s.id === targetId);
   if (!student || !Array.isArray(student.months)) return CURRENT_MONTH_INDEX;
 
-  // 1. Look for current month if due
-  const curM = student.months[CURRENT_MONTH_INDEX];
-  if (curM && curM.status !== 'not_enrolled' && (curM.status === 'defaulter' || curM.status === 'partial' || curM.remainingDue > 0)) {
-    return CURRENT_MONTH_INDEX;
-  }
-
-  // 2. Look for oldest overdue month
-  for (let i = 0; i < CURRENT_MONTH_INDEX; i++) {
+  // 1. Earliest enrolled month with a balance due (oldest first) — the
+  // Target and the FIFO allocation preview must agree, and FIFO settles
+  // oldest first. (Previously the current month was checked first, so a
+  // student with older arrears got Target = current month instead of the
+  // earliest due month.)
+  for (let i = 0; i <= CURRENT_MONTH_INDEX; i++) {
     const m = student.months[i];
     if (m && m.status !== 'not_enrolled' && (m.status === 'defaulter' || m.status === 'partial' || m.remainingDue > 0)) {
       return i;
     }
   }
 
-  // 3. If current month is paid/advance, find first upcoming month that is not yet paid
-  if (curM && (curM.status === 'paid' || curM.status === 'advance')) {
-    for (let i = CURRENT_MONTH_INDEX + 1; i < student.months.length; i++) {
-      const m = student.months[i];
-      if (m && m.status !== 'paid' && m.status !== 'advance') {
-        return i;
-      }
+  // 2. Nothing due up to the current month (it is paid/advance): first
+  // upcoming month that is not yet paid. A missing/future month counts as
+  // payable; a not_enrolled future month is skipped.
+  for (let i = CURRENT_MONTH_INDEX + 1; i < student.months.length; i++) {
+    const m = student.months[i];
+    if (m && m.status !== 'paid' && m.status !== 'advance' && m.status !== 'not_enrolled') {
+      return i;
     }
   }
 
@@ -15399,9 +15420,47 @@ function openMonthDetailModal(studentId, monthIndex) {
   const isAdvance = m.status === 'advance';
   const dueAmount = m.remainingDue > 0 ? m.remainingDue : (m.status === 'defaulter' ? m.feeDue : 0);
 
-  // Look up associated payment transaction in PAYMENT_LEDGER
+  // Look up associated payment transaction in PAYMENT_LEDGER.
+  // Prefer the reconciled receipt (m.receiptNo) — the same receipt the
+  // Ledger grid shows for this student+month. The first-match loop below
+  // can pick an older doc instead (e.g. Zainab Ali Nov: TXN-1263
+  // $165/Stripe) while reconcile credits the family payment (TXN-7642
+  // $189/Direct Bank Transfer). Only fall back to the loop when the
+  // reconciled receipt has no usable payment doc.
   let matchedPayment = null;
-  if (Array.isArray(PAYMENT_LEDGER)) {
+  if (m.receiptNo) {
+    const receiptDoc = (PAYMENT_LEDGER || []).find(p => p && String(p.id || '').trim().toLowerCase() === String(m.receiptNo).trim().toLowerCase());
+    if (receiptDoc) {
+      let receiptAlloc = null;
+      if (Array.isArray(receiptDoc.allocations)) {
+        receiptAlloc = receiptDoc.allocations.find(a =>
+          (a.studentId === student.id || String(a.studentId || '').trim().toLowerCase() === String(student.id || '').trim().toLowerCase()) &&
+          (a.monthIndex === monthIndex || (a.month && a.month.toLowerCase() === monthName.toLowerCase()))
+        ) || null;
+      }
+      if (receiptAlloc) {
+        matchedPayment = {
+          id: receiptDoc.id,
+          date: receiptDoc.date || '2026-11-24',
+          method: receiptDoc.method || 'Online Card (Stripe)',
+          amount: receiptAlloc.allocatedAmount || receiptDoc.amount,
+          currency: receiptAlloc.currency || receiptDoc.currency || student.currency || '$',
+          status: receiptDoc.status || 'Completed'
+        };
+      } else if (String(receiptDoc.studentId || '').trim().toLowerCase() === String(student.id || '').trim().toLowerCase()) {
+        // Individual payment doc for this student (no per-student allocation).
+        matchedPayment = {
+          id: receiptDoc.id,
+          date: receiptDoc.date || '2026-11-24',
+          method: receiptDoc.method || 'Online Card (Stripe)',
+          amount: receiptDoc.amount,
+          currency: receiptDoc.currency || student.currency || '$',
+          status: receiptDoc.status || 'Completed'
+        };
+      }
+    }
+  }
+  if (!matchedPayment && Array.isArray(PAYMENT_LEDGER)) {
     for (const p of PAYMENT_LEDGER) {
       if (Array.isArray(p.allocations)) {
         const alloc = p.allocations.find(a => 

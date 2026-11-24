@@ -8190,7 +8190,7 @@ let quranLayoutPromise = null;
 function quranEnsureLayout() {
   if (QuranLibrary.layout) return Promise.resolve(QuranLibrary.layout);
   if (quranLayoutPromise) return quranLayoutPromise;
-  quranLayoutPromise = fetch('quran-16line-layout.json?v=20261124-pagefix')
+  quranLayoutPromise = fetch('quran-16line-layout.json?v=20261124-fontfix')
     .then(r => { if (!r.ok) throw new Error('Page layout could not be loaded (' + r.status + ')'); return r.json(); })
     .then(data => { QuranLibrary.layout = data; return data; })
     .catch(e => { quranLayoutPromise = null; throw e; });
@@ -8492,7 +8492,7 @@ function quranPageLinesHtml(n) {
       if (re[0] >= ln[0] && re[0] < ln[1]) marks.push(`<span class="quran-page-mark quran-page-mark-ruku" title="Ruku ${re[1]} ends here">ع<small>${re[1]}</small></span>`);
     }
     for (const w of (QuranLibrary.layout.sajdaWords || [])) {
-      if (w >= ln[0] && w < ln[1]) marks.push(`<span class="quran-page-mark quran-page-mark-sajda" title="Sajda — prostration here">۩</span>`);
+      if (w >= ln[0] && w < ln[1]) marks.push(`<span class="quran-page-mark quran-page-mark-sajda" title="Sajda — prostration here"><span class="sajda-badge"><span>۩</span></span><small>Sajda</small></span>`);
     }
     const marksHtml = marks.length ? `<span class="quran-page-margin-marks">${marks.join('')}</span>` : '';
     return `<div class="quran-page-line${alignCls}" dir="rtl">${html}${marksHtml}</div>`;

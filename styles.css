@@ -805,7 +805,7 @@ html, body {
   font-style: normal;
   font-display: swap;
 }
-.quran-page { max-width: 46rem; margin-left: auto; margin-right: auto; padding-inline: 2.5rem; }
+.quran-page { max-width: 46rem; margin-left: auto; margin-right: auto; padding-inline: 2.5rem; overflow-x: auto; }
 .quran-page-juz-band {
   border: 2px solid #0E4D45;
   outline: 1px solid #0E4D45;
@@ -845,7 +845,16 @@ html, body {
   /* Block of flowing text, not a flex row of boxes: Arabic letters join
      across inline span boundaries, so the line renders as continuous
      connected Mushaf script. A flex row broke the joining and made
-     every word look like a separate chip. */
+     every word look like a separate chip.
+     white-space: nowrap is load-bearing: in a printed Mushaf the line
+     breaks are FIXED — the first line of every page ends on the same
+     word in every 16-line Taj Company copy, and so on for all 16 lines.
+     The bundled layout JSON carries QUL's exact per-line word ranges
+     and the renderer emits one div per line, so a line must NEVER wrap
+     and reflow a word onto the next visual row. If a line is wider than
+     a narrow screen, the page scrolls horizontally (overflow-x on
+     .quran-page above) instead of reflowing. */
+  white-space: nowrap;
   position: relative;
   display: block;
   text-align: justify;
@@ -880,6 +889,37 @@ html, body {
   color: #0E4D45;
 }
 .quran-page-mark-sajda { font-size: 1.25rem; }
+/* Sajda badge: the U+06D8 glyph is a high combining mark (zero advance,
+   sits far above the baseline) in every Arabic font, so on its own it
+   renders as a tiny faint speck. Give it a bordered badge + a "Sajda"
+   label so it is unmistakable, and clearly different from the Ruku
+   mark (plain ع + number, no badge). The badge glyph is centred with a
+   downward shift because the mark sits high above its baseline. */
+.quran-page-mark-sajda .sajda-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0 0.25rem;
+  border: 1.5px solid #0E4D45;
+  border-radius: 9999px;
+  background: #FFFFFF;
+  font-family: 'Amiri Quran', 'Traditional Arabic', serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #0E4D45;
+}
+.quran-page-mark-sajda .sajda-badge span {
+  /* The ۩ glyph's ink sits just above its baseline (measured: ink centre
+     0.165em above baseline at 100px in Amiri via HarfBuzz), but Amiri's
+     tall metrics (ascent 1.815em) push the baseline itself ~1.09em below
+     the top of a line-height:1 box, so the glyph would sit low in the
+     badge. Shift it UP by ~0.42em to centre it in the 2rem badge. */
+  display: inline-block;
+  transform: translateY(-0.42em);
+}
 /* One ayah = one inline span (no padding/margin, so words sit exactly
    as in the printed line). Hover/select classes are applied to it. */
 .quran-page-ayah { cursor: pointer; border-radius: 0.4rem; }
@@ -898,13 +938,19 @@ html, body {
   border-radius: 9999px;
   border: 1.5px solid #1D4ED8;
   color: #1D4ED8;
-  font-size: 0.95rem;
+  /* Digits MUST NOT use the QuranIndopak font: its Arabic-Indic digits
+     U+0661–U+0669 are blank glyphs (zero advance, empty bounds — only
+     ٠ has a real glyph), so ayah numbers 1–9 rendered as empty circles.
+     Amiri Quran (webfont, loaded in index.html) has real, legible
+     Arabic-Indic digits — verified by glyph inspection. */
+  font-family: 'Amiri Quran', 'Traditional Arabic', 'Scheherazade New', serif;
+  font-size: 1.1rem;
+  font-weight: 700;
   line-height: 1;
   background: #FFFFFF;
   cursor: pointer;
   margin-inline-start: 0.35rem;
   vertical-align: middle;
-  font-family: 'QuranIndopak', 'Amiri Quran', serif;
 }
 .quran-page-surah-header {
   border: 2px solid #0E4D45;
@@ -949,4 +995,11 @@ html, body {
   .quran-page { padding-inline: 1.75rem; }
   .quran-page-margin-marks { inset-inline-end: -1.5rem; }
   .quran-page-mark { font-size: 1rem; }
+}
+/* Very narrow screens: shrink the page font a little more so the fixed
+   16-line rows fit without horizontal scrolling where possible. The
+   lines still never wrap (white-space: nowrap above). */
+@media (max-width: 400px) {
+  .quran-page-arabic { font-size: 1.3rem; }
+  .quran-page { padding-inline: 1.25rem; }
 }

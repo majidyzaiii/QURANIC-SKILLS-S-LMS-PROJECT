@@ -1128,21 +1128,38 @@ const BASELINE_SEED_NOTICE = {
   badge: 'Test'
 };
 
+const FIRESTORE_GET_TIMEOUT_MS = 8000;
+
+// Firestore .get() has no built-in timeout: with long-polling enabled, a
+// slow or unreachable Firestore can leave a .get() pending for minutes.
+// Race every startup cloud read against a timeout so startup never waits
+// on the network. Throws an Error('FIRESTORE_GET_TIMEOUT') on timeout.
+function firestoreGetWithTimeout(getPromise) {
+  return Promise.race([
+    getPromise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('FIRESTORE_GET_TIMEOUT')), FIRESTORE_GET_TIMEOUT_MS))
+  ]);
+}
+
 async function checkAndSeedInitialAcademyData() {
   if (isAcademyAlreadySeeded()) {
     console.log('[Seed] Academy already seeded. Skipping seed check.');
     return;
   }
 
+  // True when the cloud check timed out: the cloud may still hold data, so
+  // in that case we must NOT seed blindly and must NOT block startup.
+  let cloudCheckTimedOut = false;
+
   if (db) {
     try {
-      const metaDoc = await db.collection('settings').doc('academy_meta').get();
+      const metaDoc = await firestoreGetWithTimeout(db.collection('settings').doc('academy_meta').get());
       if (metaDoc.exists && metaDoc.data() && metaDoc.data().is_seeded) {
         localStorage.setItem(SEEDED_FLAG_KEY, 'true');
         console.log('[Seed] Cloud database already has is_seeded flag. Skipping seed.');
         return;
       }
-      const existingStudents = await db.collection('students').limit(1).get();
+      const existingStudents = await firestoreGetWithTimeout(db.collection('students').limit(1).get());
       if (!existingStudents.empty) {
         localStorage.setItem(SEEDED_FLAG_KEY, 'true');
         await db.collection('settings').doc('academy_meta').set({
@@ -1153,8 +1170,19 @@ async function checkAndSeedInitialAcademyData() {
         return;
       }
     } catch (e) {
-      console.warn('[Seed] Firestore check warning:', e.message);
+      if (e && e.message === 'FIRESTORE_GET_TIMEOUT') {
+        cloudCheckTimedOut = true;
+        console.warn('[Seed] Firestore check timed out after 8s; using local cache only.');
+      } else {
+        console.warn('[Seed] Firestore check warning:', e.message);
+      }
     }
+  }
+
+  if (cloudCheckTimedOut) {
+    // Cloud unreachable right now — never seed blindly (the cloud may hold
+    // data) and never block startup on it. Local cache only.
+    return;
   }
 
   const cachedStudents = loadFromStorage('lms_students', null);
@@ -1205,7 +1233,15 @@ async function checkAndSeedInitialAcademyData() {
         seeded_at: new Date().toISOString()
       }, { merge: true }));
 
-      await Promise.all(batchPromises);
+      // Time-box the background seed write too: it must never hang forever
+      // if Firestore is slow — the app already rendered from local cache.
+      await Promise.race([
+        Promise.all(batchPromises),
+        new Promise((resolve) => setTimeout(() => {
+          console.warn('[Seed] Firestore seed write timed out after 15s; continuing with local cache.');
+          resolve();
+        }, 15000))
+      ]);
       console.log('[Seed] Baseline data seeded to Firestore successfully.');
     } catch (e) {
       console.warn('[Seed] Warning saving seed to Firestore:', e.message);
@@ -5621,6 +5657,10 @@ function handleSaveNewStudent() {
   showToastNotification(`✓ Student ${fullName} (${studentId}) successfully enrolled and registered!`);
 }
 
+// Tracks whether the user picked a country by hand in the Add Teacher
+// modal. The dial-code suggestion must never overwrite a manual pick.
+let teacherCountryManuallyPicked = false;
+
 function openAddTeacherModal() {
   const modal = document.getElementById('add-teacher-modal');
   if (!modal) return;
@@ -5650,8 +5690,12 @@ function openAddTeacherModal() {
   const rateInput = document.getElementById('add-teacher-rate');
   if (rateInput) rateInput.value = '';
 
+  // Country must always start on the disabled "Select country" placeholder —
+  // never pre-select Pakistan (or any country). A previous fix for this was
+  // regressed by a later change that set the value to 'Pakistan' here.
+  teacherCountryManuallyPicked = false;
   const countrySelect = document.getElementById('add-teacher-country');
-  if (countrySelect) countrySelect.value = 'Pakistan';
+  if (countrySelect) countrySelect.value = '';
 
   // Completely blank photo preview reset (no dummy faces)
   const photoPlaceholder = document.getElementById('add-teacher-photo-placeholder');
@@ -5686,6 +5730,29 @@ function openAddTeacherModal() {
     'add-teacher-rate', 'add-teacher-country'
   ]);
 
+  // A draft saved while the old Pakistan default was active can restore
+  // "Pakistan" with no phone typed yet — that is not a manual pick, so a
+  // stale restored Pakistan with an empty phone field is reset to the
+  // placeholder. A restored Pakistan with a phone number is kept.
+  const restoredPhone = document.getElementById('add-teacher-phone')?.value?.trim();
+  if (countrySelect && countrySelect.value === 'Pakistan' && !restoredPhone) {
+    countrySelect.value = '';
+  }
+
+  // Dial-code suggestion: only while the user types a phone number, and
+  // never overwriting a country the user picked by hand. (Bound once.)
+  const phoneInputEl = document.getElementById('add-teacher-phone');
+  if (phoneInputEl && !phoneInputEl._countrySuggestBound) {
+    phoneInputEl.addEventListener('input', () => {
+      if (!teacherCountryManuallyPicked) autoDetectTeacherCountry(phoneInputEl.value);
+    });
+    phoneInputEl._countrySuggestBound = true;
+  }
+  if (countrySelect && !countrySelect._manualPickBound) {
+    countrySelect.addEventListener('change', () => { teacherCountryManuallyPicked = true; });
+    countrySelect._manualPickBound = true;
+  }
+
   modal.classList.add('active');
 }
 
@@ -5713,6 +5780,10 @@ window.detectCountryFromPhone = detectCountryFromPhone;
 function autoDetectTeacherCountry(phone) {
   const select = document.getElementById('add-teacher-country');
   if (!select) return;
+  // Suggestion only, on phone input: never run on an empty phone field
+  // (e.g. modal open) and never overwrite a country the user picked by hand.
+  if (!phone || !String(phone).trim()) return;
+  if (teacherCountryManuallyPicked) return;
   const detected = detectCountryFromPhone(phone);
   if (detected) {
     select.value = detected;
@@ -5744,6 +5815,7 @@ function handleSaveNewTeacher() {
     { id: 'add-teacher-cnic', required: true, minLength: 5, label: 'CNIC (National ID)' },
     { id: 'add-teacher-email', required: true, label: 'Gmail / Email Address' },
     { id: 'add-teacher-phone', required: true, minLength: 7, label: 'WhatsApp Number' },
+    { id: 'add-teacher-country', required: true, label: 'Country' },
     { id: 'add-teacher-rate', required: true, minNumber: 1, label: 'Hourly Honorarium Rate' }
   ];
 
@@ -5751,12 +5823,12 @@ function handleSaveNewTeacher() {
     return;
   }
 
+  // Country is required (validated above). A manual pick always wins; the
+  // dial code is only a fallback when the field was left blank, and there
+  // is no Pakistan (or any) default country.
   let country = document.getElementById('add-teacher-country')?.value;
-  const detectedCountry = detectCountryFromPhone(phone);
-  if (!country || country === 'Select Country') {
-    country = detectedCountry || 'Pakistan';
-  } else if (country === 'Pakistan' && detectedCountry && detectedCountry !== 'Pakistan') {
-    country = detectedCountry;
+  if (!country) {
+    country = detectCountryFromPhone(phone) || '';
   }
 
   const isHafiz = Boolean(document.getElementById('add-teacher-is-hafiz')?.checked);
@@ -14089,10 +14161,12 @@ window.seedRequiredAcademyData = seedRequiredAcademyData;
 window.checkAndSeedInitialAcademyData = checkAndSeedInitialAcademyData;
 
 // Initial Boot
-document.addEventListener('DOMContentLoaded', async () => {
-  if (typeof checkAndSeedInitialAcademyData === 'function') {
-    await checkAndSeedInitialAcademyData();
-  }
+document.addEventListener('DOMContentLoaded', () => {
+  // Fast first paint: render immediately from the local cache. The cloud
+  // seed check used to be awaited here, and its Firestore .get() calls
+  // (long-polling, no timeout) left the page blank with a spinner for
+  // ~3.5 minutes when Firestore was slow/unreachable. It now runs in the
+  // background (itself time-boxed to 8s per read) and re-renders when done.
   reconcileStudentsWithPaymentLedger();
   seedInitialActivityNotifications();
   updateHeaderDateDisplay();
@@ -14102,9 +14176,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       AppState.activeNav = hash;
     }
   }
-  setupFirestoreRealtimeListeners();
   renderApp();
   updateRolePillUI();
   renderNotificationsDropdownContent();
+  setupFirestoreRealtimeListeners();
+  if (typeof checkAndSeedInitialAcademyData === 'function') {
+    checkAndSeedInitialAcademyData()
+      .catch((e) => console.warn('[Seed] Background seed check failed:', e && e.message))
+      .finally(() => {
+        reconcileStudentsWithPaymentLedger();
+        renderApp();
+      });
+  }
 });
 

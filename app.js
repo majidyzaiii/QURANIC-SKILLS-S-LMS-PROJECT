@@ -10387,7 +10387,7 @@ function renderAdminFeeMatrixView() {
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
             </svg>
             <span class="text-xs">Filter</span>
-            ${(AppState.selectedFilter !== 'all' || AppState.selectedCurrency !== 'all' || isFamilyGrouped) ? `
+            ${(AppState.selectedFilter !== 'all' || AppState.selectedCurrency !== 'all' || !AppState.groupByFamily) ? `
               <span class="w-1.5 h-1.5 rounded-full bg-[#0E4D45]"></span>
             ` : ''}
           </button>
@@ -10904,13 +10904,13 @@ function updateFeeFilterBottomSheetUI() {
       { id: 'advance', label: 'Advance' },
       { id: 'defaulter', label: 'Overdue' }
     ];
-    statusContainer.innerHTML = statuses.map(s => {
+    statusContainer.innerHTML = statuses.map((s, idx) => {
       const active = AppState.selectedFilter === s.id;
       return `
         <button 
           type="button" 
           onclick="setFeeFilter('${s.id}'); updateFeeFilterBottomSheetUI();" 
-          class="py-2 px-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer border text-center ${active ? 'bg-[#0E4D45] text-white border-[#0E4D45] shadow-xs' : 'bg-white text-gray-700 border-[#ECEAE4] hover:bg-[#F8F6F1]'}"
+          class="${idx < 3 ? 'col-span-2' : 'col-span-3'} py-2 px-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer border text-center whitespace-nowrap ${active ? 'bg-[#0E4D45] text-white border-[#0E4D45] shadow-xs' : 'bg-white text-gray-700 border-[#ECEAE4] hover:bg-[#F8F6F1]'}"
         >
           ${s.label}
         </button>

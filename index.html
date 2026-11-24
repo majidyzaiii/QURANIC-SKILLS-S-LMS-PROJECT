@@ -39,7 +39,7 @@
   </script>
 
   <!-- Custom CSS -->
-  <link rel="stylesheet" href="styles.css?v=20261124-reset-fix">
+  <link rel="stylesheet" href="styles.css?v=20261124-mobile-filter">
 
   <!-- Inline Sparkline Attendance Trend Styles -->
   <style>
@@ -2468,17 +2468,16 @@
         <!-- 1. Fee Status Filter Pills -->
         <div>
           <label class="block text-xs font-semibold text-[#141F1E] mb-2">Payment Status</label>
-          <div class="grid grid-cols-3 gap-2" id="bottom-sheet-status-filters">
+          <div class="grid grid-cols-6 gap-2" id="bottom-sheet-status-filters">
             <!-- Dynamically populated -->
           </div>
         </div>
 
         <!-- 2. Family Group Toggle -->
-        <div class="flex items-center justify-between p-3 rounded-xl bg-[#F8F6F1] border border-[#ECEAE4]">
-          <div>
-            <span class="font-bold text-xs text-[#141F1E] block">Group by Family</span>
+        <div>
+          <label class="block text-xs font-semibold text-[#141F1E] mb-2">Family Group</label>
+          <div class="flex items-center justify-between h-9">
             <span class="text-[11px] text-gray-500">Group sibling accounts together</span>
-          </div>
           <button 
             type="button" 
             role="switch" 
@@ -2488,6 +2487,7 @@
           >
             <!-- Dynamically populated -->
           </button>
+          </div>
         </div>
 
         <!-- 3. Currency Filter -->
@@ -2669,7 +2669,7 @@
   <script src="chart.min.js"></script>
 
   <!-- Application Logic -->
-  <script src="app.js?v=20261124-reset-fix"></script>
+  <script src="app.js?v=20261124-mobile-filter"></script>
   <!-- ==========================================================================
        COMMAND PALETTE (Ctrl+K) — shared across all portals
        ========================================================================== -->

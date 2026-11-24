@@ -316,6 +316,12 @@ body {
   flex-direction: column;
 }
 
+/* Settings modal is wider than other modals so all four sections fit at a
+   normal desktop viewport without an inner scroll (Section 4 was cut off). */
+#settings-modal .modal-content {
+  max-width: 760px;
+}
+
 /* Zero Typing Quick Logger Pills */
 .pill-choice {
   padding: 6px 12px;

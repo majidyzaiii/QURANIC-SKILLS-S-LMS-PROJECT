@@ -580,6 +580,12 @@ function normalizeCourseName(course) {
   if (trimmed === 'Islamic Studies & Dua' || trimmed === 'Islamic Studies & Daily Duaa' || trimmed === 'Islamic Studies & Duaa') {
     return COURSE_ISLAMIC_STUDIES;
   }
+  if (trimmed === 'Noorani Qaida & Nazra') {
+    // Legacy wrong value: Ustadha Maryam Khan's teacher specialization was once
+    // stored as Ayesha Siddiqui's course. Ayesha's actual course is
+    // 'Nazra Quran with Tajweed'; the specialization belongs to the teacher.
+    return 'Nazra Quran with Tajweed';
+  }
   return trimmed;
 }
 let CURRENT_MONTH_INDEX = _systemCurrentDate.getMonth(); // Dynamically detects current system month (0-indexed: 0=Jan, 10=Nov, etc.)
@@ -5058,7 +5064,7 @@ function seedInitialActivityNotifications() {
   const requiredStudents = [
     { id: 'TEST-001', name: 'TEST Student One', course: 'Nazra Quran with Tajweed ($50/month)', teacher: 'TEST Teacher One' },
     { id: 'STU-101', name: 'Ahmed Khan', course: 'Hifz-ul-Quran ($60/month)', teacher: 'Qari Abdul Basit' },
-    { id: 'STU-102', name: 'Ayesha Siddiqui', course: 'Noorani Qaida & Nazra ($50/month)', teacher: 'Ustadha Maryam Khan' },
+    { id: 'STU-102', name: 'Ayesha Siddiqui', course: 'Nazra Quran with Tajweed ($50/month)', teacher: 'Ustadha Maryam Khan' },
     { id: 'STU-103', name: 'Umar Farooq', course: 'Islamic Studies & Daily Duas ($40/month)', teacher: 'Ustadha Maryam Khan' }
   ];
   // P0-1 repair: stored enrollment entries created before this fix recorded
@@ -5098,7 +5104,7 @@ function seedInitialActivityNotifications() {
   const requiredTeachers = [
     { id: 'TEST-T-001', name: 'TEST Teacher One', spec: 'General Quran at $20/hr' },
     { id: 'TCH-101', name: 'Qari Abdul Basit', spec: 'Advanced Qiraat & Ijazah at $25/hr' },
-    { id: 'TCH-102', name: 'Ustadha Maryam Khan', spec: 'Female & Kids Tajweed at $22/hr' },
+    { id: 'TCH-102', name: 'Ustadha Maryam Khan', spec: 'Noorani Qaida & Nazra at $22/hr' },
     { id: 'TCH-103', name: 'Qari Saad Ahmed', spec: 'Advanced Tajweed & Makharij at $20/hr' }
   ];
   requiredTeachers.forEach((tc, idx) => {
@@ -5114,6 +5120,14 @@ function seedInitialActivityNotifications() {
         unread: false,
         timestamp: Date.now() - (10800000 + idx * 60000)
       });
+    }
+  });
+
+  // Repair: an older Faculty Onboarded entry for Maryam used the wrong
+  // specialization string; rewrite it to her actual specialization.
+  SYSTEM_NOTIFICATIONS.forEach(n => {
+    if (n && n.title === 'Faculty Onboarded' && typeof n.desc === 'string' && n.desc.includes('Ustadha Maryam Khan') && n.desc.includes('Female & Kids Tajweed')) {
+      n.desc = n.desc.replace('Female & Kids Tajweed', 'Noorani Qaida & Nazra');
     }
   });
 
@@ -9516,28 +9530,28 @@ function renderStudentDirectoryRows(students) {
 
         <!-- 8. 3-Dots Action Menu Column (Rightmost End, Never Cut Off) -->
         <td class="py-3.5 px-2.5 w-10 text-right relative student-action-menu-container" data-label="Actions">
-          <button onclick="toggleStudentActionMenu('${s.id}', event)" class="w-8 h-8 rounded-full flex items-center justify-center text-[#7A8684] hover:text-[#141F1E] hover:bg-[#F8F6F1] transition-all cursor-pointer font-bold leading-none inline-flex" title="Actions for ${s.firstName}">
+          <button data-action-btn="${s.id}" onclick="toggleStudentActionMenu('${s.id}', event)" class="w-8 h-8 rounded-full flex items-center justify-center text-[#7A8684] hover:text-[#141F1E] hover:bg-[#F8F6F1] transition-all cursor-pointer font-bold leading-none inline-flex" title="Actions for ${s.firstName}">
             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
           </button>
 
           ${isMenuOpen ? `
-            <div class="absolute right-0 ${menuOpensUpward ? 'bottom-11' : 'top-11'} rounded-2xl shadow-xl border border-[#ECEAE4] p-1.5 w-48 bg-white z-50 text-left animate-in fade-in zoom-in-95 duration-150">
-              <button onclick="closeStudentActionMenu(); openViewWeeklyScheduleModal('${s.id}')" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer whitespace-nowrap">
+            <div id="student-action-menu-${s.id}" style="visibility:hidden" class="fixed rounded-2xl shadow-xl border border-[#ECEAE4] p-1.5 w-60 bg-white z-[70] text-left animate-in fade-in zoom-in-95 duration-150">
+              <button onclick="closeStudentActionMenu(); openViewWeeklyScheduleModal('${s.id}')" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer">
                 <svg class="w-4 h-4 text-[#7A8684] shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                   <circle cx="12" cy="12" r="3"></circle>
                 </svg>
                 <span>Full Profile</span>
               </button>
-              <button onclick="closeStudentActionMenu(); openReceiveFeeModal('${s.id}')" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer whitespace-nowrap">
+              <button onclick="closeStudentActionMenu(); openReceiveFeeModal('${s.id}')" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer">
                 <svg class="w-4 h-4 text-[#0E4D45] shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
                 <span>Receive Fee</span>
               </button>
-              <button onclick="closeStudentActionMenu(); filterByFamilyTag('${s.familyId || s.familyTag}')" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer whitespace-nowrap">
+              <button onclick="closeStudentActionMenu(); filterByFamilyTag('${s.familyId || s.familyTag}')" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer">
                 <svg class="w-4 h-4 text-[#7A8684] shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
                 <span>Filter Family (${s.familyId || s.familyTag})</span>
               </button>
-              <button onclick="closeStudentActionMenu(); openEditScheduleModal('${s.id}')" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer whitespace-nowrap">
+              <button onclick="closeStudentActionMenu(); openEditScheduleModal('${s.id}')" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer">
                 <svg class="w-4 h-4 text-[#7A8684] shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                   <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
@@ -9549,7 +9563,7 @@ function renderStudentDirectoryRows(students) {
                 <button 
                   type="button" 
                   onclick="toggleStatusSubmenu('${s.id}', event)" 
-                  class="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer whitespace-nowrap"
+                  class="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer"
                 >
                   <div class="flex items-center gap-2.5">
                     <svg class="w-4 h-4 text-[#7A8684] shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
@@ -9576,7 +9590,7 @@ function renderStudentDirectoryRows(students) {
                   <!-- 1. Active -->
                   <button 
                     onclick="setStudentStatus('${s.id}', 'Active', event)" 
-                    class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap ${
+                    class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
                       (s.academicStatus || 'Active') === 'Active' 
                         ? 'bg-[#E0F2F1] text-[#0E4D45]' 
                         : 'text-[#141F1E] hover:bg-[#F8F6F1]'
@@ -9592,7 +9606,7 @@ function renderStudentDirectoryRows(students) {
                   <!-- 2. On Trial -->
                   <button 
                     onclick="setStudentStatus('${s.id}', 'On Trial', event)" 
-                    class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap ${
+                    class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
                       s.academicStatus === 'On Trial' 
                         ? 'bg-[#FEF3C7] text-[#92400E]' 
                         : 'text-[#141F1E] hover:bg-[#F8F6F1]'
@@ -9608,7 +9622,7 @@ function renderStudentDirectoryRows(students) {
                   <!-- 3. On Leave / Inactive -->
                   <button 
                     onclick="setStudentStatus('${s.id}', 'Inactive', event)" 
-                    class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap ${
+                    class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
                       (s.academicStatus === 'Inactive' || s.academicStatus === 'On Leave') 
                         ? 'bg-[#FEE2E2] text-[#991B1B]' 
                         : 'text-[#141F1E] hover:bg-[#F8F6F1]'
@@ -9623,7 +9637,7 @@ function renderStudentDirectoryRows(students) {
                 </div>
               </div>
               <div class="my-1 border-t border-[#F1EFEA]"></div>
-              <button onclick="deleteStudent('${s.id}', event)" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#EF4444] hover:bg-[#FEE2E2]/60 transition-colors cursor-pointer whitespace-nowrap">
+              <button onclick="deleteStudent('${s.id}', event)" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#EF4444] hover:bg-[#FEE2E2]/60 transition-colors cursor-pointer">
                 <svg class="w-4 h-4 text-[#EF4444] shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
                   <path d="M3 6h18"></path>
                   <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -9638,16 +9652,6 @@ function renderStudentDirectoryRows(students) {
       </tr>
     `;
   }).join('');
-}
-
-function updateStudentDirectoryRowsOnly() {
-  const tbody = document.getElementById('student-directory-table-body');
-  if (!tbody) {
-    renderApp();
-    return;
-  }
-  const filtered = getFilteredStudentsForDirectory();
-  tbody.innerHTML = renderStudentDirectoryRows(filtered);
 }
 
 function handleStudentDirectorySearch(q) {
@@ -9730,6 +9734,44 @@ function closeStudentActionMenu() {
     AppState.activeStudentActionMenuId = null;
     updateStudentDirectoryRowsOnly();
   }
+}
+
+// Row Actions menu is fixed-positioned so it escapes the horizontally
+// scrolling Directory table (which would otherwise clip it at the card's
+// right edge). Position it from the 3-dots button's viewport rect so it
+// always stays fully on screen, opening above the button when there is no
+// room below it.
+function positionOpenStudentActionMenu() {
+  const id = AppState.activeStudentActionMenuId;
+  if (!id) return;
+  const btn = document.querySelector('[data-action-btn="' + id + '"]');
+  const menu = document.getElementById('student-action-menu-' + id);
+  if (!btn || !menu) return;
+  const r = btn.getBoundingClientRect();
+  const mw = menu.offsetWidth || 240;
+  const mh = menu.offsetHeight || 320;
+  let left = r.right - mw;
+  if (left < 8) left = 8;
+  if (left + mw > window.innerWidth - 8) left = Math.max(8, window.innerWidth - mw - 8);
+  let top = r.bottom + 6;
+  if (top + mh > window.innerHeight - 8) top = r.top - mh - 6;
+  if (top < 8) top = 8;
+  menu.style.left = left + 'px';
+  menu.style.top = top + 'px';
+  menu.style.visibility = 'visible';
+}
+
+// Re-position the open menu after every Directory rows re-render (toggle,
+// search, filters), and close it on any scroll — its anchor row moves.
+function updateStudentDirectoryRowsOnly() {
+  const tbody = document.getElementById('student-directory-table-body');
+  if (!tbody) {
+    renderApp();
+  } else {
+    const filtered = getFilteredStudentsForDirectory();
+    tbody.innerHTML = renderStudentDirectoryRows(filtered);
+  }
+  positionOpenStudentActionMenu();
 }
 
 function copyToClipboard(text, toastMsg = 'Copied to clipboard!') {
@@ -9858,6 +9900,14 @@ function exportStudentsToCSV(listOverride) {
   link.click();
   document.body.removeChild(link);
   showToastNotification('✓ Exported student directory to CSV successfully!');
+}
+
+// Close the fixed row-action menu on any scroll (its anchor row moves with the table).
+if (typeof window !== 'undefined' && !window.__studentActionMenuScrollAttached) {
+  window.__studentActionMenuScrollAttached = true;
+  document.addEventListener('scroll', function () {
+    if (AppState.activeStudentActionMenuId) closeStudentActionMenu();
+  }, true);
 }
 
 // Global click-outside listener for floating action menu, schedule popover & contact popover
@@ -12506,6 +12556,10 @@ document.addEventListener('keydown', (e) => {
       else openModal.classList.remove('active');
       return;
     }
+    // Escape closes any open row action menu (student / notice / ledger).
+    if (AppState.activeStudentActionMenuId) { closeStudentActionMenu(); return; }
+    if (AppState.activeNoticeActionMenuId) { closeNoticeActionMenu(); return; }
+    if (AppState.activeLedgerActionMenuId) { AppState.activeLedgerActionMenuId = null; renderApp(); return; }
     ['profile-dropdown-menu', 'notifications-dropdown-menu', 'month-year-dropdown', 'live-class-filter-popover'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.classList.add('hidden');
@@ -12784,7 +12838,7 @@ function seedRequiredAcademyData() {
       name: 'Ustadha Maryam Khan',
       fatherName: 'Tariq Khan',
       cnic: '35201-3333333-3',
-      specialization: 'Female & Kids Tajweed',
+      specialization: 'Noorani Qaida & Nazra', // TCH-102's own specialization (a teacher field — never a student course)
       // P0-3: Not a Hafiz.
       isHafiz: false,
       certifiedHafiz: false,
@@ -12829,6 +12883,12 @@ function seedRequiredAcademyData() {
       // Fix specialization for Qari Saad Ahmed (Bug 4)
       if (existing.id === 'TCH-103' && existing.specialization !== 'Advanced Tajweed & Makharij') {
         existing.specialization = 'Advanced Tajweed & Makharij';
+        dbSaveTeacher(existing);
+      }
+      // TCH-102: her specialization is 'Noorani Qaida & Nazra' (original entry);
+      // the seed once said 'Female & Kids Tajweed', which disagreed with the record.
+      if (existing.id === 'TCH-102' && existing.specialization === 'Female & Kids Tajweed') {
+        existing.specialization = 'Noorani Qaida & Nazra';
         dbSaveTeacher(existing);
       }
       // P0-3: Certified Hafiz flag. True only for the Hifz/Qiraat specialists
@@ -12936,7 +12996,7 @@ function seedRequiredAcademyData() {
       teacherId: 'TCH-102',
       teacherName: 'Ustadha Maryam Khan',
       assignedTeacher: 'Ustadha Maryam Khan',
-      course: 'Noorani Qaida & Nazra',
+      course: 'Nazra Quran with Tajweed',
       currency: '$',
       currencyCode: 'USD',
       monthlyFee: 50,
@@ -13007,6 +13067,9 @@ function seedRequiredAcademyData() {
         existing.teacherId = 'TCH-102';
         existing.teacherName = 'Ustadha Maryam Khan';
         existing.assignedTeacher = 'Ustadha Maryam Khan';
+        // Ayesha's course is 'Nazra Quran with Tajweed'. 'Noorani Qaida & Nazra'
+        // is her teacher's specialization, never the student's course.
+        existing.course = 'Nazra Quran with Tajweed';
       }
       if (existing.id === 'STU-103') {
         if (existing.monthlyFee !== 40) existing.monthlyFee = 40;

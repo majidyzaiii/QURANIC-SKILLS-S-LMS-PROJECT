@@ -1566,7 +1566,6 @@ AppState.studentDirectoryCourseFilter = 'all';
 AppState.studentDirectoryTeacherFilter = 'all';
 AppState.studentDirectoryFeeFilter = 'all';
 AppState.teacherPayrollSpecFilter = 'all';
-AppState.teacherPayrollHafizFilter = 'all';
 AppState.teacherPayrollStatusFilter = 'all';
 AppState.commandPaletteOpen = false;
 AppState.commandPaletteSelectedIndex = 0;
@@ -2121,7 +2120,7 @@ function renderCommandPaletteResults(query) {
 
   const teacherItems = (AppState.teachers || []).map(t => ({
     label: `${t.name} (${t.id})`,
-    subLabel: `${t.isHafiz ? 'Certified Hafiz' : 'Faculty'} • $${t.hourlyRate}/hr`,
+    subLabel: `Teacher • $${t.hourlyRate}/hr`,
     category: 'Faculty',
     icon: 'teacher',
     avatar: t.avatar || getAvatarUrl(t.name),
@@ -4861,7 +4860,7 @@ function openEditScheduleModal(studentId) {
         const isMatch = matchedTeacher && (matchedTeacher.id === t.id);
         return `
           <option value="${t.id}" ${isMatch ? 'selected' : ''}>
-            ${t.name}${t.isHafiz ? ' (Hafiz)' : ''}
+            ${t.name}
           </option>
         `;
       }).join('');
@@ -5373,7 +5372,7 @@ function openAddStudentModal() {
   const teacherSelect = document.getElementById('add-student-teacher');
   if (teacherSelect) {
     teacherSelect.innerHTML = `<option value="" disabled selected>Select Faculty / Teacher</option>` +
-      (AppState.teachers || []).map(t => `<option value="${t.id}">${t.name}${t.isHafiz ? ' (Hafiz)' : ''}</option>`).join('');
+      (AppState.teachers || []).map(t => `<option value="${t.id}">${t.name}</option>`).join('');
   }
 
   // Currency - neutral blank selection
@@ -5993,8 +5992,7 @@ function clearTeacherPayrollSearch() {
 window.clearTeacherPayrollSearch = clearTeacherPayrollSearch;
 
 function setTeacherPayrollHafizFilter(val) {
-  AppState.teacherPayrollHafizFilter = val;
-  renderApp();
+  // Hafiz filter removed: all teachers are shown as Teachers
 }
 window.setTeacherPayrollHafizFilter = setTeacherPayrollHafizFilter;
 
@@ -6010,7 +6008,6 @@ function setTeacherPayrollSpecializationFilter(val) {
 window.setTeacherPayrollSpecializationFilter = setTeacherPayrollSpecializationFilter;
 
 function resetTeacherPayrollFilters() {
-  AppState.teacherPayrollHafizFilter = 'all';
   AppState.teacherPayrollSalaryFilter = 'all';
   AppState.teacherPayrollSpecializationFilter = 'all';
   AppState.teacherPayrollSearchQuery = '';
@@ -6263,7 +6260,7 @@ function openAddTrialModal() {
   const teacherSelect = document.getElementById('add-trial-teacher');
   if (teacherSelect) {
     teacherSelect.innerHTML = `<option value="Unassigned">Assign Faculty Later...</option>` +
-      (AppState.teachers || []).map(t => `<option value="${t.name}">${t.name}${t.isHafiz ? ' (Hafiz)' : ''}</option>`).join('');
+      (AppState.teachers || []).map(t => `<option value="${t.name}">${t.name}</option>`).join('');
   }
   clearAllFormErrors(modal);
   initFormDraftAutoSave('add-trial-modal', 'new_trial', ['add-trial-name', 'add-trial-course', 'add-trial-country']);
@@ -11745,8 +11742,8 @@ function renderAdminTeacherPayrollView() {
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div class="p-4 bg-[#F8F6F1] rounded-2xl border border-[#ECEAE4]">
-          <span class="text-xs text-[#7A8684] font-medium" title="Faculty members who have memorized the complete Quran (Huffaz)">Certified Huffaz (Quran Memorizers)</span>
-          <p class="text-2xl font-bold text-[#141F1E] mt-1" title="Certified memorizers of the Holy Quran">${AppState.teachers.filter(t => t.isHafiz === true).length} Certified Huffaz</p>
+          <span class="text-xs text-[#7A8684] font-medium">Teachers</span>
+          <p class="text-2xl font-bold text-[#141F1E] mt-1">${AppState.teachers.length} Teachers</p>
           <div class="flex items-center gap-1.5 mt-1">
             <span class="text-[11px] text-[#0E4D45] font-medium">Out of ${totalTeachers} total faculty members</span>
           </div>
@@ -11771,22 +11768,6 @@ function renderAdminTeacherPayrollView() {
         <div class="flex items-center gap-2 flex-wrap text-xs">
           <span class="text-[11px] font-semibold text-[#7A8684] shrink-0">Filter:</span>
           
-          <!-- Hafiz Filter Pill -->
-          <button 
-            type="button" 
-            onclick="setTeacherPayrollHafizFilter('${AppState.teacherPayrollHafizFilter === 'hafiz-only' ? 'all' : 'hafiz-only'}')" 
-            class="px-3 py-1.5 rounded-full text-xs transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-              AppState.teacherPayrollHafizFilter === 'hafiz-only' 
-                ? 'bg-[#0E4D45] text-white font-bold shadow-xs' 
-                : 'bg-[#F8F6F1] border border-[#ECEAE4] text-[#7A8684] hover:text-[#141F1E]'
-            }"
-          >
-            <span>Certified Huffaz Only</span>
-            <span class="text-[10px] px-1.5 py-0.2 rounded-full ${AppState.teacherPayrollHafizFilter === 'hafiz-only' ? 'bg-white/20 text-white' : 'bg-[#ECEAE4] text-[#7A8684]'} font-bold">
-              ${AppState.teachers.filter(t => t.isHafiz === true).length}
-            </span>
-          </button>
-
           <!-- Salary Status Filter -->
           <select 
             onchange="setTeacherPayrollSalaryFilter(this.value)" 
@@ -11797,8 +11778,7 @@ function renderAdminTeacherPayrollView() {
             <option value="Pending" ${AppState.teacherPayrollSalaryFilter === 'Pending' ? 'selected' : ''}>Pending</option>
           </select>
 
-          ${(AppState.teacherPayrollHafizFilter === 'hafiz-only' || 
-             (AppState.teacherPayrollSalaryFilter && AppState.teacherPayrollSalaryFilter !== 'all') ||
+          ${((AppState.teacherPayrollSalaryFilter && AppState.teacherPayrollSalaryFilter !== 'all') ||
              AppState.teacherPayrollSearchQuery) ? `
             <button type="button" onclick="resetTeacherPayrollFilters()" class="text-[11px] font-bold text-[#0E4D45] hover:underline cursor-pointer">
               Reset Filters
@@ -11842,9 +11822,6 @@ function renderAdminTeacherPayrollView() {
           <tbody class="divide-y divide-[#ECEAE4] text-xs">
             ${(() => {
               let displayedTeachers = (AppState.teachers || []).slice();
-              if (AppState.teacherPayrollHafizFilter === 'hafiz-only') {
-                displayedTeachers = displayedTeachers.filter(t => t.isHafiz === true);
-              }
               if (AppState.teacherPayrollSalaryFilter && AppState.teacherPayrollSalaryFilter !== 'all') {
                 displayedTeachers = displayedTeachers.filter(t => (t.salaryStatus || 'Pending') === AppState.teacherPayrollSalaryFilter);
               }
@@ -11857,8 +11834,7 @@ function renderAdminTeacherPayrollView() {
                 );
               }
               if (displayedTeachers.length === 0) {
-                const isFiltered = AppState.teacherPayrollHafizFilter === 'hafiz-only' || 
-                                   (AppState.teacherPayrollSalaryFilter && AppState.teacherPayrollSalaryFilter !== 'all') || 
+                const isFiltered = (AppState.teacherPayrollSalaryFilter && AppState.teacherPayrollSalaryFilter !== 'all') || 
                                    AppState.teacherPayrollSearchQuery;
                 return `
                   <tr>
@@ -11866,7 +11842,7 @@ function renderAdminTeacherPayrollView() {
                       ${renderSharedEmptyState({
                         icon: 'teacher',
                         title: isFiltered ? 'No faculty members match your filter criteria' : 'No faculty members registered yet',
-                        description: isFiltered ? 'Try adjusting your Hafiz or salary filter settings.' : 'Onboard your first teacher to start assigning classes and tracking payroll.',
+                        description: isFiltered ? 'Try adjusting your salary filter settings.' : 'Onboard your first teacher to start assigning classes and tracking payroll.',
                         actionText: isFiltered ? 'Reset Filters' : '+ Add Faculty Member',
                         actionFn: isFiltered ? 'resetTeacherPayrollFilters()' : 'openAddTeacherModal()'
                       })}
@@ -11892,7 +11868,6 @@ function renderAdminTeacherPayrollView() {
                         onerror="this.onerror=null; this.src='${getAvatarUrl(t.name)}';"
                       />
                       <span>${t.name}</span>
-                      ${t.isHafiz ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#E8EFEE] text-[#0E4D45]" title="Certified Hafiz of the Holy Quran">Hafiz</span>` : ''}
                     </div>
                   </td>
                   <td class="py-3.5 text-[#7A8684]" data-label="Country">${t.country}</td>
@@ -12379,7 +12354,7 @@ function renderManagerPortalView() {
             <div class="p-4 rounded-2xl border border-[#ECEAE4] bg-[#F8F6F1]/50 flex items-center justify-between">
               <div>
                 <h4 class="text-xs font-bold text-[#141F1E]">${t.name}</h4>
-                <p class="text-[11px] text-[#7A8684]">${t.isHafiz ? 'Certified Hafiz • ' : ''}${t.country}</p>
+                <p class="text-[11px] text-[#7A8684]">${t.country}</p>
                 <div class="flex items-center gap-2 mt-2">
                   <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
                   <span class="text-[10px] text-[#065F46] font-semibold">Available for On-Demand Cover</span>
@@ -13813,7 +13788,7 @@ function openSubstituteModal() {
     const origSelect = document.getElementById('substitute-original-teacher');
     const targetSelect = document.getElementById('substitute-target-teacher');
     if (origSelect && AppState.teachers && AppState.teachers.length > 0) {
-      origSelect.innerHTML = AppState.teachers.map(t => `<option value="${t.id}">${t.name}${t.isHafiz ? ' (Hafiz)' : ''}</option>`).join('');
+      origSelect.innerHTML = AppState.teachers.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
     }
     if (targetSelect && AppState.teachers && AppState.teachers.length > 0) {
       targetSelect.innerHTML = AppState.teachers.map(t => `<option value="${t.id}">${t.name} (${t.status || 'Available'})</option>`).join('');

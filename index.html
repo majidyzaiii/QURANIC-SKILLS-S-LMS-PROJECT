@@ -787,6 +787,23 @@
               >
             </div>
             <p id="add-student-package-note" class="hidden text-[11px] font-semibold text-[#0E4D45] mt-1.5"></p>
+            <!-- Family Package fee raise at enrolment (shown only for packaged families) -->
+            <div id="add-student-package-raise" class="hidden mt-2">
+              <label class="block text-[11px] font-semibold text-[#141F1E] mb-1">Family Package fee</label>
+              <div class="flex items-center gap-2">
+                <span id="add-student-package-currency" class="shrink-0 w-10 h-10 flex items-center justify-center bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg text-xs font-bold text-[#0E4D45]">$</span>
+                <input
+                  type="number"
+                  id="add-student-package-fee"
+                  min="0.01"
+                  step="any"
+                  placeholder=""
+                  oninput="handleAddStudentPackageFeeChange()"
+                  class="flex-1 min-w-0 bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#0E4D45] font-bold outline-none focus:border-[#0E4D45] focus:bg-white transition-all"
+                >
+              </div>
+              <p id="add-student-package-raise-hint" class="text-[11px] text-[#7A8684] mt-1"></p>
+            </div>
           </div>
 
         </div>
@@ -2719,7 +2736,7 @@
   <script src="chart.min.js"></script>
 
   <!-- Application Logic -->
-  <script src="app.js?v=20261124-familypackage"></script>
+  <script src="app.js?v=20261124-pkgraise"></script>
   <!-- ==========================================================================
        COMMAND PALETTE (Ctrl+K) — shared across all portals
        ========================================================================== -->

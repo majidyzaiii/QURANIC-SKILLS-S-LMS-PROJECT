@@ -5742,6 +5742,17 @@ async function handleSaveNewStudent() {
     newStudent.familyPackage = true;
     newStudent.familyPackageFee = existingPkgFee;
     newStudent.prePackageFee = monthlyFee;
+    // Package fee raised at enrolment: if the admin entered a different
+    // flat fee in the form, apply it to every member (including the new
+    // student) before the re-split, so shares use the new fee. An empty,
+    // invalid, zero or unchanged value is ignored and the package stays
+    // exactly as it is.
+    const pkgRaiseInput = document.getElementById('add-student-package-fee');
+    const raisedFee = pkgRaiseInput ? Number(pkgRaiseInput.value) : NaN;
+    if (!isNaN(raisedFee) && raisedFee > 0 && raisedFee !== existingPkgFee) {
+      getFamilyMembers(familyId).forEach(s => { s.familyPackageFee = raisedFee; });
+      newStudent.familyPackageFee = raisedFee;
+    }
     packageCloudSaved = await recalcFamilyPackage(familyId);
   }
 
@@ -10193,6 +10204,10 @@ function handleAddStudentFamilyTagChange() {
   const familyInput = document.getElementById('add-student-family-id');
   const feeInput = document.getElementById('add-student-fee');
   const note = document.getElementById('add-student-package-note');
+  const raiseWrap = document.getElementById('add-student-package-raise');
+  const raiseInput = document.getElementById('add-student-package-fee');
+  const raiseCurrency = document.getElementById('add-student-package-currency');
+  const raiseHint = document.getElementById('add-student-package-raise-hint');
   if (!familyInput || !feeInput || !note) return;
   const tag = (familyInput.value || '').trim();
   const pkgFee = tag ? getFamilyPackage(tag) : null;
@@ -10204,6 +10219,8 @@ function handleAddStudentFamilyTagChange() {
     lastPackageAutoShare = null;
     note.textContent = '';
     note.classList.add('hidden');
+    if (raiseWrap) raiseWrap.classList.add('hidden');
+    if (raiseInput) raiseInput.value = '';
     return;
   }
   const members = getFamilyMembers(tag);
@@ -10214,8 +10231,45 @@ function handleAddStudentFamilyTagChange() {
   note.classList.remove('hidden');
   feeInput.value = String(share);
   lastPackageAutoShare = share;
+  // Family Package raise at enrolment: a new child joining is when the
+  // academy asks the family to raise the flat fee a little. Offer the
+  // current fee here, editable; the share above updates live as it is
+  // typed (see handleAddStudentPackageFeeChange).
+  if (raiseWrap) raiseWrap.classList.remove('hidden');
+  if (raiseInput) raiseInput.value = String(pkgFee);
+  if (raiseCurrency) raiseCurrency.textContent = currency;
+  if (raiseHint) raiseHint.textContent = `New child is joining — raise the package fee here if the family agreed (leave it to keep ${currency}${formatFeeAmount(pkgFee)}).`;
 }
 window.handleAddStudentFamilyTagChange = handleAddStudentFamilyTagChange;
+
+// Live share update when the admin raises the package fee in the Add
+// Student form. While the field is empty or invalid, the note falls back
+// to the stored package fee and the field itself is left alone (never
+// reset it mid-typing). Only an auto-filled share in Monthly Fee is
+// overwritten — a manually typed fee is never touched.
+function handleAddStudentPackageFeeChange() {
+  const familyInput = document.getElementById('add-student-family-id');
+  const feeInput = document.getElementById('add-student-fee');
+  const note = document.getElementById('add-student-package-note');
+  const raiseInput = document.getElementById('add-student-package-fee');
+  if (!familyInput || !feeInput || !note || !raiseInput) return;
+  const tag = (familyInput.value || '').trim();
+  const currentPkgFee = tag ? getFamilyPackage(tag) : null;
+  if (!currentPkgFee) return;
+  const typed = (raiseInput.value || '').trim();
+  const newFee = Number(typed);
+  const effectiveFee = (typed !== '' && !isNaN(newFee) && newFee > 0) ? newFee : currentPkgFee;
+  const members = getFamilyMembers(tag);
+  const newCount = members.length + 1;
+  const share = splitPackageFee(effectiveFee, newCount)[0];
+  const currency = members[0]?.currency || '$';
+  note.textContent = `Family Package ${currency}${formatFeeAmount(effectiveFee)}/mo — this child's share ${currency}${formatFeeAmount(share)} (auto-set)`;
+  if (feeInput.value === '' || (lastPackageAutoShare !== null && Number(feeInput.value) === lastPackageAutoShare)) {
+    feeInput.value = String(share);
+  }
+  lastPackageAutoShare = share;
+}
+window.handleAddStudentPackageFeeChange = handleAddStudentPackageFeeChange;
 
 /**
  * Render Family Header Row in Accordion Grouped Ledger Table (Stripe Billing Minimalist Standard)

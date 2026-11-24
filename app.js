@@ -8369,7 +8369,16 @@ function renderAdminFeeMatrixView() {
           </button>
         </div>
 
-<!-- P1-10: duplicate month stepper removed — the top header stepper is the single month control. -->
+<!-- Right: Active Month Stepper < Nov 2026 > -->
+        <div class="inline-flex items-center h-9 rounded-xl border border-[#ECEAE4] bg-white px-1 shadow-2xs">
+          <button type="button" onclick="stepAcademicMonth(-1)" class="w-7 h-7 rounded-lg flex items-center justify-center text-[#7A8684] hover:text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer" title="Previous Month">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+          </button>
+          <span class="text-xs font-bold text-[#141F1E] px-2.5 whitespace-nowrap">${MONTHS_LIST[CURRENT_MONTH_INDEX]} ${CURRENT_YEAR}</span>
+          <button type="button" onclick="stepAcademicMonth(1)" class="w-7 h-7 rounded-lg flex items-center justify-center text-[#7A8684] hover:text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer" title="Next Month">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+          </button>
+        </div>
       </div>
 
       <!-- Collapsible Desktop Filter Panel (Does NOT cover table headers or legend) -->

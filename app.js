@@ -15482,6 +15482,16 @@ function openMonthDetailModal(studentId, monthIndex) {
     `;
   }
 
+  // Display-only cap: a stored family allocation can exceed the student's
+  // CURRENT monthly share after a package raise (e.g. TXN-1391 stored
+  // $12.50/child, current share $10). The stored payment doc, reconcile
+  // logic and all totals are untouched - only what this modal shows is
+  // capped, so it agrees with the Ledger cell and the "Amount Settled"
+  // metric in this same modal (which already uses m.amountPaid).
+  const settledDisplayAmount = matchedPayment
+    ? Math.min(Number(matchedPayment.amount) || 0, Number(m.feeDue) || 0)
+    : 0;
+
   content.innerHTML = `
     <div class="p-6">
       <!-- Modal Header -->
@@ -15562,7 +15572,7 @@ function openMonthDetailModal(studentId, monthIndex) {
               </div>
               <div>
                 <span class="text-[10px] text-[#7A8684] uppercase font-semibold block">Settled Amount</span>
-                <span class="font-bold text-[#0E4D45] mt-0.5 block">${matchedPayment.currency || student.currency}${matchedPayment.amount}</span>
+                <span class="font-bold text-[#0E4D45] mt-0.5 block">${matchedPayment.currency || student.currency}${settledDisplayAmount}</span>
               </div>
             </div>
           </div>
@@ -15634,7 +15644,7 @@ function openMonthDetailModal(studentId, monthIndex) {
       <!-- Modal Footer -->
       <div class="pt-4 border-t border-[#ECEAE4] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
         <button type="button" onclick="closeMonthDetailModal(); openReceiveFeeModal('${student.id}');" class="w-full sm:w-auto order-1 sm:order-2 py-3 px-5 rounded-full bg-[#0E4D45] text-white font-bold text-xs sm:text-sm hover:bg-[#14534B] transition-colors shadow-sm cursor-pointer text-center">
-          Open Full FIFO Modal
+          Receive Fee
         </button>
         <button type="button" onclick="closeMonthDetailModal()" class="w-full sm:w-auto order-2 sm:order-1 px-4 py-2.5 text-xs font-semibold rounded-lg bg-[#FFFFFF] border border-[#ECEAE4] text-[#7A8684] hover:text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer text-center">
           Dismiss

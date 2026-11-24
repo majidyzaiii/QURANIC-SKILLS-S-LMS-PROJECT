@@ -7952,8 +7952,8 @@ function renderAdminDashboardView() {
           <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/></svg>
         </div>
         <div>
-          <div class="flex items-baseline gap-2 mb-1">
-            <span class="text-2xl sm:text-3xl font-semibold tracking-tight text-[#141F1E] tabular-nums">${dynamicTotalStudents}</span>
+          <div class="flex flex-wrap items-baseline gap-2 mb-1">
+            <span class="kpi-amount text-[#141F1E]">${dynamicTotalStudents}</span>
             ${dynamicTotalStudents > 0 ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium bg-[#E0F2F1] text-[#0E4D45] tabular-nums">+${((dynamicTotalStudents / 300) * 3.5).toFixed(2)}%</span>` : ''}
           </div>
           <p class="text-xs font-medium text-[#7A8684]">Total Active Students</p>
@@ -7966,8 +7966,8 @@ function renderAdminDashboardView() {
           <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
         </div>
         <div>
-          <div class="flex items-baseline gap-2 mb-1">
-            <span class="text-2xl sm:text-3xl font-semibold tracking-tight text-[#141F1E] tabular-nums">${formatPKRAmount(dynamicFeeCollectedPKR)}</span>
+          <div class="flex flex-wrap items-baseline gap-2 mb-1">
+            <span class="kpi-amount text-[#141F1E]"><span class="kpi-amount-cur">Rs.</span>${formatPKRNumber(dynamicFeeCollectedPKR)}</span>
             ${amountCollectionPct > 0 ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium bg-[#E0F2F1] text-[#0E4D45] tabular-nums" title="Share of this month's billed fees collected (in PKR)">${amountCollectionPct}%</span>` : ''}
           </div>
           <p class="text-xs font-medium text-[#7A8684]">Fee Collected (${MONTHS_LIST[CURRENT_MONTH_INDEX]})</p>
@@ -7981,8 +7981,8 @@ function renderAdminDashboardView() {
           <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
         </div>
         <div>
-          <div class="flex items-baseline gap-2 mb-1">
-            <span class="text-2xl sm:text-3xl font-semibold tracking-tight text-[#141F1E] tabular-nums">${formatPKRAmount(dynamicBalanceDuePKR)}</span>
+          <div class="flex flex-wrap items-baseline gap-2 mb-1">
+            <span class="kpi-amount text-[#141F1E]"><span class="kpi-amount-cur">Rs.</span>${formatPKRNumber(dynamicBalanceDuePKR)}</span>
             ${dynamicPartialCount > 0 ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A] tabular-nums">${dynamicPartialCount} Due</span>` : ''}
           </div>
           <p class="text-xs font-medium text-[#7A8684]">Partial / Balance Due</p>
@@ -7995,8 +7995,8 @@ function renderAdminDashboardView() {
           <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
         </div>
         <div>
-          <div class="flex items-baseline gap-2 mb-1">
-            <span class="text-2xl sm:text-3xl font-semibold tracking-tight text-[#141F1E] tabular-nums">${dynamicDefaulterCount}</span>
+          <div class="flex flex-wrap items-baseline gap-2 mb-1">
+            <span class="kpi-amount text-[#141F1E]">${dynamicDefaulterCount}</span>
             ${dynamicDefaulterCount > 0 && grandTotal > 0 ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium bg-[#FEE2E2] text-[#991B1B] border border-[#FECACA] tabular-nums">${((dynamicDefaulterCount / grandTotal) * 100).toFixed(1)}%</span>` : ''}
           </div>
           <p class="text-xs font-medium text-[#7A8684]">Overdue Accounts</p>
@@ -8010,8 +8010,8 @@ function renderAdminDashboardView() {
           <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"/></svg>
         </div>
         <div>
-          <div class="flex items-baseline gap-2 mb-1">
-            <span class="text-2xl sm:text-3xl font-semibold tracking-tight text-[#141F1E] tabular-nums">${attendanceRateStr}</span>
+          <div class="flex flex-wrap items-baseline gap-2 mb-1">
+            <span class="kpi-amount text-[#141F1E]">${attendanceRateStr}</span>
             ${hasAttendanceLogs ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium bg-[#E0F2F1] text-[#0E4D45] tabular-nums">+1.5%</span>` : ''}
           </div>
           <p class="text-xs font-medium text-[#7A8684]">Class Attendance Rate</p>
@@ -9154,17 +9154,21 @@ function getAtRiskStudents(customStudents) {
     const feeStatus = typeof getStudentFeeStatus === 'function' ? getStudentFeeStatus(student) : null;
     const isFeeDefaulter = (feeStatus && feeStatus.code === 'defaulter') || overdueMonthsCount > 0 || student.academicStatus === 'Defaulter';
 
+    // Overdue total in PKR for the badge/description (fall back to $ only when no rate exists).
+    const overduePKR = convertToPKR(overdueTotalAmount, student.currencyCode);
+    const overduePKRText = overduePKR.hasRate ? formatPKRAmount(overduePKR.pkr) : ('$' + (overdueTotalAmount || (overdueMonthsCount * 50)));
+
     if (isFeeDefaulter) {
       if (overdueMonthsCount >= 2) {
         feeIssue = {
           badge: `Unpaid ${overdueMonthsCount} Months`,
           severity: 'critical',
-          description: `Overdue tuition balance of $${overdueTotalAmount || (overdueMonthsCount * 50)} pending clearance`,
+          description: `Overdue tuition balance of ${overduePKRText} pending clearance`,
           priority: 1
         };
       } else {
         feeIssue = {
-          badge: overdueTotalAmount > 0 ? `Unpaid $${overdueTotalAmount}` : 'Unpaid 1 Month',
+          badge: overdueTotalAmount > 0 ? (overduePKR.hasRate ? `Unpaid ${formatPKRAmount(overduePKR.pkr)}` : `Unpaid $${overdueTotalAmount}`) : 'Unpaid 1 Month',
           severity: 'critical',
           description: `Outstanding tuition payment overdue`,
           priority: 2
@@ -10536,9 +10540,15 @@ function renderStudentFeeLedgerRow(student, isChildOfFamily = false, isLastChild
           ? convertToPKR(m.feeDue || student.monthlyFee, student.currencyCode)
           : getStudentMonthPaidPKR(student, idx);
         const cellPKRText = cellPKR.hasRate ? ' (' + formatPKRAmount(cellPKR.pkr) + ')' : ' (rate not set)';
+        // PKR-first cell label: PKR on line 1, original currency tiny on line 2.
+        const cellOrigAmount = (m.status === 'defaulter') ? (m.feeDue || student.monthlyFee) : m.amountPaid;
+        const cellOrigText = student.currency + cellOrigAmount;
+        const cellLabelHtml = cellPKR.hasRate
+          ? '<span class="flex flex-col items-center leading-none gap-0.5"><span>' + formatPKRAmount(cellPKR.pkr) + '</span><span class="text-[9px] font-normal opacity-70">(' + cellOrigText + ')</span></span>'
+          : '<span class="flex flex-col items-center leading-none gap-0.5"><span>' + cellOrigText + '</span><span class="text-[9px] font-normal opacity-70">rate not set</span></span>';
         
         if (m.status === 'paid') {
-          cellContent = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span><span>${student.currency}${m.amountPaid}</span>`;
+          cellContent = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>${cellLabelHtml}`;
           tooltip += ` - Paid ${student.currency}${m.amountPaid}${cellPKRText}`;
           const rcpt = m.receiptNo || '';
           const pDate = m.paymentDate || 'Nov 24, 2026';
@@ -10547,13 +10557,13 @@ function renderStudentFeeLedgerRow(student, isChildOfFamily = false, isLastChild
             tooltip += ` • Receipt #${rcpt} (${pDate}) via ${pMethod}`;
           }
         } else if (m.status === 'partial') {
-          cellContent = `<span class="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0"></span><span>${student.currency}${m.amountPaid}</span>`;
+          cellContent = `<span class="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0"></span>${cellLabelHtml}`;
           tooltip += ` - Partial: ${student.currency}${m.amountPaid}${cellPKRText} / Remaining: ${student.currency}${m.remainingDue}`;
         } else if (m.status === 'advance') {
-          cellContent = `<span class="w-1.5 h-1.5 rounded-full bg-teal-500 shrink-0"></span><span>${student.currency}${m.amountPaid}</span>`;
+          cellContent = `<span class="w-1.5 h-1.5 rounded-full bg-teal-500 shrink-0"></span>${cellLabelHtml}`;
           tooltip += ` - Advance: ${student.currency}${m.amountPaid}${cellPKRText}`;
         } else if (m.status === 'defaulter') {
-          cellContent = `<span class="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0"></span><span>${student.currency}${m.feeDue || student.monthlyFee}</span>`;
+          cellContent = `<span class="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0"></span>${cellLabelHtml}`;
           tooltip += ` - Overdue: ${student.currency}${m.feeDue}${cellPKRText}`;
         } else {
           cellContent = `<span class="text-gray-300 font-normal">—</span>`;
@@ -12960,6 +12970,9 @@ function getCurrencySettings() {
     updatedAt: stored.updatedAt || null,
     source: stored.source || 'seed',
     rates: Object.assign({}, DEFAULT_CURRENCY_RATES, stored.rates || {}),
+    // Pure fetched/seed rates (no manual overrides) — overrides are decided
+    // against these, so saving a rate equal to the automatic rate clears it.
+    autoRates: Object.assign({}, DEFAULT_CURRENCY_RATES, stored.autoRates || {}),
     manualOverrides: Object.assign({}, stored.manualOverrides || {})
   };
 }
@@ -12981,7 +12994,13 @@ function convertToPKR(amount, code) {
 
 // "Rs. 218,960" — whole rupees, thousands separators.
 function formatPKRAmount(pkr) {
-  return 'Rs. ' + (Math.round(Number(pkr) || 0)).toLocaleString('en-US');
+  return 'Rs. ' + formatPKRNumber(pkr);
+}
+
+// Grouped number only, no "Rs. " — used where "Rs." is a separate inline
+// prefix (KPI amounts), so the amount never wraps with "Rs." alone on a line.
+function formatPKRNumber(pkr) {
+  return (Math.round(Number(pkr) || 0)).toLocaleString('en-US');
 }
 
 // Currency code for a payment doc (or one of its allocations). Old docs
@@ -13016,40 +13035,24 @@ function getAllocationPKR(p, a) {
 // PKR collected for one month from PAYMENT_LEDGER (frozen PKR first).
 // Returns { pkr, excludedCodes } where excludedCodes maps currency codes
 // that had no rate (and were therefore left out of the total).
+// PKR collected for one month — summed per student-month (the same values
+// the Ledger shows), so the Dashboard and Ledger totals always agree.
+// Returns { pkr, excludedCodes } where excludedCodes maps currency codes
+// that had no rate (and were therefore left out of the total).
 function getMonthFeeCollectedPKR(monthIndex, year) {
-  const shortM = MONTHS_LIST[monthIndex];
-  const fullM = FULL_MONTHS_LIST[monthIndex];
+  // `year` is unused: student months are already scoped to the current
+  // academic year, exactly as the Ledger totals them.
+  void year;
   let pkr = 0;
   const excludedCodes = {};
   const noteExcluded = function (code) { const c = code || 'unknown'; excludedCodes[c] = (excludedCodes[c] || 0) + 1; };
-  if (Array.isArray(PAYMENT_LEDGER) && PAYMENT_LEDGER.length > 0) {
-    PAYMENT_LEDGER.forEach(function (p) {
-      if (!p) return;
-      if (Array.isArray(p.allocations) && p.allocations.length > 0) {
-        p.allocations.forEach(function (a) {
-          if (!a || !(a.monthIndex === monthIndex || a.month === shortM || a.month === fullM)) return;
-          const r = getAllocationPKR(p, a);
-          if (r.hasRate) pkr += r.pkr; else noteExcluded(getPaymentCurrencyCode(p, a));
-        });
-      } else if (p.allocatedTo && (String(p.allocatedTo).indexOf(shortM) !== -1 || String(p.allocatedTo).indexOf(fullM) !== -1)) {
-        const r = getAllocationPKR(p, { allocatedAmount: Number(p.amount) || 0 });
-        if (r.hasRate) pkr += r.pkr; else noteExcluded(getPaymentCurrencyCode(p, null));
-      } else if (p.date) {
-        const d = new Date(p.date);
-        if (!isNaN(d.getTime()) && d.getMonth() === monthIndex && (!year || d.getFullYear() === year)) {
-          const r = getAllocationPKR(p, { allocatedAmount: Number(p.amount) || 0 });
-          if (r.hasRate) pkr += r.pkr; else noteExcluded(getPaymentCurrencyCode(p, null));
-        }
-      }
-    });
-    return { pkr: pkr, excludedCodes: excludedCodes };
-  }
   (AppState.students || []).forEach(function (s) {
     const m = Array.isArray(s.months) ? s.months[monthIndex] : null;
     if (!m) return;
-    const r = convertToPKR(m.amountPaid || 0, s.currencyCode);
+    if (m.status !== 'paid' && m.status !== 'advance' && m.status !== 'partial') return;
+    const r = getStudentMonthPaidPKR(s, monthIndex);
     if (r.hasRate) pkr += r.pkr;
-    else if ((m.amountPaid || 0) > 0) noteExcluded(s.currencyCode);
+    else if ((Number(m.amountPaid) || 0) > 0) noteExcluded(s.currencyCode);
   });
   return { pkr: pkr, excludedCodes: excludedCodes };
 }
@@ -13157,6 +13160,7 @@ async function loadCurrencySettings() {
         updatedAt: cached.updatedAt || null,
         source: cached.source || 'seed',
         rates: Object.assign({}, cached.rates || {}),
+        autoRates: Object.assign({}, cached.autoRates || {}),
         manualOverrides: Object.assign({}, cached.manualOverrides || {})
       };
     }
@@ -13172,6 +13176,7 @@ async function loadCurrencySettings() {
           updatedAt: d.updatedAt || null,
           source: d.source || 'manual',
           rates: Object.assign({}, d.rates || {}),
+          autoRates: Object.assign({}, d.autoRates || {}),
           manualOverrides: Object.assign({}, d.manualOverrides || {})
         };
         saveCache(CURRENCY_SETTINGS_CACHE_KEY, AppState.currencySettings);
@@ -13190,7 +13195,7 @@ async function saveCurrencySettingsToCloud(settings) {
   }
   try {
     await db.collection('settings').doc('currency').set(
-      { base: 'PKR', month: settings.month, updatedAt: settings.updatedAt, source: settings.source, rates: settings.rates, manualOverrides: settings.manualOverrides || {} },
+      { base: 'PKR', month: settings.month, updatedAt: settings.updatedAt, source: settings.source, rates: settings.rates, autoRates: settings.autoRates || {}, manualOverrides: settings.manualOverrides || {} },
       { merge: true }
     );
     return true;
@@ -13227,25 +13232,65 @@ async function fetchCurrencyRatesFromApi() {
   return null;
 }
 
+// Drop manual overrides that equal the automatic rate — they are not
+// overrides any more, so the next monthly fetch can update that currency.
+// Returns true when an override was pruned.
+function pruneStaleCurrencyOverrides(settings) {
+  const auto = (settings && settings.autoRates) || {};
+  const ov = (settings && settings.manualOverrides) || {};
+  let changed = false;
+  Object.keys(ov).forEach(function (code) {
+    const a = auto[code];
+    if (a !== undefined && Math.abs(Number(ov[code]) - a) <= 0.01) { delete ov[code]; changed = true; }
+  });
+  return changed;
+}
+
 // Monthly auto-update: when the stored rates belong to an earlier month
 // (or have never been fetched), pull fresh rates and save them. Manual
 // overrides always win. Returns true when rates were refreshed.
 async function maybeUpdateCurrencyRates(force) {
   const current = getCurrencySettings();
   const thisMonth = currentMonthKey();
-  if (!force && current.month === thisMonth && current.source !== 'seed') return false;
+  // Self-heal: an override equal to the stored automatic rate is stale
+  // (e.g. USD restored to the seed rate). Drop it so the source returns
+  // to Automatic and future fetches can update that currency. The
+  // effective rate does not change — only its override status.
+  if (pruneStaleCurrencyOverrides(current)) {
+    const cleaned = {
+      base: 'PKR',
+      month: current.month,
+      updatedAt: current.updatedAt,
+      source: Object.keys(current.manualOverrides || {}).length > 0 ? 'manual' : (current.source === 'seed' ? 'seed' : 'api'),
+      rates: Object.assign({}, current.rates || {}),
+      autoRates: Object.assign({}, current.autoRates || {}),
+      manualOverrides: Object.assign({}, current.manualOverrides || {})
+    };
+    AppState.currencySettings = cleaned;
+    try { saveCache(CURRENCY_SETTINGS_CACHE_KEY, cleaned); } catch (e) {}
+    try { await saveCurrencySettingsToCloud(cleaned); } catch (e) {}
+  }
+  const fresh = getCurrencySettings();
+  if (!force && fresh.month === thisMonth && fresh.source !== 'seed') return false;
   const fetched = await fetchCurrencyRatesFromApi();
   if (!fetched) {
-    currencyRatesStale = current.month !== thisMonth;
+    currencyRatesStale = fresh.month !== thisMonth;
     return false;
   }
+  // An override that equals the freshly fetched rate is not an override.
+  const prunedOverrides = Object.assign({}, fresh.manualOverrides || {});
+  Object.keys(prunedOverrides).forEach(function (code) {
+    const a = fetched[code];
+    if (a !== undefined && Math.abs(Number(prunedOverrides[code]) - a) <= 0.01) delete prunedOverrides[code];
+  });
   const next = {
     base: 'PKR',
     month: thisMonth,
     updatedAt: new Date().toISOString(),
-    source: 'api',
-    rates: Object.assign({}, fetched, current.manualOverrides || {}),
-    manualOverrides: Object.assign({}, current.manualOverrides || {})
+    source: Object.keys(prunedOverrides).length > 0 ? 'manual' : 'api',
+    rates: Object.assign({}, fetched, prunedOverrides),
+    autoRates: Object.assign({}, fetched),
+    manualOverrides: prunedOverrides
   };
   AppState.currencySettings = next;
   currencyRatesStale = false;
@@ -13257,7 +13302,10 @@ async function maybeUpdateCurrencyRates(force) {
 function openCurrencySettingsModal() {
   const modal = document.getElementById('currency-settings-modal');
   if (!modal) return;
-  currencySettingsDraft = getCurrencySettings();
+  // Preserve an existing draft (e.g. after a failed save, so the user's
+  // edits are not lost when the modal re-opens). A normal close still
+  // nulls the draft, so fresh opens start from the saved settings.
+  if (!currencySettingsDraft) currencySettingsDraft = getCurrencySettings();
   currencySettingsDraft.baseRates = Object.assign({}, currencySettingsDraft.rates);
   renderCurrencySettingsInfo();
   renderCurrencyRatesTable('');
@@ -13308,7 +13356,7 @@ function renderCurrencyRatesTable(filter) {
     return code.toLowerCase().indexOf(q) !== -1 || name.indexOf(q) !== -1;
   });
   if (rows.length === 0) {
-    body.innerHTML = '<tr><td colspan="3" class="px-3 py-4 text-center text-[#7A8684]">No currency matches that search.</td></tr>';
+    body.innerHTML = '<tr><td colspan="4" class="px-3 py-4 text-center text-[#7A8684]">No currency matches that search.</td></tr>';
     return;
   }
   body.innerHTML = rows.map(function (code) {
@@ -13317,10 +13365,31 @@ function renderCurrencyRatesTable(filter) {
       '<td class="px-3 py-2 font-bold text-[#141F1E]">' + code + (isManual ? ' <span class="ml-1 text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#E8EFEE] text-[#0E4D45]">MANUAL</span>' : '') + '</td>' +
       '<td class="px-3 py-2 text-[#7A8684]">' + (ISO_CURRENCY_BY_CODE[code] || '') + '</td>' +
       '<td class="px-3 py-2 text-right"><input type="number" min="0" step="any" data-currency-rate="' + code + '" value="' + s.rates[code] + '" class="w-28 bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-8 px-2 text-xs text-[#0E4D45] font-bold text-right outline-none focus:border-[#0E4D45] focus:bg-white transition-all"></td>' +
+      '<td class="px-3 py-2 text-right">' + (isManual ? '<button type="button" onclick="handleResetCurrencyRate(\'' + code + '\')" title="Use the automatic rate" class="px-2 py-1 text-[10px] font-bold rounded-full bg-white border border-[#0E4D45] text-[#0E4D45] hover:bg-[#E8EFEE] transition-colors cursor-pointer whitespace-nowrap">Auto</button>' : '') + '</td>' +
       '</tr>';
   }).join('');
 }
 window.renderCurrencyRatesTable = renderCurrencyRatesTable;
+
+// Clear one manual override and restore the automatic rate in the draft
+// (Save still persists it). If no overrides remain, the source returns
+// to Automatic.
+function handleResetCurrencyRate(code) {
+  if (!code) return;
+  if (!currencySettingsDraft) currencySettingsDraft = getCurrencySettings();
+  if (currencySettingsDraft.manualOverrides) delete currencySettingsDraft.manualOverrides[code];
+  const auto = (currencySettingsDraft.autoRates && currencySettingsDraft.autoRates[code] !== undefined)
+    ? currencySettingsDraft.autoRates[code]
+    : getCurrencySettings().autoRates[code];
+  if (auto !== undefined) currencySettingsDraft.rates[code] = auto;
+  if (Object.keys(currencySettingsDraft.manualOverrides || {}).length === 0) {
+    currencySettingsDraft.source = (currencySettingsDraft.source === 'seed' ? 'seed' : 'api');
+  }
+  const filterEl = document.getElementById('currency-rates-filter');
+  renderCurrencyRatesTable(filterEl ? filterEl.value : '');
+  renderCurrencySettingsInfo();
+}
+window.handleResetCurrencyRate = handleResetCurrencyRate;
 
 function renderCurrencyAddSelect() {
   const sel = document.getElementById('currency-add-select');
@@ -13373,18 +13442,26 @@ window.handleUpdateCurrencyRatesNow = handleUpdateCurrencyRatesNow;
 
 async function handleSaveCurrencySettings() {
   const draft = currencySettingsDraft || getCurrencySettings();
-  const baseRates = draft.baseRates || {};
+  // Overrides are decided against the AUTOMATIC (fetched/seed) rate, not
+  // the merged rate at modal open: saving a rate equal to the automatic
+  // rate clears any override, so the next monthly fetch can update it.
+  const autoRates = (draft.autoRates && typeof draft.autoRates === 'object') ? draft.autoRates : {};
+  const saveBtn = document.getElementById('currency-settings-save-btn');
+  const saveLabel = document.getElementById('currency-settings-save-label');
+  const setSaving = function (on) {
+    if (saveBtn) saveBtn.disabled = !!on;
+    if (saveLabel) saveLabel.textContent = on ? 'Saving…' : 'Save Settings';
+  };
   const inputs = document.querySelectorAll('#currency-rates-table-body input[data-currency-rate]');
   const nextRates = {};
-  const nextOverrides = Object.assign({}, draft.manualOverrides || {});
+  const nextOverrides = {};
   inputs.forEach(function (el) {
     const code = el.getAttribute('data-currency-rate');
     const n = Number(el.value);
     if (!code || !isFinite(n) || n <= 0) return;
     nextRates[code] = Math.round(n * 100) / 100;
-    const base = baseRates[code];
-    if (base === undefined || Math.abs(nextRates[code] - base) > 0.0001) nextOverrides[code] = nextRates[code];
-    else delete nextOverrides[code];
+    const auto = autoRates[code];
+    if (auto === undefined || Math.abs(nextRates[code] - auto) > 0.01) nextOverrides[code] = nextRates[code];
   });
   if (Object.keys(nextRates).length === 0) {
     showToastNotification('Please set at least one exchange rate.', 'error');
@@ -13394,19 +13471,31 @@ async function handleSaveCurrencySettings() {
     base: 'PKR',
     month: draft.month,
     updatedAt: new Date().toISOString(),
-    source: 'manual',
+    source: Object.keys(nextOverrides).length > 0 ? 'manual' : (draft.source === 'seed' ? 'seed' : 'api'),
     rates: nextRates,
+    autoRates: Object.assign({}, autoRates),
     manualOverrides: nextOverrides
   };
-  const ok = await saveCurrencySettingsToCloud(next);
-  if (!ok) {
-    showToastNotification('Could not save to cloud: ' + (firestoreSyncError || 'Firestore is not available') + ' — settings not saved.', 'error');
-    return;
-  }
+  const prevSettings = getCurrencySettings();
+  const failedDraft = currencySettingsDraft;
+  setSaving(true);
+  // Optimistic apply: close the modal and refresh the Dashboard at once,
+  // then save to the cloud in the background.
   AppState.currencySettings = next;
   try { saveCache(CURRENCY_SETTINGS_CACHE_KEY, next); } catch (e) {}
   closeCurrencySettingsModal();
   renderApp();
+  const ok = await saveCurrencySettingsToCloud(next);
+  setSaving(false);
+  if (!ok) {
+    AppState.currencySettings = prevSettings;
+    try { saveCache(CURRENCY_SETTINGS_CACHE_KEY, prevSettings); } catch (e) {}
+    renderApp();
+    currencySettingsDraft = failedDraft;
+    openCurrencySettingsModal();
+    showToastNotification('Could not save to cloud: ' + (firestoreSyncError || 'Firestore is not available') + ' — settings not saved.', 'error');
+    return;
+  }
   showToastNotification('✓ Currency settings saved. PKR figures recalculated.');
 }
 window.handleSaveCurrencySettings = handleSaveCurrencySettings;
@@ -15111,7 +15200,7 @@ function updateFIFOPreview() {
   if (previewCurrencyCode && String(previewCurrencyCode).toUpperCase() !== 'PKR') {
     const previewRate = getCurrencyRate(previewCurrencyCode);
     pkrPreviewHtml = previewRate !== null
-      ? `<span class="text-[#0E4D45] font-semibold">≈ ${formatPKRAmount(amount)}</span><span class="text-[#7A8684] font-normal">(1 ${previewCurrencyCode} = ${formatPKRAmount(previewRate)})</span>`
+      ? `<span class="text-[#0E4D45] font-semibold">≈ ${formatPKRAmount(Math.round(amount * previewRate))}</span><span class="text-[#7A8684] font-normal">(1 ${previewCurrencyCode} = ${formatPKRAmount(previewRate)})</span>`
       : `<span class="text-amber-700 font-semibold">PKR equivalent not available — set the ${previewCurrencyCode} rate in Currency Settings.</span>`;
   }
 

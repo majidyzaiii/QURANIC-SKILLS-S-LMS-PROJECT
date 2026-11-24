@@ -7375,6 +7375,9 @@ function toggleNotificationsDropdown(event) {
     if (monthDropdown) monthDropdown.classList.add('hidden');
     renderNotificationsDropdownContent();
     menu.classList.remove('hidden');
+    // Size the list to whole items now that it is visible (offsetHeight
+    // reads 0 while hidden) — see fitNotificationsDropdownToWholeItems.
+    fitNotificationsDropdownToWholeItems();
   } else {
     menu.classList.add('hidden');
   }
@@ -7444,7 +7447,56 @@ function renderNotificationsDropdownContent() {
       </div>
     </div>
   `).join('');
+
+  // Re-fit after re-rendering (no-op while the menu is hidden; when the
+  // menu is open — e.g. after "Mark all read" — this re-measures).
+  fitNotificationsDropdownToWholeItems();
 }
+
+/**
+ * Sizes the bell dropdown list to a whole number of items, measured from
+ * the items actually rendered — so the last visible item is never
+ * half-cut on first opening, whatever the item heights are. Notification
+ * descriptions wrap to different lengths, so no fixed pixel height can
+ * do this (the 30fc37b 568px rule also sized the wrong list: the
+ * #notifications-modal list, which the bell never opens — the bell opens
+ * this dropdown, and its footer is the "View All Activity Logs →" link).
+ * The cap is height-independent: it is the space left in the viewport
+ * below the menu (menu top + the menu's own header/footer chrome,
+ * measured live), so a short list — e.g. the live 4-item list — is
+ * shown whole with no scrollbar at all, while a long list shows the
+ * most whole items that fit and the rest stay reachable by scrolling
+ * (with scroll-snap they land whole too). At least one whole item is
+ * always shown. No-op while the menu is hidden (offsetHeight reads 0
+ * there).
+ */
+function fitNotificationsDropdownToWholeItems() {
+  const container = document.getElementById('notifications-dropdown-list');
+  const menu = document.getElementById('notifications-dropdown-menu');
+  if (!container || !menu || menu.classList.contains('hidden')) return;
+  const items = Array.from(container.children).filter(el => el.offsetHeight > 0);
+  if (items.length === 0) { container.style.maxHeight = ''; return; }
+  const GAP = 10; // space-y-2.5
+  // Viewport-derived cap: menu top + non-list chrome (p-4 padding,
+  // header row, footer row incl. margins/borders) + a 12px bottom
+  // margin must stay inside the viewport. chromeH is independent of
+  // the list's current height (menu height minus list height).
+  const chromeH = menu.offsetHeight - container.offsetHeight;
+  const menuTop = menu.getBoundingClientRect().top;
+  let cap = window.innerHeight - menuTop - 12 - chromeH;
+  // Always show at least one whole item, even on a very short viewport.
+  if (cap < items[0].offsetHeight) cap = items[0].offsetHeight;
+  let used = 0;
+  let shown = 0;
+  for (const item of items) {
+    const h = item.offsetHeight + (shown > 0 ? GAP : 0);
+    if (shown > 0 && used + h > cap) break;
+    used += h;
+    shown++;
+  }
+  container.style.maxHeight = used + 'px';
+}
+window.fitNotificationsDropdownToWholeItems = fitNotificationsDropdownToWholeItems;
 
 function toggleProfileDropdown(event) {
   if (event) event.stopPropagation();
@@ -15550,14 +15602,20 @@ function openMonthDetailModal(studentId, monthIndex) {
     `;
   }
 
-  // Display-only cap: a stored family allocation can exceed the student's
-  // CURRENT monthly share after a package raise (e.g. TXN-1391 stored
-  // $12.50/child, current share $10). The stored payment doc, reconcile
-  // logic and all totals are untouched - only what this modal shows is
-  // capped, so it agrees with the Ledger cell and the "Amount Settled"
-  // metric in this same modal (which already uses m.amountPaid).
+  // The month's settled amount is the TOTAL paid for this student+month
+  // (m.amountPaid, as reconciled across every payment doc), NOT the
+  // allocation of the single matched receipt. A month can be settled by
+  // two payments — e.g. Zainab Ali Nov: $165 via TXN-1263 (Stripe) +
+  // $24 via TXN-7642 (family top-up) = $189 — and the old code showed
+  // the matched doc's $24 here while the "Amount Settled" metric in this
+  // same modal showed $189. Deriving from m.amountPaid (capped at the
+  // fee, as before, so a stored family allocation above the current
+  // share after a package raise still displays correctly: TXN-1391
+  // stored $12.50/child against a $10 share still shows $10) keeps this
+  // box in agreement with that metric. The stored payment doc,
+  // reconcile logic and all totals are untouched.
   const settledDisplayAmount = matchedPayment
-    ? Math.min(Number(matchedPayment.amount) || 0, Number(m.feeDue) || 0)
+    ? Math.min(Number(m.amountPaid) || 0, Number(m.feeDue) || 0)
     : 0;
 
   content.innerHTML = `

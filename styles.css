@@ -330,6 +330,13 @@ body {
    never half-cut; min(..., 60vh) keeps the old behaviour on short screens. */
 #notifications-modal-list { max-height: min(568px, 60vh); }
 
+/* Bell dropdown list: items snap whole when scrolling, so a scroll never
+   rests on a half-cut item. The list height itself is sized to whole
+   items in JS (fitNotificationsDropdownToWholeItems), so the first-open
+   view is whole items too, for any item heights. */
+#notifications-dropdown-list { scroll-snap-type: y proximity; }
+#notifications-dropdown-list > div { scroll-snap-align: start; }
+
 /* Settings modal is wider than other modals so all four sections fit at a
    normal desktop viewport without an inner scroll (Section 4 was cut off). */
 #settings-modal .modal-content {

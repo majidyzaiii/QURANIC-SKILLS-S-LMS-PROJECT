@@ -351,6 +351,53 @@
   </div>
 
   <!-- ==========================================================================
+       MODAL: FAMILY PACKAGE — ONE FLAT MONTHLY FEE FOR THE WHOLE FAMILY
+       ========================================================================== -->
+  <div id="family-package-modal" class="modal-backdrop">
+    <div class="modal-content">
+      <div class="px-5 py-4 sm:p-6 border-b border-[#ECEAE4] flex items-start justify-between gap-3 bg-[#F8F6F1]">
+        <div class="flex-1 min-w-0 pr-3">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-xl bg-[#E8EFEE] text-[#0E4D45] flex items-center justify-center font-bold text-xs shrink-0">
+              <svg class="w-4 h-4 text-[#0E4D45]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+            </div>
+            <h3 id="family-package-modal-title" class="text-sm sm:text-base font-bold text-[#141F1E] leading-snug">Family Package</h3>
+          </div>
+          <p class="text-xs text-[#7A8684] mt-1.5 leading-relaxed break-words pl-0.5">One flat monthly fee for the whole family, split equally across the children.</p>
+        </div>
+        <button type="button" onclick="closeFamilyPackageModal()" class="w-8 h-8 rounded-xl border border-[#ECEAE4] bg-white text-[#7A8684] hover:text-[#141F1E] hover:bg-[#F8F6F1] flex items-center justify-center shrink-0 transition-colors cursor-pointer" title="Close Modal">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-5">
+        <div>
+          <label class="block text-xs font-bold text-[#141F1E] mb-1">Flat Monthly Fee *</label>
+          <div class="relative">
+            <input type="number" id="family-package-fee-input" oninput="updateFamilyPackageModalPreview()" min="1" step="any"
+              class="w-full text-sm font-bold bg-[#FFFFFF] border border-[#ECEAE4] rounded-xl pl-8 pr-3 py-2 text-[#0E4D45] outline-none focus:border-[#0E4D45]">
+            <span id="family-package-currency-symbol" class="absolute left-3 top-2 text-xs font-bold text-[#7A8684]">$</span>
+          </div>
+          <p id="family-package-preview-text" class="text-[11px] font-semibold text-[#0E4D45] mt-1.5"></p>
+          <p class="text-[11px] text-[#7A8684] mt-1">Each child's monthly fee becomes their share. Paid and advance months are never changed. Removing the package restores each child's previous fee.</p>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="p-4 sm:p-5 bg-[#F8F6F1] border-t border-[#ECEAE4] flex flex-col gap-3">
+        <button type="button" onclick="saveFamilyPackage()" class="w-full py-3 rounded-lg bg-[#0e4f3f] text-white font-medium text-xs sm:text-sm hover:bg-[#0b3e32] shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-2">
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+          <span>Save Package</span>
+        </button>
+        <div class="flex items-center justify-between text-xs">
+          <button id="family-package-remove-btn" type="button" onclick="handleRemoveFamilyPackage()" class="px-3 py-1.5 text-xs font-semibold rounded-lg text-red-600 hover:bg-red-50 transition-colors cursor-pointer">Remove Package</button>
+          <button type="button" onclick="closeFamilyPackageModal()" class="px-3 py-1.5 text-xs font-semibold rounded-lg text-[#7A8684] hover:text-[#141F1E] hover:bg-[#ECEAE4] transition-colors cursor-pointer">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
        MODAL 2: 30-SECOND ZERO-TYPING SABAQ LOGGER MODAL (TEACHER)
        ========================================================================== -->
   <div id="sabaq-logger-modal" class="modal-backdrop">
@@ -674,6 +721,8 @@
               list="family-id-datalist" 
               id="add-student-family-id" 
               placeholder="" 
+              oninput="handleAddStudentFamilyTagChange()"
+              onchange="handleAddStudentFamilyTagChange()"
               class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#141F1E] font-medium outline-none focus:border-[#0E4D45] focus:bg-white transition-all"
             >
             <datalist id="family-id-datalist">
@@ -737,6 +786,7 @@
                 class="flex-1 min-w-0 bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#0E4D45] font-bold outline-none focus:border-[#0E4D45] focus:bg-white transition-all"
               >
             </div>
+            <p id="add-student-package-note" class="hidden text-[11px] font-semibold text-[#0E4D45] mt-1.5"></p>
           </div>
 
         </div>
@@ -2669,7 +2719,7 @@
   <script src="chart.min.js"></script>
 
   <!-- Application Logic -->
-  <script src="app.js?v=20261124-mobile-filter"></script>
+  <script src="app.js?v=20261124-familypackage"></script>
   <!-- ==========================================================================
        COMMAND PALETTE (Ctrl+K) — shared across all portals
        ========================================================================== -->

@@ -5497,6 +5497,10 @@ function openAddStudentModal() {
     'add-student-currency', 'add-student-fee'
   ]);
 
+  // Family Package: a restored draft family tag must show the package
+  // note and pre-fill the share, same as typing the tag by hand.
+  handleAddStudentFamilyTagChange();
+
   modal.classList.add('active');
 }
 
@@ -5630,7 +5634,7 @@ async function handleSaveNewStudent() {
     { id: 'add-student-family-id', required: true, label: 'Family ID Tag' },
     { id: 'add-student-course', required: true, label: 'Course / Track' },
     { id: 'add-student-currency', required: true, label: 'Currency' },
-    { id: 'add-student-fee', required: true, minNumber: 1, label: 'Monthly Fee' }
+    { id: 'add-student-fee', required: true, minNumber: 0.01, label: 'Monthly Fee' } // 0.01: Family Package shares can be below $1 (e.g. $50 / 6 children)
   ];
 
   if (!validateSharedForm(validationRules)) {
@@ -5729,15 +5733,27 @@ async function handleSaveNewStudent() {
   let teacherCloudSaved = true;
   if (teacherObj) teacherCloudSaved = await dbSaveTeacher(teacherObj);
 
+  // Family Package: if this family pays one flat fee for all children,
+  // fold the new member in and re-split the package equally across all
+  // members (existing members' shares update too).
+  let packageCloudSaved = true;
+  const existingPkgFee = getFamilyPackage(familyId);
+  if (existingPkgFee) {
+    newStudent.familyPackage = true;
+    newStudent.familyPackageFee = existingPkgFee;
+    newStudent.prePackageFee = monthlyFee;
+    packageCloudSaved = await recalcFamilyPackage(familyId);
+  }
+
   addSystemNotification({
     title: 'Student Enrolled',
-    desc: `Enrolled ${firstName} ${lastName} (${studentId}) in ${course} with faculty ${teacherName} (${currency}${monthlyFee}/mo).`,
+    desc: `Enrolled ${firstName} ${lastName} (${studentId}) in ${course} with faculty ${teacherName} (${currency}${newStudent.monthlyFee}/mo).`,
     type: 'student'
   });
 
   closeAddStudentModal();
   renderApp();
-  if (cloudSaved && teacherCloudSaved) {
+  if (cloudSaved && teacherCloudSaved && packageCloudSaved) {
     showToastNotification(`✓ Student ${fullName} (${studentId}) successfully enrolled and registered!`);
   } else {
     showToastNotification(`Could not save to cloud: ${firestoreSyncError || 'Firestore is not available'} — saved on this device only.`, 'error');
@@ -9964,10 +9980,249 @@ document.addEventListener('click', (e) => {
 // 6. MODULE 2: 12-MONTH FEE MATRIX VIEW & FIFO MODAL
 // ==========================================
 
+// ==========================================
+// FAMILY PACKAGE (FLAT FAMILY FEE)
+// ==========================================
+// Some families pay one flat monthly fee for all children together
+// (e.g. $50/mo total for 4 children), not a fee per child. A package
+// stores the flat fee on every member student (familyPackage,
+// familyPackageFee, prePackageFee) and splits it equally across the
+// members in whole cents. It uses the existing student save path
+// (dbSaveStudent / localStorage) — no new Firestore collection.
+// Paid and advance months are never touched; 'not_enrolled' months
+// keep feeDue 0. Removal restores each member's previous fee from
+// prePackageFee. Fields are cleared to false/null (never deleted) so
+// the Firestore merge-set actually removes them from the cloud doc.
+
+function getFamilyMembers(familyId) {
+  if (!familyId) return [];
+  return (AppState.students || []).filter(s => s.familyId === familyId || s.familyTag === familyId);
+}
+
+// Returns the flat package fee (number) for a family, or null when the
+// family has no package. Any member carrying familyPackage === true
+// marks the whole family as packaged.
+function getFamilyPackage(familyId) {
+  const members = getFamilyMembers(familyId);
+  const packaged = members.find(s => s.familyPackage === true);
+  if (!packaged) return null;
+  const fee = Number(packaged.familyPackageFee);
+  return fee > 0 ? fee : null;
+}
+
+// Split a flat fee into whole-cent shares that sum EXACTLY to the fee:
+// base = floor(totalCents / n), the leftover cents go one each to the
+// first children. $50/4 -> [12.50 x4]; $50/3 -> [16.67, 16.67, 16.66].
+function splitPackageFee(packageFee, count) {
+  const totalCents = Math.round(Number(packageFee) * 100);
+  const n = Math.max(1, Number(count) || 1);
+  const base = Math.floor(totalCents / n);
+  let remainder = totalCents - base * n;
+  const shares = [];
+  for (let i = 0; i < n; i++) {
+    shares.push((base + (remainder > 0 ? 1 : 0)) / 100);
+    if (remainder > 0) remainder--;
+  }
+  return shares;
+}
+
+// Display a fee amount without trailing ".00" ($50, $12.50, $16.67).
+function formatFeeAmount(n) {
+  const v = Number(n) || 0;
+  return v.toFixed(2).replace(/\.00$/, '');
+}
+
+// Re-split the family's package equally across its current members and
+// persist every member through the existing awaited save. Returns true
+// when every cloud write succeeded.
+async function recalcFamilyPackage(familyId) {
+  const members = getFamilyMembers(familyId);
+  const pkgFee = getFamilyPackage(familyId);
+  if (!pkgFee || members.length === 0) return true;
+  const shares = splitPackageFee(pkgFee, members.length);
+  let cloudOk = true;
+  for (let i = 0; i < members.length; i++) {
+    const s = members[i];
+    const share = shares[i];
+    // Remember the pre-package fee once; never overwrite it with a share.
+    if (s.prePackageFee === undefined || s.prePackageFee === null) {
+      s.prePackageFee = Number(s.monthlyFee) || share;
+    }
+    s.familyPackage = true;
+    s.familyPackageFee = pkgFee;
+    s.monthlyFee = share;
+    (s.months || []).forEach(m => {
+      if (!m || m.status === 'paid' || m.status === 'advance' || m.status === 'not_enrolled') return;
+      m.feeDue = share;
+      m.remainingDue = Math.max(0, share - (Number(m.amountPaid) || 0));
+    });
+    const ok = await dbSaveStudent(s);
+    if (!ok) cloudOk = false;
+  }
+  return cloudOk;
+}
+
+// Remove a family's package: restore each member's previous monthly fee
+// (leave the current share when no previous fee was recorded), clear the
+// package fields to false/null so the Firestore merge-set removes them,
+// and re-price unpaid months. Returns true when every cloud write
+// succeeded.
+async function removeFamilyPackage(familyId) {
+  const members = getFamilyMembers(familyId);
+  let cloudOk = true;
+  for (const s of members) {
+    if (!s.familyPackage) continue;
+    const prev = Number(s.prePackageFee);
+    const fee = (prev && prev > 0) ? prev : (Number(s.monthlyFee) || 0);
+    s.monthlyFee = fee;
+    s.familyPackage = false;
+    s.familyPackageFee = null;
+    s.prePackageFee = null;
+    (s.months || []).forEach(m => {
+      if (!m || m.status === 'paid' || m.status === 'advance' || m.status === 'not_enrolled') return;
+      m.feeDue = fee;
+      m.remainingDue = Math.max(0, fee - (Number(m.amountPaid) || 0));
+    });
+    const ok = await dbSaveStudent(s);
+    if (!ok) cloudOk = false;
+  }
+  return cloudOk;
+}
+
+// --- Family Package modal (state + open/close/save/remove) ---
+let activeFamilyPackageId = null;
+
+function openFamilyPackageModal(familyId) {
+  const members = getFamilyMembers(familyId);
+  if (members.length === 0) return;
+  activeFamilyPackageId = familyId;
+  const modal = document.getElementById('family-package-modal');
+  const title = document.getElementById('family-package-modal-title');
+  const feeInput = document.getElementById('family-package-fee-input');
+  const currencySymbol = document.getElementById('family-package-currency-symbol');
+  const removeBtn = document.getElementById('family-package-remove-btn');
+  const guardian = members[0] ? (members[0].guardianName || members[0].lastName || 'Family') : 'Family';
+  if (title) title.textContent = `Family Package — ${guardian} (${familyId})`;
+  if (currencySymbol) currencySymbol.textContent = members[0]?.currency || '$';
+  const existing = getFamilyPackage(familyId);
+  if (feeInput) feeInput.value = existing ? String(existing) : '';
+  if (removeBtn) removeBtn.classList.toggle('hidden', !existing);
+  updateFamilyPackageModalPreview();
+  if (modal) modal.classList.add('active');
+}
+window.openFamilyPackageModal = openFamilyPackageModal;
+
+function closeFamilyPackageModal() {
+  const modal = document.getElementById('family-package-modal');
+  if (modal) modal.classList.remove('active');
+  activeFamilyPackageId = null;
+}
+window.closeFamilyPackageModal = closeFamilyPackageModal;
+
+function updateFamilyPackageModalPreview() {
+  const preview = document.getElementById('family-package-preview-text');
+  const feeInput = document.getElementById('family-package-fee-input');
+  if (!preview || !activeFamilyPackageId) return;
+  const members = getFamilyMembers(activeFamilyPackageId);
+  const fee = Number(feeInput?.value) || 0;
+  const currency = members[0]?.currency || '$';
+  const n = members.length;
+  const word = n === 1 ? 'child' : 'children';
+  if (!fee || fee <= 0) {
+    preview.textContent = `Split equally across ${n} ${word}.`;
+    return;
+  }
+  const shares = splitPackageFee(fee, n);
+  const allEqual = shares.every(s => s === shares[0]);
+  const splitText = allEqual
+    ? `${currency}${formatFeeAmount(shares[0])} each`
+    : shares.map(s => `${currency}${formatFeeAmount(s)}`).join(', ');
+  preview.textContent = `Split equally across ${n} ${word} (${splitText}). Each child's monthly fee becomes their share.`;
+}
+window.updateFamilyPackageModalPreview = updateFamilyPackageModalPreview;
+
+async function saveFamilyPackage() {
+  if (!activeFamilyPackageId) return;
+  const feeInput = document.getElementById('family-package-fee-input');
+  const fee = Number(feeInput?.value) || 0;
+  if (!fee || fee <= 0 || isNaN(fee)) {
+    showToastNotification('Please enter a valid flat monthly fee for the package.', 'error');
+    return;
+  }
+  const familyId = activeFamilyPackageId;
+  const members = getFamilyMembers(familyId);
+  members.forEach(s => {
+    if (s.prePackageFee === undefined || s.prePackageFee === null) {
+      s.prePackageFee = Number(s.monthlyFee) || 0;
+    }
+    s.familyPackage = true;
+    s.familyPackageFee = fee;
+  });
+  const cloudOk = await recalcFamilyPackage(familyId);
+  closeFamilyPackageModal();
+  renderApp();
+  const currency = members[0]?.currency || '$';
+  if (cloudOk) {
+    showToastNotification(`Family Package ${currency}${formatFeeAmount(fee)}/mo saved for ${familyId} — split equally across ${members.length} ${members.length === 1 ? 'child' : 'children'}.`);
+  } else {
+    showToastNotification(`Could not save to cloud: ${firestoreSyncError || 'Firestore is not available'} — saved on this device only.`, 'error');
+  }
+}
+window.saveFamilyPackage = saveFamilyPackage;
+
+async function handleRemoveFamilyPackage() {
+  if (!activeFamilyPackageId) return;
+  const familyId = activeFamilyPackageId;
+  const cloudOk = await removeFamilyPackage(familyId);
+  closeFamilyPackageModal();
+  renderApp();
+  if (cloudOk) {
+    showToastNotification(`Family Package removed for ${familyId} — each child's previous monthly fee was restored.`);
+  } else {
+    showToastNotification(`Could not save to cloud: ${firestoreSyncError || 'Firestore is not available'} — saved on this device only.`, 'error');
+  }
+}
+window.handleRemoveFamilyPackage = handleRemoveFamilyPackage;
+
+// --- Add Student form: Family Package note + share pre-fill ---
+// Tracks the last share auto-filled into the fee field, so clearing the
+// family tag can undo the pre-fill without touching a manual edit.
+let lastPackageAutoShare = null;
+
+function handleAddStudentFamilyTagChange() {
+  const familyInput = document.getElementById('add-student-family-id');
+  const feeInput = document.getElementById('add-student-fee');
+  const note = document.getElementById('add-student-package-note');
+  if (!familyInput || !feeInput || !note) return;
+  const tag = (familyInput.value || '').trim();
+  const pkgFee = tag ? getFamilyPackage(tag) : null;
+  if (!pkgFee) {
+    // Undo only an auto-filled share; never touch a manually typed fee.
+    if (lastPackageAutoShare !== null && Number(feeInput.value) === lastPackageAutoShare) {
+      feeInput.value = '';
+    }
+    lastPackageAutoShare = null;
+    note.textContent = '';
+    note.classList.add('hidden');
+    return;
+  }
+  const members = getFamilyMembers(tag);
+  const newCount = members.length + 1;
+  const share = splitPackageFee(pkgFee, newCount)[0];
+  const currency = members[0]?.currency || '$';
+  note.textContent = `Family Package ${currency}${formatFeeAmount(pkgFee)}/mo — this child's share ${currency}${formatFeeAmount(share)} (auto-set)`;
+  note.classList.remove('hidden');
+  feeInput.value = String(share);
+  lastPackageAutoShare = share;
+}
+window.handleAddStudentFamilyTagChange = handleAddStudentFamilyTagChange;
+
 /**
  * Render Family Header Row in Accordion Grouped Ledger Table (Stripe Billing Minimalist Standard)
  */
 function renderFamilyLedgerHeaderRow(fam, isCollapsed = false) {
+  const pkgFee = getFamilyPackage(fam.familyId);
+  const pkgShare = pkgFee ? splitPackageFee(pkgFee, fam.students.length)[0] : 0;
   return `
     <tr class="family-group-header bg-[#FDFBF7] border-t-2 border-[#D1D5DB] border-b border-[#E5E7EB] select-none hover:bg-[#F8F5EE] transition-colors cursor-pointer" onclick="toggleFamilyCollapse('${fam.familyId}', event)">
       <td colspan="16" class="py-3 px-4 border-t-2 border-[#D1D5DB] border-b border-[#E5E7EB]">
@@ -9986,12 +10241,17 @@ function renderFamilyLedgerHeaderRow(fam, isCollapsed = false) {
 
           <!-- Right side of row: Combined Total Due & Subtle Secondary Button -->
           <div class="flex items-center gap-4" onclick="event.stopPropagation()">
+            ${pkgFee ? `<span class="text-[11px] font-semibold text-[#0E4D45] bg-[#E8EFEE] border border-[#0E4D45]/20 rounded-md px-2 py-0.5 whitespace-nowrap">Package ${fam.currency}${formatFeeAmount(pkgFee)}/mo • ${fam.currency}${formatFeeAmount(pkgShare)} per child</span>` : ''}
             <div class="flex items-center gap-1.5 text-xs">
               <span class="text-[#6B7280] text-[11px]">Combined Due:</span>
               <span class="font-bold ${fam.totalDue > 0 ? 'text-red-600' : 'text-[#065F46]'}">
                 ${fam.totalDue > 0 ? `-${fam.currency}${fam.totalDue} Due` : 'Clear'}
               </span>
             </div>
+            <button onclick="openFamilyPackageModal('${fam.familyId}')" 
+              class="px-3.5 py-1 text-xs font-semibold rounded-lg bg-white hover:bg-[#F9FAFB] text-[#141F1E] hover:text-[#0E4D45] border border-[#D1D5DB] transition-all shadow-2xs cursor-pointer whitespace-nowrap">
+              Package
+            </button>
             <button onclick="openReceiveFeeModal('${fam.familyId}')" 
               class="px-3.5 py-1 text-xs font-semibold rounded-lg bg-white hover:bg-[#F9FAFB] text-[#141F1E] hover:text-[#0E4D45] border border-[#D1D5DB] transition-all shadow-2xs cursor-pointer whitespace-nowrap">
               Pay Group Invoice

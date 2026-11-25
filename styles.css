@@ -939,10 +939,15 @@ body:not(.auth-locked) #auth-screen-root { display: none; }
    fades to cream (to right, last 20%); mobile: the banner's bottom edge
    fades to cream (to bottom, last 18% — overridden in the mobile query).
    The blend sits BELOW the logo and ABOVE the overlay+photo, and the logo
-   never reaches the faded edge, so the logo stays crisp. */
+   never reaches the faded edge, so the logo stays crisp.
+   1PX SEAM FIX: on odd-width viewports the two 50% flex panels round to
+   959+960px and a 1px hairline showed at the seam, so the photo panel
+   overlaps the seam by 1px (margin-right:-1px desktop, margin-bottom:-1px
+   mobile) and both seam elements get an explicit border:0. */
 #auth-screen-root > div.min-h-screen::before {
   content: "";
   display: block;
+  border: 0;
   background-color: #0E4D45;
   background-image:
     url("assets/logo-full.png"),
@@ -975,6 +980,7 @@ body:not(.auth-locked) #auth-screen-root { display: none; }
   #auth-screen-root > div.min-h-screen::before {
     flex: 1 1 50%;
     min-height: 100vh;
+    margin-right: -1px;
     background-size: 480px auto, cover, cover, cover;
   }
   #auth-screen-root > div.min-h-screen > .w-full.max-w-md {
@@ -986,6 +992,7 @@ body:not(.auth-locked) #auth-screen-root { display: none; }
     justify-content: center;
     align-items: center;
     background-color: #F9F8F5;
+    border: 0;
     padding: 48px;
   }
   /* Constrain each form-column block so the form reads as one column. */
@@ -1001,6 +1008,7 @@ body:not(.auth-locked) #auth-screen-root { display: none; }
     flex: none;
     width: 100%;
     height: 320px;
+    margin-bottom: -1px;
     /* Mobile blend is vertical: banner bottom fades into the cream form. */
     background-image:
       url("assets/logo-full.png"),

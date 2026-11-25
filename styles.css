@@ -927,14 +927,18 @@ body:not(.auth-locked) #auth-screen-root { display: none; }
    2026-11-25 update: logo made MUCH bigger (480px desktop / 300px mobile,
    was 300px / 196px) and photo changed to an open Quran on a wooden rehal
    in a mosque (Pexels 10571111) — the old closed-Quran cover is gone.
-   Overlay lightened a little (0.45→0.62) so the new photo shows through. */
+   GREEN FIX: the panel used to read as a different green because the photo
+   + a #093A33 overlay tinted it. The overlay is now the LMS green itself
+   (#0E4D45, same flat green as the LMS header and buttons) at 0.82→0.90,
+   so the panel matches the LMS exactly and the photo shows through faintly
+   as texture behind it. */
 #auth-screen-root > div.min-h-screen::before {
   content: "";
   display: block;
   background-color: #0E4D45;
   background-image:
     url("assets/logo-full.png"),
-    linear-gradient(rgba(9, 58, 51, 0.45), rgba(9, 58, 51, 0.62)),
+    linear-gradient(rgba(14, 77, 69, 0.82), rgba(14, 77, 69, 0.90)),
     url("https://images.pexels.com/photos/10571111/pexels-photo-10571111.jpeg?auto=compress&cs=tinysrgb&w=1200");
   background-repeat: no-repeat, no-repeat, no-repeat;
   background-position: center, center, 72% center;

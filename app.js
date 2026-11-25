@@ -4464,6 +4464,19 @@ function renderTeacherScheduleTimeline(teacher) {
   const days = getPktWeekDays();
   const selIso = AppState.selectedScheduleDay || todayIso;
   const selDay = days.find((d) => d.iso === selIso) || days.find((d) => d.iso === todayIso) || days[0];
+  // One row per class: the same student at the same PKT time is never
+  // shown twice (the Gemini mockup showed Amina twice at 06:00 AM).
+  // Deduped for the whole week here, so the strip counts and the
+  // timeline always agree.
+  Object.keys(weekClasses).forEach((d) => {
+    const seen = new Set();
+    weekClasses[d] = (weekClasses[d] || []).filter((c) => {
+      const key = c.student.id + '|' + c.slot.pktTime;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  });
   const classes = (weekClasses[selDay.label] || []).slice();
   const isToday = selDay.iso === todayIso;
   const nowMinutes = getNowPktMinutes();
@@ -4506,13 +4519,12 @@ function renderTeacherScheduleTimeline(teacher) {
     const action = isToday && status === 'Scheduled'
       ? `<button onclick="joinClassRoom('${s.id}')" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-[11px] font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors cursor-pointer">Start Class</button>`
       : (status === 'Completed' || status === 'Not logged')
-      ? `<button onclick="openSabaqLoggerModal('${s.id}')" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-[11px] font-bold rounded-full bg-white border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#F8F6F1] transition-colors cursor-pointer">Log Sabaq</button>`
+      ? `<button onclick="openSabaqLoggerModal('${s.id}')" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-[11px] font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors cursor-pointer">+ Log Sabaq</button>`
       : '';
     return `
       <div class="flex gap-3 mb-3">
-        <div class="w-[52px] shrink-0 text-right pt-3">
-          <div class="text-xs font-bold text-[#141F1E]">${pktLabel}</div>
-          <div class="text-[10px] text-[#7A8684] mt-0.5">${format24hTo12h(slot.time)} student</div>
+        <div class="w-[64px] shrink-0 text-right pt-3">
+          <div class="text-xs font-bold text-[#141F1E] whitespace-nowrap">${pktLabel}</div>
         </div>
         <div class="flex-1 min-w-0 bg-white border border-[#ECEAE4] rounded-2xl p-3">
           <div class="flex items-start gap-2.5">
@@ -4520,6 +4532,7 @@ function renderTeacherScheduleTimeline(teacher) {
             <div class="flex-1 min-w-0">
               <div class="text-xs font-bold text-[#141F1E] truncate">${display.displayName}</div>
               <div class="text-[11px] text-[#7A8684] mt-0.5">${s.course || 'Quran Class'} • ${slot.duration || '45m'}</div>
+              <div class="text-[11px] text-[#7A8684]">${format24hTo12h(slot.time)} student time</div>
               <button onclick="openViewWeeklyScheduleModal('${s.id}')" class="text-[11px] font-semibold text-[#0E4D45] hover:underline cursor-pointer mt-0.5">View timetable</button>
             </div>
             <div class="shrink-0 flex flex-col items-end gap-1.5">
@@ -4541,7 +4554,10 @@ function renderTeacherScheduleTimeline(teacher) {
         <div class="flex gap-2 mb-5">
           ${strip}
         </div>
-        <p class="text-[11px] font-semibold text-[#7A8684] mb-3">${selLabel}</p>
+        <div class="flex items-baseline justify-between gap-3 mb-3">
+          <h4 class="text-sm font-bold text-[#141F1E]">Daily Timetable</h4>
+          <span class="text-[11px] font-semibold text-[#7A8684]">${selLabel}</span>
+        </div>
         ${timeline}
         ${unscheduledCount > 0 ? `<p class="text-[11px] text-[#7A8684] mt-3">${unscheduledCount} student${unscheduledCount === 1 ? '' : 's'} have no weekly schedule set — Admin can set it in Edit Student → Weekly Timetable.</p>` : ''}
       </div>

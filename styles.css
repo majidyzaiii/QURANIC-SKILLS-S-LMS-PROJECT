@@ -898,3 +898,98 @@ body.auth-locked .modal-backdrop,
 body.auth-locked .bulk-action-bar { display: none !important; }
 body:not(.auth-locked) #auth-screen-root { display: none; }
 #auth-screen-root { min-height: 100vh; }
+
+/* ==========================================================================
+   Login screens — split-screen redesign (LIBRARIIS-style), 2026-11-25.
+   The auth screens are rendered by app.js (authScreenShell); this is a
+   CSS-only restyle of that shell — app.js is NOT touched.
+   - Desktop (>=768px): photo + official logo on the left, form on cream right.
+   - Mobile (<768px): photo+logo banner on top, form below (stacked).
+   - No tagline, no separate "Quranic Skills Academy" heading: the official
+     logo (assets/logo-full.png) IS the name. No signup anywhere.
+   Layout rules here are ID-scoped and self-sufficient (they beat the
+   Tailwind utilities) so the split holds even if the Tailwind CDN is slow.
+   ========================================================================== */
+
+/* Base: the shell becomes the split root — no outer padding, cream bg. */
+#auth-screen-root > div.min-h-screen {
+  display: flex;
+  min-height: 100vh;
+  padding: 0;
+  align-items: stretch;
+  justify-content: flex-start;
+  background-color: #F9F8F5;
+}
+
+/* Photo panel (desktop) / top banner (mobile), drawn with ::before so no
+   app.js markup change is needed. Layers, top to bottom: official logo,
+   dark-teal overlay, Quran photo. Solid teal fallback if the photo fails. */
+#auth-screen-root > div.min-h-screen::before {
+  content: "";
+  display: block;
+  background-color: #0E4D45;
+  background-image:
+    url("assets/logo-full.png"),
+    linear-gradient(rgba(9, 58, 51, 0.62), rgba(9, 58, 51, 0.78)),
+    url("https://images.unsplash.com/photo-1609599006353-e629aaabfeae?w=1200&q=80&fm=jpg");
+  background-repeat: no-repeat, no-repeat, no-repeat;
+  background-position: center, center, center;
+}
+
+/* The shell's text heading is removed: the logo IS the name. The small
+   "ADMIN PORTAL" eyebrow stays, left-aligned over the form column. */
+#auth-screen-root .max-w-md > .text-center.mb-6 { text-align: left; }
+#auth-screen-root .max-w-md > .text-center.mb-6 > div:first-child { display: none; }
+
+/* Flatten the white card: the form sits directly on the cream panel. */
+#auth-screen-root .max-w-md > .bg-white {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
+/* Footer note under the form, aligned with the form column. */
+#auth-screen-root .max-w-md > p.text-center { text-align: left; }
+
+@media (min-width: 768px) {
+  #auth-screen-root > div.min-h-screen { flex-direction: row; }
+  #auth-screen-root > div.min-h-screen::before {
+    flex: 1 1 50%;
+    min-height: 100vh;
+    background-size: 300px auto, cover, cover;
+  }
+  #auth-screen-root > div.min-h-screen > .w-full.max-w-md {
+    flex: 1 1 50%;
+    width: auto;
+    max-width: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-color: #F9F8F5;
+    padding: 48px;
+  }
+  /* Constrain each form-column block so the form reads as one column. */
+  #auth-screen-root > div.min-h-screen > .w-full.max-w-md > * {
+    width: 100%;
+    max-width: 420px;
+  }
+}
+
+@media (max-width: 767.98px) {
+  #auth-screen-root > div.min-h-screen { flex-direction: column; }
+  #auth-screen-root > div.min-h-screen::before {
+    flex: none;
+    width: 100%;
+    height: 252px;
+    background-size: 196px auto, cover, cover;
+  }
+  #auth-screen-root > div.min-h-screen > .w-full.max-w-md {
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 28px 20px 48px;
+  }
+}

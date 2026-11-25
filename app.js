@@ -577,7 +577,7 @@ function initAuthGate() {
 window.initAuthGate = initAuthGate;
 
 // ---------- Logout (also clears sensitive local data caches) ----------
-const LOGOUT_CLEAR_KEYS = ['lms_students', 'lms_teachers', 'lms_payment_ledger', 'lms_notices', 'lms_trial_pipeline', 'lms_attendance_logs', 'lms_live_classes', 'lms_notifications'];
+const LOGOUT_CLEAR_KEYS = ['lms_students', 'lms_teachers', 'lms_payment_ledger', 'lms_notices', 'lms_trial_pipeline', 'lms_attendance_logs', 'lms_live_classes', 'lms_leave_requests', 'lms_notifications'];
 
 function clearLocalDataCaches() {
   try {
@@ -1654,7 +1654,8 @@ async function syncCollectionToFirestore(key, data) {
     'lms_notices': 'notices',
     'lms_trial_pipeline': 'trial_pipeline',
     'lms_attendance_logs': 'attendance_logs',
-    'lms_live_classes': 'live_classes'
+    'lms_live_classes': 'live_classes',
+    'lms_leave_requests': 'leave_requests'
   };
 
   const colName = collectionMap[key];
@@ -1860,7 +1861,23 @@ function setupFirestoreRealtimeListeners() {
     handleListenerError(err);
   }));
 
-  // 7. LIVE CLASSES REAL-TIME SYNC
+  // 7. LEAVE REQUESTS REAL-TIME SYNC
+  firestoreUnsubscribers.push(db.collection('leave_requests').onSnapshot((snapshot) => {
+    if (!snapshot.empty) {
+      const liveReqs = [];
+      snapshot.forEach(doc => liveReqs.push(doc.data()));
+      AppState.leaveRequests = liveReqs;
+      saveCache('lms_leave_requests', liveReqs);
+      if (AppState.activeNav === 'teacher-leave' || AppState.activeNav === 'manager-substitute') {
+        renderApp();
+      }
+    }
+  }, (err) => {
+    console.warn('[Firestore] Leave requests listener warning:', err.code, err.message);
+    handleListenerError(err);
+  }));
+
+  // 8. LIVE CLASSES REAL-TIME SYNC
   firestoreUnsubscribers.push(db.collection('live_classes').onSnapshot((snapshot) => {
     if (!snapshot.empty) {
       const liveList = [];
@@ -2821,6 +2838,7 @@ const AppState = {
   attendanceTimeframe: 'month', // 'week' | 'month' | 'year'
   attendanceSelectedYear: CURRENT_YEAR,
   attendanceLogs: loadFromStorage('lms_attendance_logs', []),
+  leaveRequests: loadFromStorage('lms_leave_requests', []),
   students: loadFromStorage('lms_students', []),
   teachers: loadFromStorage('lms_teachers', []),
   liveClasses: loadFromStorage('lms_live_classes', []),
@@ -3693,13 +3711,13 @@ function handleRouteHash() {
     const validNavs = [
       'dashboard', 'fee-matrix', 'students', 'teachers', 'trials-notices',
       'manager-radar', 'manager-trials', 'manager-substitute', 'manager-students',
-      'teacher-schedule', 'teacher-logger', 'teacher-my-students', 'teacher-salary',
+      'teacher-schedule', 'teacher-logger', 'teacher-my-students', 'teacher-salary', 'teacher-leave',
       'student-portal', 'student-ledger', 'student-receipts', 'library'
     ];
     if (validNavs.includes(raw)) {
       if (['manager-radar', 'manager-trials', 'manager-substitute', 'manager-students'].includes(raw)) {
         AppState.currentRole = 'manager';
-      } else if (['teacher-schedule', 'teacher-logger', 'teacher-my-students', 'teacher-salary'].includes(raw)) {
+      } else if (['teacher-schedule', 'teacher-logger', 'teacher-my-students', 'teacher-salary', 'teacher-leave'].includes(raw)) {
         AppState.currentRole = 'teacher';
       } else if (['student-portal', 'student-ledger', 'student-receipts'].includes(raw)) {
         AppState.currentRole = 'student';
@@ -4644,6 +4662,210 @@ function openTeacherProgressModal(studentId) {
 function closeTeacherProgressModal() {
   const modal = document.getElementById('teacher-progress-modal');
   if (modal) modal.classList.remove('active');
+}
+
+// ---------- Teacher leave / substitute request ----------
+// "2026-11-26" -> "26 Nov".
+function formatShortDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso + 'T12:00:00');
+  return isNaN(d) ? String(iso) : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
+
+// Save a leave request doc to Firestore & cache (same pattern as attendance logs).
+async function dbSaveLeaveRequest(req) {
+  if (!req || !req.id) return;
+  if (!AppState.leaveRequests) AppState.leaveRequests = [];
+  const idx = AppState.leaveRequests.findIndex(r => r.id === req.id);
+  if (idx >= 0) AppState.leaveRequests[idx] = req;
+  else AppState.leaveRequests.unshift(req);
+  saveCache('lms_leave_requests', AppState.leaveRequests);
+  if (db) {
+    try {
+      await db.collection('leave_requests').doc(String(req.id)).set(req, { merge: true });
+      console.log(`[Firestore] Leave request ${req.id} synced to Firestore`);
+    } catch (e) {
+      console.warn(`[Firestore] Error saving leave request ${req.id}:`, e.message);
+    }
+  }
+}
+
+// Own leave requests for the signed-in teacher, newest first.
+function getMyLeaveRequests(teacher) {
+  return (AppState.leaveRequests || [])
+    .filter(r => r.teacherId === teacher.id)
+    .slice().sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+}
+
+// All leave requests, newest first (manager view).
+function getAllLeaveRequests() {
+  return (AppState.leaveRequests || [])
+    .slice().sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+}
+
+function leaveStatusBadge(status) {
+  const cls = status === 'Approved' ? 'ts-badge-paid' : status === 'Declined' ? 'ts-badge-defaulter' : 'ts-badge-partial';
+  return `<span class="ts-badge ${cls} shrink-0">${status}</span>`;
+}
+
+function leaveSubstituteName(req) {
+  const id = req.substituteTeacherId || req.preferredSubstituteId || '';
+  if (!id) return '';
+  return ((AppState.teachers || []).find(t => t.id === id) || {}).name || '';
+}
+
+// Read-only leave-request tab for the signed-in teacher: request form +
+// own requests with their status. Approving a leave does NOT reassign the
+// teacher's students — class coverage stays a manual manager action.
+function renderTeacherLeaveTab(teacher) {
+  const mine = getMyLeaveRequests(teacher);
+  const others = (AppState.teachers || []).filter(t => t.id !== teacher.id);
+  const today = new Date().toISOString().split('T')[0];
+  return `
+      <!-- Leave Request -->
+      <div class="ts-card p-6">
+        <div class="mb-4">
+          <h3 class="text-base font-bold text-[#141F1E]">Chhutti ki Request</h3>
+          <p class="text-xs text-[#7A8684]">Apni chhutti ki tareekh aur wajah likhein — Manager approve karega aur substitute assign karega.</p>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="text-[11px] font-bold text-[#7A8684]">From Date</label>
+            <input id="leave-from-date" type="date" value="${today}" class="mt-1 w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-xl px-3 py-2.5 text-xs font-semibold text-[#141F1E] outline-none focus:border-[#0E4D45] focus:bg-white" />
+          </div>
+          <div>
+            <label class="text-[11px] font-bold text-[#7A8684]">To Date</label>
+            <input id="leave-to-date" type="date" value="${today}" class="mt-1 w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-xl px-3 py-2.5 text-xs font-semibold text-[#141F1E] outline-none focus:border-[#0E4D45] focus:bg-white" />
+          </div>
+          <div>
+            <label class="text-[11px] font-bold text-[#7A8684]">Wajah</label>
+            <select id="leave-reason" class="mt-1 w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-xl px-3 py-2.5 text-xs font-semibold text-[#141F1E] outline-none focus:border-[#0E4D45] focus:bg-white cursor-pointer">
+              <option value="Bimari">Bimari</option>
+              <option value="Family emergency">Family emergency</option>
+              <option value="Personal">Personal</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[11px] font-bold text-[#7A8684]">Preferred Substitute (optional)</label>
+            <select id="leave-substitute" class="mt-1 w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-xl px-3 py-2.5 text-xs font-semibold text-[#141F1E] outline-none focus:border-[#0E4D45] focus:bg-white cursor-pointer">
+              <option value="">Koi nahi — Manager decide karein</option>
+              ${others.map(t => `<option value="${t.id}">${t.name}</option>`).join('')}
+            </select>
+          </div>
+          <div class="sm:col-span-2">
+            <label class="text-[11px] font-bold text-[#7A8684]">Note (optional)</label>
+            <textarea id="leave-note" rows="2" placeholder="Mukhtasir note likhein..." class="mt-1 w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-xl px-3 py-2.5 text-xs font-semibold text-[#141F1E] outline-none focus:border-[#0E4D45] focus:bg-white resize-y"></textarea>
+          </div>
+        </div>
+        <button onclick="handleSubmitLeaveRequest()" class="mt-4 px-5 py-2.5 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors shadow-sm cursor-pointer">Request Bhejein</button>
+      </div>
+      <div class="ts-card p-6">
+        <h3 class="text-base font-bold text-[#141F1E] mb-4">Meri Requests</h3>
+        ${mine.length === 0 ? `<p class="text-xs text-[#7A8684]">Abhi koi request nahi bheji.</p>` : `
+        <div class="space-y-3">
+          ${mine.map(r => `
+          <div class="p-4 rounded-2xl border border-[#ECEAE4] bg-[#F8F6F1]/50 flex items-start justify-between gap-3">
+            <div>
+              <p class="text-xs font-bold text-[#141F1E]">${formatShortDate(r.fromDate)} → ${formatShortDate(r.toDate)}</p>
+              <p class="text-[11px] text-[#7A8684] mt-0.5">${r.reason || ''}${r.note ? ' — ' + r.note : ''}</p>
+              ${r.status === 'Approved' && r.substituteTeacherId ? `<p class="text-[11px] text-[#065F46] font-semibold mt-0.5">Substitute: ${leaveSubstituteName(r)}</p>` : ''}
+            </div>
+            ${leaveStatusBadge(r.status)}
+          </div>`).join('')}
+        </div>`}
+      </div>
+  `;
+}
+
+function handleSubmitLeaveRequest() {
+  // Admin previewing a teacher's portal must not file a request as them.
+  if (AppState.authRole !== 'teacher') {
+    showToastNotification('⚠️ Preview mein request nahi bhej sakte — teacher ko khud login karna hoga.');
+    return Promise.resolve(false);
+  }
+  const teacher = getCurrentTeacher();
+  if (!teacher) return Promise.resolve(false);
+  const fromDate = document.getElementById('leave-from-date')?.value || '';
+  const toDate = document.getElementById('leave-to-date')?.value || fromDate;
+  const reason = document.getElementById('leave-reason')?.value || 'Personal';
+  const preferredSubstituteId = document.getElementById('leave-substitute')?.value || '';
+  const note = (document.getElementById('leave-note')?.value || '').trim();
+  if (!fromDate) {
+    showToastNotification('⚠️ Chhutti ki shuru ki tareekh chunein.');
+    return Promise.resolve(false);
+  }
+  if (toDate < fromDate) {
+    showToastNotification('⚠️ Aakhri tareekh pehli tareekh se pehle nahi ho sakti.');
+    return Promise.resolve(false);
+  }
+  const req = {
+    id: 'LV-' + Date.now(),
+    teacherId: teacher.id,
+    teacherName: teacher.name,
+    fromDate, toDate, reason, note, preferredSubstituteId,
+    status: 'Pending',
+    createdAt: new Date().toISOString(),
+    decidedAt: null,
+    substituteTeacherId: ''
+  };
+  return dbSaveLeaveRequest(req).then(() => {
+    showToastNotification('✓ Chhutti ki request bhej di gayi — Manager jawaab dega.');
+    renderApp();
+    return true;
+  });
+}
+
+// Manager decision on a pending request. Approving records the chosen
+// substitute on the request; it does not reassign students.
+function handleLeaveRequestDecision(requestId, decision) {
+  const req = (AppState.leaveRequests || []).find(r => r.id === requestId);
+  if (!req || req.status !== 'Pending') return Promise.resolve(false);
+  if (decision === 'Approved') {
+    const picked = document.getElementById('leave-sub-' + requestId)?.value || '';
+    req.status = 'Approved';
+    req.substituteTeacherId = picked || req.preferredSubstituteId || '';
+  } else if (decision === 'Declined') {
+    req.status = 'Declined';
+  } else {
+    return Promise.resolve(false);
+  }
+  req.decidedAt = new Date().toISOString();
+  return dbSaveLeaveRequest(req).then(() => {
+    showToastNotification(decision === 'Approved' ? '✓ Leave request approved.' : 'Leave request declined.');
+    renderApp();
+    return true;
+  });
+}
+
+// Leave-requests card for the manager's Substitute Dispatch tab.
+function renderManagerLeaveRequests() {
+  const reqs = getAllLeaveRequests();
+  if (reqs.length === 0) return `<p class="text-xs text-[#7A8684]">Abhi koi leave request nahi hai.</p>`;
+  return `<div class="space-y-3">${reqs.map(r => {
+    const others = (AppState.teachers || []).filter(t => t.id !== r.teacherId);
+    return `
+    <div class="p-4 rounded-2xl border border-[#ECEAE4] bg-[#F8F6F1]/50">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <p class="text-xs font-bold text-[#141F1E]">${r.teacherName || 'Teacher'} <span class="text-[#7A8684] font-medium">• ${formatShortDate(r.fromDate)} → ${formatShortDate(r.toDate)}</span></p>
+          <p class="text-[11px] text-[#7A8684] mt-0.5">${r.reason || ''}${r.note ? ' — ' + r.note : ''}</p>
+          ${r.preferredSubstituteId ? `<p class="text-[11px] text-[#7A8684] mt-0.5">Preferred substitute: ${leaveSubstituteName({ ...r, substituteTeacherId: '' })}</p>` : ''}
+          ${r.status === 'Approved' && r.substituteTeacherId ? `<p class="text-[11px] text-[#065F46] font-semibold mt-0.5">Substitute: ${leaveSubstituteName(r)}</p>` : ''}
+        </div>
+        ${leaveStatusBadge(r.status)}
+      </div>
+      ${r.status === 'Pending' ? `
+      <div class="flex flex-wrap items-center gap-2 mt-3">
+        <select id="leave-sub-${r.id}" class="text-xs bg-white border border-[#ECEAE4] rounded-full px-3 py-2 text-[#0E4D45] font-bold outline-none cursor-pointer">
+          <option value="">Substitute choose karein (optional)</option>
+          ${others.map(t => `<option value="${t.id}" ${r.preferredSubstituteId === t.id ? 'selected' : ''}>${t.name}</option>`).join('')}
+        </select>
+        <button onclick="handleLeaveRequestDecision('${r.id}', 'Approved')" class="px-4 py-2 text-[11px] font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors cursor-pointer">Approve</button>
+        <button onclick="handleLeaveRequestDecision('${r.id}', 'Declined')" class="px-4 py-2 text-[11px] font-bold rounded-full bg-white border border-[#ECEAE4] text-[#991B1B] hover:bg-[#FEE2E2] transition-colors cursor-pointer">Decline</button>
+      </div>` : ''}
+    </div>`;
+  }).join('')}</div>`;
 }
 
 function getSchedulePillSummary(student) {
@@ -9349,6 +9571,7 @@ function renderNavLinks() {
       { id: 'teacher-logger', label: '30-Sec Sabaq Logger', shortLabel: 'Logger', icon: 'M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z' },
       { id: 'teacher-my-students', label: 'My Students', shortLabel: 'Students', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
       { id: 'teacher-salary', label: 'My Salary', shortLabel: 'Salary', icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z' },
+      { id: 'teacher-leave', label: 'Leave Request', shortLabel: 'Leave', icon: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
       { id: 'library', label: 'Library', shortLabel: 'Library', icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253' }
     ];
   } else if (AppState.currentRole === 'student') {
@@ -16011,6 +16234,14 @@ function renderManagerPortalView() {
     `;
   } else if (activeNav === 'manager-substitute') {
     bodyContent = `
+      <!-- Teacher Leave Requests -->
+      <div class="ts-card p-6 mb-4">
+        <div class="mb-4">
+          <h3 class="text-base font-bold text-[#141F1E]">Teacher Leave Requests</h3>
+          <p class="text-xs text-[#7A8684]">Chhutti ki requests — approve karein aur substitute choose karein.</p>
+        </div>
+        ${renderManagerLeaveRequests()}
+      </div>
       <!-- Substitute Teacher Dispatch Panel -->
       <div class="ts-card p-6">
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-[#ECEAE4]">
@@ -16327,6 +16558,8 @@ function renderTeacherPortalView() {
     `;
   } else if (activeNav === 'teacher-salary') {
     bodyContent = renderTeacherSalaryTab(currentTeacher);
+  } else if (activeNav === 'teacher-leave') {
+    bodyContent = renderTeacherLeaveTab(currentTeacher);
   } else {
     // Default: teacher-schedule
     bodyContent = `

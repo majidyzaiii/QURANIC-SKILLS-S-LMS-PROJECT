@@ -923,17 +923,21 @@ body:not(.auth-locked) #auth-screen-root { display: none; }
 
 /* Photo panel (desktop) / top banner (mobile), drawn with ::before so no
    app.js markup change is needed. Layers, top to bottom: official logo,
-   dark-teal overlay, Quran photo. Solid teal fallback if the photo fails. */
+   dark-teal overlay, Quran photo. Solid teal fallback if the photo fails.
+   2026-11-25 update: logo made MUCH bigger (480px desktop / 300px mobile,
+   was 300px / 196px) and photo changed to an open Quran on a wooden rehal
+   in a mosque (Pexels 10571111) — the old closed-Quran cover is gone.
+   Overlay lightened a little (0.45→0.62) so the new photo shows through. */
 #auth-screen-root > div.min-h-screen::before {
   content: "";
   display: block;
   background-color: #0E4D45;
   background-image:
     url("assets/logo-full.png"),
-    linear-gradient(rgba(9, 58, 51, 0.62), rgba(9, 58, 51, 0.78)),
-    url("https://images.unsplash.com/photo-1609599006353-e629aaabfeae?w=1200&q=80&fm=jpg");
+    linear-gradient(rgba(9, 58, 51, 0.45), rgba(9, 58, 51, 0.62)),
+    url("https://images.pexels.com/photos/10571111/pexels-photo-10571111.jpeg?auto=compress&cs=tinysrgb&w=1200");
   background-repeat: no-repeat, no-repeat, no-repeat;
-  background-position: center, center, center;
+  background-position: center, center, 72% center;
 }
 
 /* The shell's text heading is removed: the logo IS the name. The small
@@ -958,7 +962,7 @@ body:not(.auth-locked) #auth-screen-root { display: none; }
   #auth-screen-root > div.min-h-screen::before {
     flex: 1 1 50%;
     min-height: 100vh;
-    background-size: 300px auto, cover, cover;
+    background-size: 480px auto, cover, cover;
   }
   #auth-screen-root > div.min-h-screen > .w-full.max-w-md {
     flex: 1 1 50%;
@@ -983,8 +987,8 @@ body:not(.auth-locked) #auth-screen-root { display: none; }
   #auth-screen-root > div.min-h-screen::before {
     flex: none;
     width: 100%;
-    height: 252px;
-    background-size: 196px auto, cover, cover;
+    height: 320px;
+    background-size: 300px auto, cover, cover;
   }
   #auth-screen-root > div.min-h-screen > .w-full.max-w-md {
     width: 100%;

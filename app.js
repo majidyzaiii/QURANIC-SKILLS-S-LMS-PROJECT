@@ -4502,6 +4502,150 @@ function renderTeacherSalaryTab(teacher) {
   `;
 }
 
+// ---------- Teacher student-progress view ----------
+// Attendance statuses that count as "attended" (same set as analytics).
+function isAttendedStatus(status) {
+  return status === 'Present' || status === 'Late' || status === 'Attended';
+}
+
+// Distinct dates (YYYY-MM-DD) the student attended — from the student's own
+// Sabaq history plus the live attendance logs (the logger writes both).
+function getStudentAttendedDates(student) {
+  const dates = new Set();
+  (student.sabaqHistory || []).forEach(e => {
+    if (e && e.date && isAttendedStatus(e.status)) dates.add(e.date);
+  });
+  (AppState.attendanceLogs || []).forEach(log => {
+    if (log && log.studentId === student.id && log.date && isAttendedStatus(log.status)) dates.add(log.date);
+  });
+  return dates;
+}
+
+// Scheduled class days from the 1st of the current month through today,
+// from the student's weekly timetable. Null when no explicit schedule is
+// set — then no honest attendance % exists.
+function getStudentScheduledDaysThisMonth(student) {
+  if (!hasExplicitSchedule(student)) return null;
+  const sched = getStudentWeeklySchedule(student);
+  const now = new Date();
+  const dayKeys = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+  let count = 0;
+  for (let d = 1; d <= now.getDate(); d++) {
+    const day = new Date(now.getFullYear(), now.getMonth(), d);
+    if (sched[dayKeys[day.getDay()]] && sched[dayKeys[day.getDay()]].active) count++;
+  }
+  return count;
+}
+
+// Per-student progress for the teacher's own students. Attendance % is this
+// month's attended days over scheduled days (capped at 100 for make-up
+// classes); Hifz progress is the distinct surahs logged so far — there is
+// no Juz-level field in the data, so no Juz % is invented.
+function getStudentProgress(student) {
+  const history = (student.sabaqHistory || []).slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+  const attended = getStudentAttendedDates(student);
+  const monthPrefix = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+  let attendedThisMonth = 0;
+  attended.forEach(d => { if (d.startsWith(monthPrefix)) attendedThisMonth++; });
+  const scheduledDays = getStudentScheduledDaysThisMonth(student);
+  const attendancePct = (scheduledDays === null || scheduledDays === 0)
+    ? null
+    : Math.min(100, Math.round((attendedThisMonth / scheduledDays) * 100));
+  const surahs = [];
+  (student.sabaqHistory || []).forEach(e => {
+    const s = (e && e.surah ? String(e.surah).trim() : '');
+    if (s && !surahs.includes(s)) surahs.push(s);
+  });
+  return {
+    totalLessons: (student.sabaqHistory || []).length,
+    attendedThisMonth,
+    scheduledDays,
+    attendancePct,
+    lastSabaq: student.lastSabaq || history[0] || null,
+    distinctSurahs: surahs,
+    recentHistory: history.slice(0, 10)
+  };
+}
+
+let currentTeacherProgressStudentId = null;
+
+function openTeacherProgressModal(studentId) {
+  const modal = document.getElementById('teacher-progress-modal');
+  const body = document.getElementById('teacher-progress-body');
+  if (!modal || !body) return;
+  const student = (AppState.students || []).find(s => s.id === studentId);
+  if (!student) return;
+  // Teachers only ever see their own students.
+  if (!getTeacherStudents().some(s => s.id === student.id)) return;
+  currentTeacherProgressStudentId = student.id;
+  const disp = getStudentDisplay(student, 'teacher');
+  const p = getStudentProgress(student);
+  const monthLabel = `${MONTHS_LIST[CURRENT_MONTH_INDEX]} ${CURRENT_YEAR}`;
+  const isHifz = /hifz/i.test(student.course || '');
+  const fmtDate = (iso) => {
+    const d = new Date(iso + 'T12:00:00');
+    return isNaN(d) ? String(iso || '') : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  };
+  body.innerHTML = `
+    <div class="flex items-center gap-3">
+      <div class="w-11 h-11 rounded-full bg-[#E8EFEE] text-[#0E4D45] flex items-center justify-center font-bold text-sm shrink-0">${disp.initials || 'S'}</div>
+      <div class="min-w-0">
+        <h3 class="text-base font-bold text-[#141F1E] truncate">${disp.displayName}</h3>
+        <p class="text-xs text-[#7A8684]">${student.course || ''} • ${monthLabel}</p>
+      </div>
+    </div>
+    <div class="grid grid-cols-3 gap-2">
+      <div class="rounded-xl bg-[#F8F6F1] border border-[#ECEAE4] px-3 py-3 text-center">
+        <p class="text-[10px] font-semibold text-[#7A8684]">Attendance</p>
+        <p class="text-lg font-bold text-[#0E4D45] tabular-nums">${p.attendancePct === null ? '—' : p.attendancePct + '%'}</p>
+        <p class="text-[10px] text-[#7A8684]">${p.scheduledDays === null ? 'No timetable' : p.attendedThisMonth + ' / ' + p.scheduledDays + ' days'}</p>
+      </div>
+      <div class="rounded-xl bg-[#F8F6F1] border border-[#ECEAE4] px-3 py-3 text-center">
+        <p class="text-[10px] font-semibold text-[#7A8684]">Sabaq Logged</p>
+        <p class="text-lg font-bold text-[#0E4D45] tabular-nums">${p.totalLessons}</p>
+        <p class="text-[10px] text-[#7A8684]">total lessons</p>
+      </div>
+      <div class="rounded-xl bg-[#F8F6F1] border border-[#ECEAE4] px-3 py-3 text-center">
+        <p class="text-[10px] font-semibold text-[#7A8684]">Surahs Covered</p>
+        <p class="text-lg font-bold text-[#0E4D45] tabular-nums">${p.distinctSurahs.length}</p>
+        <p class="text-[10px] text-[#7A8684]">distinct</p>
+      </div>
+    </div>
+    <div>
+      <p class="text-[11px] font-semibold text-[#7A8684] mb-1">Last Sabaq</p>
+      <p class="text-xs font-semibold text-[#141F1E]">${p.lastSabaq ? `${p.lastSabaq.surah} <span class="text-[#7A8684] font-medium">• ${fmtDate(p.lastSabaq.date)} • ${p.lastSabaq.status || ''}</span>` : 'No sabaq logged yet'}</p>
+    </div>
+    ${isHifz ? `
+    <div>
+      <p class="text-[11px] font-semibold text-[#7A8684] mb-2">Hifz Progress — Surahs Covered</p>
+      ${p.distinctSurahs.length === 0 ? `<p class="text-xs text-[#7A8684]">Abhi koi surah log nahi hui.</p>` : `
+      <div class="flex flex-wrap gap-1.5">
+        ${p.distinctSurahs.map(s => `<span class="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#E8EFEE] text-[#0E4D45]">${s}</span>`).join('')}
+      </div>`}
+    </div>` : ''}
+    <div>
+      <p class="text-[11px] font-semibold text-[#7A8684] mb-2">Recent Sabaq</p>
+      ${p.recentHistory.length === 0 ? `<p class="text-xs text-[#7A8684]">Abhi koi sabaq log nahi hai.</p>` : `
+      <div class="space-y-2">
+        ${p.recentHistory.map(e => `
+        <div class="flex items-center justify-between gap-3 py-2 border-b border-[#F8F6F1] last:border-0">
+          <div class="min-w-0">
+            <p class="text-xs font-bold text-[#141F1E] truncate">${e.surah || 'Sabaq'}</p>
+            <p class="text-[11px] text-[#7A8684]">${fmtDate(e.date)}${e.tags && e.tags.length ? ' • ' + e.tags.join(', ') : ''}</p>
+          </div>
+          <span class="ts-badge ${isAttendedStatus(e.status) ? 'ts-badge-paid' : 'ts-badge-partial'} shrink-0">${e.status || ''}</span>
+        </div>`).join('')}
+      </div>`}
+    </div>
+  `;
+  modal.classList.add('active');
+}
+
+function closeTeacherProgressModal() {
+  const modal = document.getElementById('teacher-progress-modal');
+  if (modal) modal.classList.remove('active');
+}
+
 function getSchedulePillSummary(student) {
   const sched = getStudentWeeklySchedule(student);
   const activeDays = WEEK_DAYS.filter(d => sched[d] && sched[d].active);
@@ -16138,12 +16282,14 @@ function renderTeacherPortalView() {
                 <th class="pb-3">Course Track</th>
                 <th class="pb-3">Current Lesson</th>
                 <th class="pb-3">Last Rating</th>
+                <th class="pb-3">Progress</th>
                 <th class="pb-3 text-right">Quick Action</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-[#ECEAE4] text-xs">
               ${myStudents.map(s => {
                 const display = getStudentDisplay(s, 'teacher');
+                const prog = getStudentProgress(s);
                 return `
                   <tr class="hover:bg-[#F8F6F1]/50 transition-colors">
                     <td class="py-3.5" data-label="Student Token">
@@ -16155,11 +16301,21 @@ function renderTeacherPortalView() {
                     <td class="py-3.5" data-label="Rating">
                       <div class="text-amber-500 font-bold">${'â­'.repeat(s.lastSabaq ? s.lastSabaq.rating : 5)}</div>
                     </td>
+                    <td class="py-3.5" data-label="Progress">
+                      <div class="font-bold text-[#0E4D45] tabular-nums">${prog.attendancePct === null ? '—' : prog.attendancePct + '%'}</div>
+                      <div class="text-[11px] text-[#7A8684]">${prog.totalLessons} lesson${prog.totalLessons === 1 ? '' : 's'}</div>
+                    </td>
                     <td class="py-3.5 text-right pl-2" data-label="Action">
-                      <button onclick="openSabaqLoggerModal('${s.id}')"
-                        class="px-3 py-1 text-[11px] font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors whitespace-nowrap shadow-sm">
-                        Log Sabaq
-                      </button>
+                      <div class="flex items-center justify-end gap-1.5">
+                        <button onclick="openTeacherProgressModal('${s.id}')"
+                          class="px-3 py-1 text-[11px] font-bold rounded-full bg-white border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#E8EFEE] transition-colors whitespace-nowrap shadow-2xs">
+                          Progress
+                        </button>
+                        <button onclick="openSabaqLoggerModal('${s.id}')"
+                          class="px-3 py-1 text-[11px] font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors whitespace-nowrap shadow-sm">
+                          Log Sabaq
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 `;

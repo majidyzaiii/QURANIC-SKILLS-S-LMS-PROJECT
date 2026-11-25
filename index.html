@@ -1159,6 +1159,38 @@
   </div>
 
   <!-- ==========================================================================
+       MODAL: TEACHER STUDENT PROGRESS (READ-ONLY)
+       ========================================================================== -->
+  <div id="teacher-progress-modal" class="modal-backdrop">
+    <div class="modal-content max-w-2xl sm:max-w-3xl">
+      <div class="px-6 py-5 border-b border-[#ECEAE4] flex items-center justify-between bg-white">
+        <div>
+          <div class="flex items-center gap-2.5">
+            <div class="modal-icon-tile">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            </div>
+            <h3 class="text-base font-bold text-[#141F1E]">Student Progress</h3>
+          </div>
+          <p class="text-xs text-[#7A8684] mt-0.5">Attendance, Sabaq history and Hifz progress for this student.</p>
+        </div>
+        <button onclick="closeTeacherProgressModal()" class="modal-close"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+      </div>
+
+      <div id="teacher-progress-body" class="p-6 space-y-4 max-h-[calc(88vh-140px)] overflow-y-auto text-xs">
+        <!-- Injected dynamically by openTeacherProgressModal(studentId) -->
+      </div>
+
+      <div class="px-6 py-4 bg-[#F9F8F5] border-t border-[#E8E6DF] flex items-center justify-between">
+        <span class="text-[11px] text-[#7A8684]">Attendance = attended days / scheduled days this month</span>
+        <div class="flex items-center gap-2">
+          <button onclick="closeTeacherProgressModal()" class="px-4 py-2 text-xs font-semibold rounded-full bg-white border border-[#E8E6DF] text-[#141F1E] hover:bg-[#F8F6F1] cursor-pointer">Close</button>
+          <button onclick="closeTeacherProgressModal(); if (currentTeacherProgressStudentId) openSabaqLoggerModal(currentTeacherProgressStudentId);" class="px-5 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] shadow-xs cursor-pointer">Log Sabaq</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
        MODAL: EDIT STUDENT RECORD (APPLE / STRIPE MINIMALIST STANDARD)
        ========================================================================== -->
   <div id="edit-student-modal" class="modal-backdrop">
@@ -3263,7 +3295,7 @@
   <script src="chart.min.js"></script>
 
   <!-- Application Logic -->
-  <script src="app.js?v=20261125-teacher-salary"></script>
+  <script src="app.js?v=20261125-teacher-progress"></script>
   <!-- ==========================================================================
        COMMAND PALETTE (Ctrl+K) — shared across all portals
        ========================================================================== -->

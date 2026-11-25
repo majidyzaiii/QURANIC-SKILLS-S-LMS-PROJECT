@@ -54,7 +54,10 @@
     }
   </style>
 </head>
-<body class="bg-[#F8F6F1] text-[#141F1E] min-h-screen flex flex-col font-sans selection:bg-[#0E4D45] selection:text-white overflow-x-hidden">
+<body class="bg-[#F8F6F1] text-[#141F1E] min-h-screen flex flex-col font-sans selection:bg-[#0E4D45] selection:text-white overflow-x-hidden auth-locked">
+
+  <!-- Login gate root: the sign-in / verify screens render here while the portal is locked -->
+  <div id="auth-screen-root"></div>
 
   <!-- ==========================================================================
        TOP DARK FOREST TEAL HEADER & HERO BANNER (#0E4D45) - EXACT TALENTSYNC GEOMETRY
@@ -114,10 +117,10 @@
           <div class="relative pl-1 border-l border-[#236058]" id="profile-dropdown-container">
             <button onclick="toggleProfileDropdown(event)" id="profile-dropdown-trigger" class="flex items-center gap-2 p-1 sm:pl-2 sm:pr-2.5 rounded-full hover:bg-[#14534B]/60 transition-all border border-transparent hover:border-[#236058] cursor-pointer" title="Click to Switch Portal or View Profile">
               <div id="top-user-avatar" class="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#14534B] border border-[#236058] flex items-center justify-center font-bold text-xs text-white shadow-sm flex-shrink-0">
-                AF
+                M
               </div>
               <div class="hidden lg:block text-left pr-1">
-                <div id="top-user-name" class="text-xs font-bold text-white leading-tight">Admin Farhan Al-Husseini</div>
+                <div id="top-user-name" class="text-xs font-bold text-white leading-tight">Majid</div>
                 <div id="top-user-role" class="text-[10px] text-[#A3C2BE] leading-tight">Super Administrator</div>
               </div>
               <svg class="w-3.5 h-3.5 text-[#A3C2BE] hidden lg:block transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 9l-7 7-7-7"/></svg>
@@ -144,7 +147,7 @@
       <div class="pt-6 sm:pt-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <span class="text-xs sm:text-[15px] font-medium text-[#A3C2BE] block">Assalam-o-Alaikum,</span>
-          <h1 id="hero-user-name" class="text-xl sm:text-[28px] font-bold text-white tracking-tight mt-0.5">Admin Farhan</h1>
+          <h1 id="hero-user-name" class="text-xl sm:text-[28px] font-bold text-white tracking-tight mt-0.5">Majid</h1>
         </div>
 
         <!-- Right Controls: Interactive Month/Year Selector -->
@@ -2506,6 +2509,52 @@
             <p class="text-[11px] text-[#7A8684]">Download a full copy of academy data — students, teachers, payment ledger and all settings — as one JSON file.</p>
             <button type="button" onclick="downloadFullBackup()" class="px-4 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors shadow-sm cursor-pointer">Download Full Backup</button>
           </div>
+
+          <h4 class="modal-section-title">8. Admin Profile</h4>
+          <div class="p-3 bg-white rounded-xl border border-[#ECEAE4] space-y-3">
+            <div class="flex items-center gap-3">
+              <div id="admin-profile-photo-preview" class="w-12 h-12 rounded-full bg-[#0E4D45] text-white flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden">M</div>
+              <div class="min-w-0">
+                <p class="text-xs font-bold text-[#141F1E]">Signed in as <span id="admin-profile-email-label">—</span></p>
+                <p class="text-[11px] text-[#7A8684]">This name shows in the header, dashboard greeting and as the default notice author.</p>
+              </div>
+            </div>
+            <div class="grid sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block font-semibold text-[#141F1E] mb-1">Display Name</label>
+                <input type="text" id="admin-profile-name" value="Majid" class="w-full bg-white border border-[#ECEAE4] rounded-xl px-3 py-2 text-[#141F1E] font-medium outline-none focus:border-[#0E4D45]">
+              </div>
+              <div>
+                <label class="block font-semibold text-[#141F1E] mb-1">Phone (optional)</label>
+                <input type="tel" id="admin-profile-phone" placeholder="+92 3XX XXXXXXX" class="w-full bg-white border border-[#ECEAE4] rounded-xl px-3 py-2 text-[#141F1E] font-medium outline-none focus:border-[#0E4D45]">
+              </div>
+            </div>
+            <div>
+              <label class="block font-semibold text-[#141F1E] mb-1">Profile Photo URL (optional)</label>
+              <input type="url" id="admin-profile-photo" placeholder="https://…/photo.jpg" oninput="previewAdminPhoto()" class="w-full bg-white border border-[#ECEAE4] rounded-xl px-3 py-2 text-[#141F1E] font-medium outline-none focus:border-[#0E4D45]">
+              <p class="text-[11px] text-[#7A8684] mt-1">Leave blank to use your initials instead.</p>
+            </div>
+            <div>
+              <label class="block font-semibold text-[#141F1E] mb-1">Email (login account)</label>
+              <input type="email" id="admin-profile-email" readonly class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-xl px-3 py-2 text-[#7A8684] font-medium outline-none">
+            </div>
+            <div class="flex items-center gap-2">
+              <button type="button" onclick="saveAdminProfile()" class="px-4 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors shadow-sm cursor-pointer">Save Profile</button>
+              <span id="admin-profile-save-note" class="text-[11px] text-[#7A8684]"></span>
+            </div>
+          </div>
+
+          <h4 class="modal-section-title">9. Manage Devices</h4>
+          <div class="p-3 bg-white rounded-xl border border-[#ECEAE4] space-y-2">
+            <p class="text-[11px] text-[#7A8684]">Every device you sign in on is listed here. Signing a device out takes effect on that device the next time it loads the app, or within 5 minutes.</p>
+            <div id="admin-sessions-list" class="space-y-2">
+              <p class="text-[11px] text-[#7A8684]">Loading devices…</p>
+            </div>
+            <div class="flex items-center gap-2 pt-1">
+              <button type="button" onclick="loadAdminSessionsList()" class="px-4 py-2 text-xs font-bold rounded-full bg-white border border-[#ECEAE4] text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer">Refresh</button>
+              <button type="button" onclick="signOutAllOtherSessions()" class="px-4 py-2 text-xs font-bold rounded-full bg-white border border-[#FECACA] text-[#B91C1C] hover:bg-red-50 transition-colors cursor-pointer">Sign out all other devices</button>
+            </div>
+          </div>
         </div>
 
       </div>
@@ -2702,7 +2751,7 @@
             <input 
               type="text" 
               id="notice-author-input" 
-              value="Admin Farhan" 
+              value="Majid" 
               class="w-full bg-white border border-[#ECEAE4] rounded-xl px-3.5 py-2.5 text-xs font-medium text-[#141F1E] outline-none focus:border-[#0E4D45]"
             >
           </div>
@@ -3034,10 +3083,10 @@
       <!-- User Profile Card -->
       <div class="p-3 rounded-2xl bg-[#F8F6F1] border border-[#ECEAE4] flex items-center gap-3">
         <div id="drawer-user-avatar" class="w-10 h-10 rounded-full bg-[#0E4D45] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
-          AF
+          M
         </div>
         <div class="min-w-0 flex-1">
-          <div id="drawer-user-name" class="text-xs font-bold text-[#141F1E] truncate">Admin Farhan Al-Husseini</div>
+          <div id="drawer-user-name" class="text-xs font-bold text-[#141F1E] truncate">Majid</div>
           <div id="drawer-user-role" class="text-[10px] text-[#7A8684] truncate">Super Administrator</div>
         </div>
       </div>
@@ -3144,13 +3193,14 @@
 
   <!-- Firebase Cloud Firestore SDK (Compat v10) -->
   <script src="firebase-app-compat.js"></script>
+  <script src="firebase-auth-compat.js"></script>
   <script src="firebase-firestore-compat.js"></script>
 
   <!-- Chart.js 4.4 Engine (Dual-Metric Attendance vs Pass Chart) -->
   <script src="chart.min.js"></script>
 
   <!-- Application Logic -->
-  <script src="app.js?v=20261125-settings"></script>
+  <script src="app.js?v=20261125-auth"></script>
   <!-- ==========================================================================
        COMMAND PALETTE (Ctrl+K) — shared across all portals
        ========================================================================== -->

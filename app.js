@@ -116,6 +116,704 @@ try {
 }
 
 // ==========================================
+// 0B. ADMIN LOGIN GATE — FIREBASE AUTH (Email/Password + email verification link)
+// ==========================================
+// The portal renders NOTHING until Firebase Auth reports a verified admin.
+//   - No user            -> login screen (email + password, forgot-password link)
+//   - User, not verified -> "verify your email" screen (link via sendEmailVerification)
+//   - User, verified     -> portal boots (listeners, seed, renderApp)
+// There is NO public signup and NO custom OTP: Firebase's verification link
+// IS the email-link mechanism Majid chose. Passwords are never stored,
+// hardcoded, or logged anywhere in this project.
+// Firestore rules (firestore.rules) must be published in Firebase Console
+// before this gate is real security; until then the login screen is UI-only
+// and the data stays open in test mode (see FIREBASE-AUTH-SETUP.md).
+
+const AuthState = {
+  status: 'checking', // 'checking' | 'logged-out' | 'unverified' | 'authenticated' | 'fatal'
+  view: 'login', // login-screen sub-view: 'login' | 'reset'
+  user: null,
+  booted: false,
+  verificationEmailSent: false,
+  revokedNotice: false,
+  permissionDenied: false,
+  authError: '',
+  lastEmail: '',
+  lastErrorCode: '',
+  resetSentTo: '',
+  verifyCooldownUntil: 0
+};
+
+function getAuth() {
+  try {
+    if (typeof firebase === 'undefined' || typeof firebase.auth !== 'function') return null;
+    return firebase.auth();
+  } catch (e) { return null; }
+}
+
+function isPortalUnlocked() {
+  return AuthState.status === 'authenticated';
+}
+
+function mapAuthError(err) {
+  const code = (err && err.code) || '';
+  switch (code) {
+    case 'auth/invalid-credential':
+    case 'auth/user-not-found':
+    case 'auth/wrong-password':
+      return 'Email ya password ghalat hai. Dobara koshish karein.';
+    case 'auth/invalid-email':
+      return 'Sahi email address likhein.';
+    case 'auth/user-disabled':
+      return 'Ye admin account band hai. Firebase Console se check karein.';
+    case 'auth/too-many-requests':
+      return 'Bohat zyada koshishein ho gayi hain — kuch der baad dobara koshish karein.';
+    case 'auth/operation-not-allowed':
+      return 'Email login abhi Firebase Console mein on nahi hai. Authentication → Sign-in method mein Email/Password enable karein.';
+    case 'auth/network-request-failed':
+      return 'Internet connection ka masla hai — connection check karke dobara koshish karein.';
+    case 'auth/weak-password':
+      return 'Password kamzor hai — kam az kam 6 characters ka mazboot password rakhein.';
+    case 'auth/requires-recent-login':
+      return 'Ye kaam karne ke liye dobara sign in karein.';
+    default:
+      return 'Sign in nahi ho saka. Dobara koshish karein.' + (code ? ' (' + code + ')' : '');
+  }
+}
+
+function authScreenShell(innerHtml) {
+  return `
+  <div class="min-h-screen bg-[#F9F8F5] flex flex-col items-center justify-center px-4 py-10">
+    <div class="w-full max-w-md">
+      <div class="text-center mb-6">
+        <div class="text-xl font-bold text-[#0E4D45] tracking-tight">Quranic Skills Academy</div>
+        <div class="text-[11px] font-bold text-[#7A8684] tracking-widest mt-1">ADMIN PORTAL</div>
+      </div>
+      <div class="bg-white rounded-2xl border border-[#E8E6DF] shadow-sm px-6 py-7 sm:px-8">
+        ${innerHtml}
+      </div>
+      <p class="text-center text-[11px] text-[#7A8684] mt-4 leading-relaxed">Protected by Firebase Authentication.<br>No public signup — admin access only.</p>
+    </div>
+  </div>`;
+}
+
+function renderAuthScreen() {
+  const root = document.getElementById('auth-screen-root');
+  if (!root) return;
+  if (AuthState.status === 'authenticated') { root.innerHTML = ''; return; }
+  let inner = '';
+  if (AuthState.status === 'checking') {
+    inner = `
+      <div class="py-8 flex flex-col items-center text-center">
+        <svg class="w-8 h-8 text-[#0E4D45] animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+        <p class="text-sm font-semibold text-[#141F1E] mt-4">Checking sign-in…</p>
+        <p class="text-[11px] text-[#7A8684] mt-1">Please wait a moment.</p>
+      </div>`;
+  } else if (AuthState.status === 'fatal') {
+    inner = `
+      <h1 class="text-base font-bold text-[#141F1E]">Sign-in system could not load</h1>
+      <p class="text-xs text-[#7A8684] mt-2 leading-relaxed">The Firebase Auth library did not load. Check your internet connection and refresh the page. If the problem continues, the auth script file may be missing from the site.</p>
+      <button type="button" onclick="location.reload()" class="mt-5 w-full px-4 py-2.5 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors cursor-pointer">Refresh Page</button>`;
+  } else if (AuthState.status === 'unverified') {
+    const email = (AuthState.user && AuthState.user.email) || '';
+    inner = `
+      <div class="w-12 h-12 rounded-2xl bg-[#E8EFEE] text-[#0E4D45] flex items-center justify-center mb-4">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+      </div>
+      <h1 class="text-base font-bold text-[#141F1E]">Verify your email</h1>
+      <p class="text-xs text-[#7A8684] mt-2 leading-relaxed">We sent a verification link to <strong class="text-[#141F1E]">${email}</strong>. Click the link in that email, then come back here. Check Spam if you do not see it.</p>
+      <p id="auth-verify-note" class="text-[11px] text-[#7A8684] mt-3 leading-relaxed"></p>
+      <button type="button" onclick="handleAuthRecheckVerification()" class="mt-5 w-full px-4 py-2.5 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors cursor-pointer">I verified — check again</button>
+      <button type="button" id="auth-resend-btn" onclick="handleAuthResendVerification()" class="mt-2.5 w-full px-4 py-2.5 text-xs font-bold rounded-full bg-white border border-[#ECEAE4] text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer disabled:opacity-60">Resend verification link</button>
+      <button type="button" onclick="handleSignOut()" class="mt-3 w-full text-[11px] font-semibold text-[#7A8684] hover:text-[#141F1E] cursor-pointer">Sign in with a different account</button>`;
+  } else if (AuthState.view === 'reset') {
+    inner = `
+      <h1 class="text-base font-bold text-[#141F1E]">Reset password</h1>
+      <p class="text-xs text-[#7A8684] mt-2 leading-relaxed">Enter your admin email and we will send a password-reset link.</p>
+      ${AuthState.resetSentTo ? `<div class="mt-4 px-3.5 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-[11px] font-semibold text-emerald-800">Reset link sent to ${AuthState.resetSentTo} — check your inbox (and Spam).</div>` : ''}
+      <div id="auth-reset-error" class="hidden mt-4 px-3.5 py-2.5 rounded-xl bg-red-50 border border-red-200 text-[11px] font-semibold text-[#B91C1C]"></div>
+      <label class="block text-[11px] font-bold text-[#141F1E] mt-5 mb-1.5">Email</label>
+      <input type="email" id="auth-reset-email" value="${AuthState.lastEmail || ''}" placeholder="you@example.com" class="w-full bg-white border border-[#ECEAE4] rounded-xl px-3.5 py-2.5 text-sm text-[#141F1E] outline-none focus:border-[#0E4D45]">
+      <button type="button" id="auth-reset-btn" onclick="handleAuthSendReset()" class="mt-4 w-full px-4 py-2.5 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors cursor-pointer">Send reset link</button>
+      <button type="button" onclick="handleAuthBackToLogin()" class="mt-3 w-full text-[11px] font-semibold text-[#0E4D45] hover:underline cursor-pointer">Back to sign in</button>`;
+  } else {
+    // Login view.
+    const notice = AuthState.revokedNotice
+      ? '<div class="px-3.5 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] font-semibold text-amber-800 mb-4">This device was signed out from another device. Please sign in again.</div>'
+      : (AuthState.permissionDenied
+        ? '<div class="px-3.5 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] font-semibold text-amber-800 mb-4">Your session lost access. Please sign in again.</div>'
+        : '');
+    inner = `
+      <h1 class="text-base font-bold text-[#141F1E]">Admin Sign In</h1>
+      <p class="text-xs text-[#7A8684] mt-1.5 leading-relaxed">Sign in with your admin email and password to open the portal.</p>
+      ${notice}
+      <div id="auth-error" class="${AuthState.authError ? '' : 'hidden'} mt-4 px-3.5 py-2.5 rounded-xl bg-red-50 border border-red-200 text-[11px] font-semibold text-[#B91C1C]">${AuthState.authError || ''}</div>
+      <label class="block text-[11px] font-bold text-[#141F1E] mt-5 mb-1.5">Email</label>
+      <input type="email" id="auth-email" value="${AuthState.lastEmail || ''}" placeholder="you@example.com" autocomplete="username" class="w-full bg-white border border-[#ECEAE4] rounded-xl px-3.5 py-2.5 text-sm text-[#141F1E] outline-none focus:border-[#0E4D45]">
+      <label class="block text-[11px] font-bold text-[#141F1E] mt-4 mb-1.5">Password</label>
+      <input type="password" id="auth-password" placeholder="Your password" autocomplete="current-password" onkeydown="if(event.key==='Enter'){handleAuthSignIn();}" class="w-full bg-white border border-[#ECEAE4] rounded-xl px-3.5 py-2.5 text-sm text-[#141F1E] outline-none focus:border-[#0E4D45]">
+      <button type="button" id="auth-signin-btn" onclick="handleAuthSignIn()" class="mt-5 w-full px-4 py-2.5 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors shadow-sm cursor-pointer disabled:opacity-60">Sign In</button>
+      <button type="button" onclick="handleAuthShowReset()" class="mt-3 w-full text-[11px] font-semibold text-[#0E4D45] hover:underline cursor-pointer">Forgot password?</button>`;
+  }
+  root.innerHTML = authScreenShell(inner);
+}
+
+function showAuthError(msg) {
+  AuthState.authError = msg;
+  const errEl = document.getElementById('auth-error');
+  if (errEl) { errEl.textContent = msg; errEl.classList.remove('hidden'); }
+}
+
+async function handleAuthSignIn() {
+  const auth = getAuth();
+  const emailEl = document.getElementById('auth-email');
+  const passEl = document.getElementById('auth-password');
+  const btn = document.getElementById('auth-signin-btn');
+  const email = (emailEl && emailEl.value || '').trim();
+  const password = (passEl && passEl.value) || '';
+  AuthState.lastEmail = email;
+  AuthState.lastErrorCode = '';
+  if (!email || !password) { showAuthError('Email aur password dono likhein.'); return; }
+  if (!auth) { showAuthError('Sign-in system load nahi hua — page refresh karein.'); return; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Signing in…'; }
+  const errEl = document.getElementById('auth-error');
+  if (errEl) errEl.classList.add('hidden');
+  try {
+    await auth.signInWithEmailAndPassword(email, password);
+    // onAuthStateChanged takes it from here: verified -> portal, unverified -> verify screen.
+  } catch (err) {
+    AuthState.lastErrorCode = (err && err.code) || '';
+    showAuthError(mapAuthError(err));
+    if (btn) { btn.disabled = false; btn.textContent = 'Sign In'; }
+  }
+}
+window.handleAuthSignIn = handleAuthSignIn;
+
+function handleAuthShowReset() {
+  AuthState.view = 'reset';
+  AuthState.authError = '';
+  renderAuthScreen();
+}
+window.handleAuthShowReset = handleAuthShowReset;
+
+function handleAuthBackToLogin() {
+  AuthState.view = 'login';
+  AuthState.resetSentTo = '';
+  AuthState.authError = '';
+  renderAuthScreen();
+}
+window.handleAuthBackToLogin = handleAuthBackToLogin;
+
+async function handleAuthSendReset() {
+  const auth = getAuth();
+  const emailEl = document.getElementById('auth-reset-email');
+  const errEl = document.getElementById('auth-reset-error');
+  const email = (emailEl && emailEl.value || '').trim();
+  AuthState.lastEmail = email;
+  if (!email) {
+    if (errEl) { errEl.textContent = 'Email likhein.'; errEl.classList.remove('hidden'); }
+    return;
+  }
+  if (!auth) {
+    if (errEl) { errEl.textContent = 'Sign-in system load nahi hua — page refresh karein.'; errEl.classList.remove('hidden'); }
+    return;
+  }
+  try {
+    await auth.sendPasswordResetEmail(email);
+    AuthState.resetSentTo = email;
+    renderAuthScreen();
+  } catch (err) {
+    AuthState.lastErrorCode = (err && err.code) || '';
+    if (errEl) { errEl.textContent = mapAuthError(err); errEl.classList.remove('hidden'); }
+  }
+}
+window.handleAuthSendReset = handleAuthSendReset;
+
+async function handleAuthResendVerification() {
+  const auth = getAuth();
+  const user = auth && auth.currentUser;
+  if (!user) return;
+  if (Date.now() < AuthState.verifyCooldownUntil) return;
+  try {
+    await user.sendEmailVerification();
+    AuthState.verificationEmailSent = true;
+    AuthState.verifyCooldownUntil = Date.now() + 60000;
+    const btn = document.getElementById('auth-resend-btn');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Link sent — 60s wait karein';
+      setTimeout(() => {
+        const b = document.getElementById('auth-resend-btn');
+        if (b) { b.disabled = false; b.textContent = 'Resend verification link'; }
+      }, 60000);
+    }
+    const note = document.getElementById('auth-verify-note');
+    if (note) note.textContent = 'Verification link dobara bhej di gayi hai — inbox (aur Spam) check karein.';
+  } catch (err) {
+    AuthState.lastErrorCode = (err && err.code) || '';
+    const note = document.getElementById('auth-verify-note');
+    if (note) note.textContent = mapAuthError(err);
+  }
+}
+window.handleAuthResendVerification = handleAuthResendVerification;
+
+async function handleAuthRecheckVerification() {
+  const auth = getAuth();
+  const user = auth && auth.currentUser;
+  if (!user) return;
+  try {
+    await user.reload();
+    const fresh = auth.currentUser;
+    if (fresh && fresh.emailVerified) {
+      handleAuthStateChange(fresh);
+    } else {
+      const note = document.getElementById('auth-verify-note');
+      if (note) note.textContent = 'Abhi tak verify nahi hua — pehle email mein link par click karein, phir dobara check karein.';
+    }
+  } catch (err) {
+    AuthState.lastErrorCode = (err && err.code) || '';
+    const note = document.getElementById('auth-verify-note');
+    if (note) note.textContent = mapAuthError(err);
+  }
+}
+window.handleAuthRecheckVerification = handleAuthRecheckVerification;
+
+function handleAuthStateChange(user) {
+  AuthState.user = user || null;
+  if (!user) {
+    AuthState.status = 'logged-out';
+    AuthState.view = 'login';
+    AuthState.resetSentTo = '';
+    AuthState.booted = false;
+    AuthState.verificationEmailSent = false;
+    stopSessionHeartbeat();
+    document.body.classList.add('auth-locked');
+    renderAuthScreen();
+    return;
+  }
+  if (!user.emailVerified) {
+    AuthState.status = 'unverified';
+    document.body.classList.add('auth-locked');
+    renderAuthScreen();
+    // Send the verification link once per session when we first see an unverified user.
+    if (!AuthState.verificationEmailSent) {
+      AuthState.verificationEmailSent = true;
+      try { user.sendEmailVerification().catch(() => {}); } catch (e) {}
+    }
+    return;
+  }
+  // Verified admin.
+  AuthState.status = 'authenticated';
+  AuthState.revokedNotice = false;
+  AuthState.permissionDenied = false;
+  AuthState.authError = '';
+  document.body.classList.remove('auth-locked');
+  const root = document.getElementById('auth-screen-root');
+  if (root) root.innerHTML = '';
+  loadAdminProfile();
+  applyAdminProfileToUI();
+  upsertAdminSession().catch(() => {});
+  startSessionHeartbeat();
+  if (!AuthState.booted) {
+    AuthState.booted = true;
+    bootPortalAfterAuth();
+  } else {
+    renderApp();
+  }
+}
+
+function initAuthGate() {
+  renderAuthScreen(); // 'checking' state first — no portal flash.
+  const auth = getAuth();
+  if (!auth) {
+    AuthState.status = 'fatal';
+    renderAuthScreen();
+    return;
+  }
+  auth.onAuthStateChanged(handleAuthStateChange);
+}
+window.initAuthGate = initAuthGate;
+
+// ---------- Logout (also clears sensitive local data caches) ----------
+const LOGOUT_CLEAR_KEYS = ['lms_students', 'lms_teachers', 'lms_payment_ledger', 'lms_notices', 'lms_trial_pipeline', 'lms_attendance_logs', 'lms_live_classes', 'lms_notifications'];
+
+function clearLocalDataCaches() {
+  try {
+    LOGOUT_CLEAR_KEYS.forEach(k => {
+      try { localStorage.removeItem(k); } catch (e) {}
+      try { delete _cloudLocalCache[k]; } catch (e) {}
+    });
+    if (typeof AppState !== 'undefined') {
+      AppState.students = [];
+      AppState.teachers = [];
+    }
+    if (typeof PAYMENT_LEDGER !== 'undefined') PAYMENT_LEDGER.length = 0;
+    if (typeof ACADEMY_NOTICES !== 'undefined') ACADEMY_NOTICES.length = 0;
+    if (typeof TRIAL_PIPELINE !== 'undefined') TRIAL_PIPELINE.length = 0;
+  } catch (e) {}
+}
+
+async function handleSignOut() {
+  stopSessionHeartbeat();
+  clearLocalDataCaches();
+  try { await deleteCurrentAdminSession(); } catch (e) {}
+  const auth = getAuth();
+  try { if (auth) await auth.signOut(); } catch (e) {}
+  // onAuthStateChanged renders the login screen.
+}
+window.handleSignOut = handleSignOut;
+
+// ---------- Firestore listener error handling ----------
+function handleListenerError(err) {
+  if (!err) return;
+  if (err.code === 'permission-denied') {
+    // Rules now require auth and this session lost access (e.g. signed out elsewhere).
+    AuthState.permissionDenied = true;
+    const auth = getAuth();
+    if (auth) auth.signOut().catch(() => {});
+  }
+}
+
+// ---------- Admin Profile ----------
+function getAdminProfile() {
+  return (typeof AppState !== 'undefined' && AppState.adminProfile && typeof AppState.adminProfile === 'object') ? AppState.adminProfile : {};
+}
+
+function getAdminDisplayName() {
+  const n = (getAdminProfile().displayName || '').trim();
+  return n || 'Majid';
+}
+
+function getAdminShortName() {
+  return (getAdminDisplayName().split(/\s+/)[0] || 'Majid');
+}
+
+function getAdminInitials(name) {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return 'M';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
+function getAdminPhotoUrl() {
+  return (getAdminProfile().photoUrl || '').trim().replace(/["<>]/g, '');
+}
+
+async function loadAdminProfile() {
+  try {
+    const cached = loadCache('lms_admin_profile', null);
+    if (cached && typeof cached === 'object') {
+      AppState.adminProfile = cached;
+      applyAdminProfileToUI();
+    }
+  } catch (e) {}
+  if (!db) return;
+  try {
+    const doc = await db.collection('settings').doc('admin_profile').get();
+    if (doc && doc.exists) {
+      const data = doc.data() || {};
+      AppState.adminProfile = data;
+      saveCache('lms_admin_profile', data);
+      applyAdminProfileToUI();
+    }
+  } catch (e) { /* cached values / defaults stand in */ }
+}
+
+function applyAdminProfileToUI() {
+  const name = getAdminDisplayName();
+  const shortName = getAdminShortName();
+  const initials = getAdminInitials(name);
+  if (typeof PORTAL_ROLES !== 'undefined' && PORTAL_ROLES.admin) {
+    PORTAL_ROLES.admin.name = name;
+    PORTAL_ROLES.admin.shortName = shortName;
+    PORTAL_ROLES.admin.initials = initials;
+  }
+  if (typeof updateRolePillUI === 'function') updateRolePillUI();
+}
+window.applyAdminProfileToUI = applyAdminProfileToUI;
+
+function renderAdminProfileSection() {
+  const p = getAdminProfile();
+  const nameEl = document.getElementById('admin-profile-name');
+  const photoEl = document.getElementById('admin-profile-photo');
+  const phoneEl = document.getElementById('admin-profile-phone');
+  const emailEl = document.getElementById('admin-profile-email');
+  const labelEl = document.getElementById('admin-profile-email-label');
+  const email = (AuthState.user && AuthState.user.email) || p.email || '';
+  if (nameEl) nameEl.value = p.displayName || 'Majid';
+  if (photoEl) photoEl.value = p.photoUrl || '';
+  if (phoneEl) phoneEl.value = p.phone || '';
+  if (emailEl) emailEl.value = email;
+  if (labelEl) labelEl.textContent = email || '—';
+  previewAdminPhoto();
+}
+
+function previewAdminPhoto() {
+  const url = ((document.getElementById('admin-profile-photo') || {}).value || '').trim();
+  const box = document.getElementById('admin-profile-photo-preview');
+  if (!box) return;
+  const initials = getAdminInitials(getAdminDisplayName());
+  if (!url) { box.textContent = initials; return; }
+  box.innerHTML = `<img src="${url.replace(/["<>]/g, '')}" alt="" class="w-full h-full rounded-full object-cover" data-i="${initials}" onerror="this.replaceWith(document.createTextNode(this.dataset.i))">`;
+}
+window.previewAdminPhoto = previewAdminPhoto;
+
+function preloadImage(url) {
+  return new Promise((resolve) => {
+    try {
+      const img = new Image();
+      const timer = setTimeout(() => resolve(false), 8000);
+      img.onload = () => { clearTimeout(timer); resolve(true); };
+      img.onerror = () => { clearTimeout(timer); resolve(false); };
+      img.src = url;
+    } catch (e) { resolve(false); }
+  });
+}
+
+async function saveAdminProfile() {
+  const nameEl = document.getElementById('admin-profile-name');
+  const photoEl = document.getElementById('admin-profile-photo');
+  const phoneEl = document.getElementById('admin-profile-phone');
+  const noteEl = document.getElementById('admin-profile-save-note');
+  const name = (nameEl && nameEl.value || '').trim();
+  const photoUrl = (photoEl && photoEl.value || '').trim();
+  const phone = (phoneEl && phoneEl.value || '').trim();
+  const email = (AuthState.user && AuthState.user.email) || (getAdminProfile().email || '');
+  const setNote = (msg, ok) => {
+    if (noteEl) {
+      noteEl.textContent = msg;
+      noteEl.className = ok ? 'text-[11px] text-[#0E4D45]' : 'text-[11px] text-[#B91C1C]';
+    }
+  };
+  if (!name) { setNote('Display name zaroori hai.', false); return; }
+  if (photoUrl) {
+    const ok = await preloadImage(photoUrl);
+    if (!ok) { setNote('Photo URL load nahi hui — sahi image link dalein.', false); return; }
+  }
+  const profile = { displayName: name, photoUrl: photoUrl, phone: phone, email: email, updatedAt: new Date().toISOString() };
+  AppState.adminProfile = profile;
+  saveCache('lms_admin_profile', profile);
+  if (db) {
+    try {
+      await db.collection('settings').doc('admin_profile').set(profile, { merge: true });
+    } catch (e) {
+      applyAdminProfileToUI();
+      renderAdminProfileSection();
+      if (typeof showToastNotification === 'function') showToastNotification('Profile saved on this device only — cloud save failed: ' + (e.message || ''));
+      setNote('Saved on this device only — cloud save failed.', false);
+      return;
+    }
+  }
+  applyAdminProfileToUI();
+  renderAdminProfileSection();
+  setNote('✓ Profile saved', true);
+  if (typeof showToastNotification === 'function') showToastNotification('✓ Admin profile saved');
+}
+window.saveAdminProfile = saveAdminProfile;
+
+// ---------- Manage Devices (admin_sessions) ----------
+function getAdminDeviceId() {
+  try {
+    let id = localStorage.getItem('lms_device_id');
+    if (!id) {
+      id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : ('dev-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10));
+      localStorage.setItem('lms_device_id', id);
+    }
+    return id;
+  } catch (e) { return 'dev-unknown'; }
+}
+
+function parseDeviceLabel(ua) {
+  const s = String(ua || '');
+  let browser = 'Browser';
+  if (/Edg\//.test(s)) browser = 'Edge';
+  else if (/OPR\//.test(s) || /Opera/.test(s)) browser = 'Opera';
+  else if (/Chrome\//.test(s)) browser = 'Chrome';
+  else if (/Firefox\//.test(s)) browser = 'Firefox';
+  else if (/Safari\//.test(s)) browser = 'Safari';
+  let os = 'Unknown OS';
+  if (/Windows NT/.test(s)) os = 'Windows';
+  else if (/Android/.test(s)) os = 'Android';
+  else if (/iPhone|iPad|iPod/.test(s)) os = 'iOS';
+  else if (/Mac OS X/.test(s)) os = 'Mac';
+  else if (/Linux/.test(s)) os = 'Linux';
+  return browser + ' on ' + os;
+}
+
+function formatSessionTime(ts) {
+  try {
+    const d = ts && typeof ts.toDate === 'function' ? ts.toDate() : (ts ? new Date(ts) : null);
+    if (!d || isNaN(d.getTime())) return '—';
+    return d.toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+  } catch (e) { return '—'; }
+}
+
+let sessionHeartbeatTimer = null;
+
+async function upsertAdminSession() {
+  if (!db || !AuthState.user) return;
+  const deviceId = getAdminDeviceId();
+  const ref = db.collection('admin_sessions').doc(deviceId);
+  const now = firebase.firestore.FieldValue.serverTimestamp();
+  try {
+    const snap = await ref.get();
+    if (snap && snap.exists) {
+      await ref.set({ label: parseDeviceLabel(navigator.userAgent), userEmail: AuthState.user.email, lastActive: now }, { merge: true });
+    } else {
+      await ref.set({ deviceId: deviceId, label: parseDeviceLabel(navigator.userAgent), userEmail: AuthState.user.email, firstSeen: now, lastActive: now });
+    }
+  } catch (e) { console.warn('[Auth] Session record failed:', e && e.message); }
+}
+
+async function checkSessionAlive() {
+  if (!db || !AuthState.user || AuthState.status !== 'authenticated') return;
+  try {
+    const snap = await db.collection('admin_sessions').doc(getAdminDeviceId()).get();
+    if (!snap || !snap.exists) {
+      // This device was signed out from another device.
+      AuthState.revokedNotice = true;
+      const auth = getAuth();
+      if (auth) await auth.signOut().catch(() => {});
+      return;
+    }
+    await db.collection('admin_sessions').doc(getAdminDeviceId()).set({ lastActive: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+  } catch (e) { /* transient failure: the next heartbeat retries */ }
+}
+
+function startSessionHeartbeat() {
+  stopSessionHeartbeat();
+  sessionHeartbeatTimer = setInterval(() => { checkSessionAlive().catch(() => {}); }, 5 * 60 * 1000);
+}
+
+function stopSessionHeartbeat() {
+  if (sessionHeartbeatTimer) { clearInterval(sessionHeartbeatTimer); sessionHeartbeatTimer = null; }
+}
+
+async function deleteCurrentAdminSession() {
+  if (!db) return;
+  try { await db.collection('admin_sessions').doc(getAdminDeviceId()).delete(); } catch (e) {}
+}
+
+async function loadAdminSessionsList() {
+  const listEl = document.getElementById('admin-sessions-list');
+  if (!listEl) return;
+  if (!db || !AuthState.user) {
+    listEl.innerHTML = '<p class="text-[11px] text-[#7A8684]">Sign-in required.</p>';
+    return;
+  }
+  listEl.innerHTML = '<p class="text-[11px] text-[#7A8684]">Loading devices…</p>';
+  try {
+    const snap = await db.collection('admin_sessions').orderBy('lastActive', 'desc').get();
+    const rows = [];
+    snap.forEach(doc => rows.push(Object.assign({ id: doc.id }, doc.data() || {})));
+    renderAdminSessionsList(rows);
+  } catch (e) {
+    listEl.innerHTML = '<p class="text-[11px] text-[#B91C1C]">Devices load nahi ho sakay — dobara koshish karein.</p>';
+  }
+}
+window.loadAdminSessionsList = loadAdminSessionsList;
+
+function renderAdminSessionsList(rows) {
+  const listEl = document.getElementById('admin-sessions-list');
+  if (!listEl) return;
+  const currentId = getAdminDeviceId();
+  if (!rows || !rows.length) {
+    listEl.innerHTML = '<p class="text-[11px] text-[#7A8684]">No signed-in devices found.</p>';
+    return;
+  }
+  listEl.innerHTML = rows.map(s => {
+    const isCurrent = (s.deviceId === currentId) || (s.id === currentId);
+    const label = (s.label || 'Unknown device');
+    const email = (s.userEmail || '');
+    const first = formatSessionTime(s.firstSeen);
+    const last = formatSessionTime(s.lastActive);
+    const sid = String(s.deviceId || s.id || '').replace(/'/g, '');
+    return `
+    <div class="flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border border-[#ECEAE4] bg-[#F9F8F5]">
+      <div class="min-w-0">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-bold text-[#141F1E] truncate">${label}</span>
+          ${isCurrent ? '<span class="px-1.5 py-0.5 rounded-full bg-[#0E4D45] text-white text-[9.5px] font-bold shrink-0">This device</span>' : ''}
+        </div>
+        <div class="text-[10.5px] text-[#7A8684] truncate mt-0.5">${email} • First seen ${first} • Last active ${last}</div>
+      </div>
+      <button type="button" onclick="signOutAdminSession('${sid}')" class="px-3 py-1.5 text-[11px] font-bold rounded-full bg-white border border-[#FECACA] text-[#B91C1C] hover:bg-red-50 transition-colors cursor-pointer shrink-0">Sign out</button>
+    </div>`;
+  }).join('');
+}
+
+async function signOutAdminSession(deviceId) {
+  if (!deviceId) return;
+  if (deviceId === getAdminDeviceId()) { handleSignOut(); return; }
+  if (!db) return;
+  try { await db.collection('admin_sessions').doc(deviceId).delete(); } catch (e) {}
+  loadAdminSessionsList();
+  if (typeof showToastNotification === 'function') showToastNotification('✓ Device signed out');
+}
+window.signOutAdminSession = signOutAdminSession;
+
+async function signOutAllOtherSessions() {
+  if (!db || !AuthState.user) return;
+  const currentId = getAdminDeviceId();
+  try {
+    const snap = await db.collection('admin_sessions').get();
+    const dels = [];
+    snap.forEach(doc => { if (doc.id !== currentId) dels.push(doc.ref.delete()); });
+    await Promise.all(dels);
+    if (typeof showToastNotification === 'function') showToastNotification('✓ All other devices signed out');
+  } catch (e) {
+    if (typeof showToastNotification === 'function') showToastNotification('Could not sign out other devices — try again.');
+  }
+  loadAdminSessionsList();
+}
+window.signOutAllOtherSessions = signOutAllOtherSessions;
+
+// ---------- Portal boot (runs ONCE, only after a verified admin signs in) ----------
+function bootPortalAfterAuth() {
+  // Fast first paint: render from the local cache. The cloud seed check used
+  // to be awaited here, and its Firestore .get() calls left the page blank
+  // with a spinner when Firestore was slow/unreachable. It now runs in the
+  // background (itself time-boxed to 8s per read) and re-renders when done.
+  reconcileStudentsWithPaymentLedger();
+  seedInitialActivityNotifications();
+  updateHeaderDateDisplay();
+  if (window.location.hash) {
+    const hash = window.location.hash.replace('#', '');
+    if (['dashboard', 'fee-matrix', 'students', 'teachers', 'trials-notices', 'library'].includes(hash)) {
+      AppState.activeNav = hash;
+    }
+  }
+  renderApp();
+  // Load exchange rates (local cache, then Firestore settings/currency)
+  // and run the monthly auto-update check once. PKR figures render from
+  // the seeded defaults meanwhile, so the Dashboard is never blocked.
+  if (!currencySettingsLoaded && !currencySettingsLoading) {
+    currencySettingsLoading = true;
+    loadCurrencySettings().catch(function () {}).finally(function () {
+      currencySettingsLoaded = true;
+      currencySettingsLoading = false;
+      renderApp();
+    });
+  }
+  updateRolePillUI();
+  renderNotificationsDropdownContent();
+  // One-time repair of the two wrong teacher countries (Basit/Saad saved
+  // as Pakistan) in the local cache; the teachers listener repairs the
+  // cloud copy again when it arrives.
+  repairTeacherCountries();
+  setupFirestoreRealtimeListeners();
+  if (typeof checkAndSeedInitialAcademyData === 'function') {
+    checkAndSeedInitialAcademyData()
+      .catch((e) => console.warn('[Seed] Background seed check failed:', e && e.message))
+      .finally(() => {
+        reconcileStudentsWithPaymentLedger();
+        renderApp();
+      });
+  }
+}
+
+
+// ==========================================
 // FIRESTORE CRUD & REAL-TIME REPOSITORY
 // ==========================================
 
@@ -701,7 +1399,17 @@ window.dbSaveLiveClass = dbSaveLiveClass;
 window.dbDeleteLiveClass = dbDeleteLiveClass;
 
 // Real-Time Firestore onSnapshot Listeners
+let firestoreUnsubscribers = [];
+
+function detachFirestoreRealtimeListeners() {
+  firestoreUnsubscribers.forEach(fn => { try { fn(); } catch (e) {} });
+  firestoreUnsubscribers = [];
+}
+
 function setupFirestoreRealtimeListeners() {
+  // Listeners attach only after a verified admin signs in, and only once.
+  if (!isPortalUnlocked()) return;
+  if (firestoreUnsubscribers.length) return;
   if (!db) {
     updateCloudSyncUI('fallback', 'Local Cache Active');
     return;
@@ -710,7 +1418,7 @@ function setupFirestoreRealtimeListeners() {
   updateCloudSyncUI('connecting', 'Connecting Cloud...');
 
   // 1. STUDENTS COLLECTION REAL-TIME SYNC
-  db.collection('students').onSnapshot((snapshot) => {
+  firestoreUnsubscribers.push(db.collection('students').onSnapshot((snapshot) => {
     isFirestoreConnected = true;
     updateCloudSyncUI('connected', 'Firestore Live');
     if (!snapshot.empty) {
@@ -743,10 +1451,10 @@ function setupFirestoreRealtimeListeners() {
     } else {
       updateCloudSyncUI('fallback', 'Local Cache Active');
     }
-  });
+  }, handleListenerError));
 
   // 2. TEACHERS COLLECTION REAL-TIME SYNC
-  db.collection('teachers').onSnapshot((snapshot) => {
+  firestoreUnsubscribers.push(db.collection('teachers').onSnapshot((snapshot) => {
     if (!snapshot.empty) {
       const liveList = [];
       snapshot.forEach(doc => {
@@ -768,10 +1476,11 @@ function setupFirestoreRealtimeListeners() {
     }
   }, (err) => {
     console.warn('[Firestore] Teachers listener warning:', err.code, err.message);
-  });
+    handleListenerError(err);
+  }));
 
   // 3. PAYMENT LEDGER REAL-TIME SYNC
-  db.collection('payment_ledger').onSnapshot((snapshot) => {
+  firestoreUnsubscribers.push(db.collection('payment_ledger').onSnapshot((snapshot) => {
     if (!snapshot.empty) {
       PAYMENT_LEDGER.length = 0;
       snapshot.forEach(doc => {
@@ -790,10 +1499,11 @@ function setupFirestoreRealtimeListeners() {
     }
   }, (err) => {
     console.warn('[Firestore] Ledger listener warning:', err.code, err.message);
-  });
+    handleListenerError(err);
+  }));
 
   // 4. NOTICES COLLECTION REAL-TIME SYNC
-  db.collection('notices').onSnapshot((snapshot) => {
+  firestoreUnsubscribers.push(db.collection('notices').onSnapshot((snapshot) => {
     if (!snapshot.empty) {
       ACADEMY_NOTICES.length = 0;
       snapshot.forEach(doc => {
@@ -810,10 +1520,11 @@ function setupFirestoreRealtimeListeners() {
     }
   }, (err) => {
     console.warn('[Firestore] Notices listener warning:', err.code, err.message);
-  });
+    handleListenerError(err);
+  }));
 
   // 5. TRIAL PIPELINE REAL-TIME SYNC
-  db.collection('trial_pipeline').onSnapshot((snapshot) => {
+  firestoreUnsubscribers.push(db.collection('trial_pipeline').onSnapshot((snapshot) => {
     if (!snapshot.empty) {
       TRIAL_PIPELINE.length = 0;
       snapshot.forEach(doc => {
@@ -826,10 +1537,11 @@ function setupFirestoreRealtimeListeners() {
     }
   }, (err) => {
     console.warn('[Firestore] Trial pipeline listener warning:', err.code, err.message);
-  });
+    handleListenerError(err);
+  }));
 
   // 6. ATTENDANCE LOGS REAL-TIME SYNC
-  db.collection('attendance_logs').onSnapshot((snapshot) => {
+  firestoreUnsubscribers.push(db.collection('attendance_logs').onSnapshot((snapshot) => {
     if (!snapshot.empty) {
       const liveLogs = [];
       snapshot.forEach(doc => liveLogs.push(doc.data()));
@@ -841,10 +1553,11 @@ function setupFirestoreRealtimeListeners() {
     }
   }, (err) => {
     console.warn('[Firestore] Attendance logs listener warning:', err.code, err.message);
-  });
+    handleListenerError(err);
+  }));
 
   // 7. LIVE CLASSES REAL-TIME SYNC
-  db.collection('live_classes').onSnapshot((snapshot) => {
+  firestoreUnsubscribers.push(db.collection('live_classes').onSnapshot((snapshot) => {
     if (!snapshot.empty) {
       const liveList = [];
       snapshot.forEach(doc => liveList.push(doc.data()));
@@ -856,7 +1569,8 @@ function setupFirestoreRealtimeListeners() {
     }
   }, (err) => {
     console.warn('[Firestore] Live classes listener warning:', err.code, err.message);
-  });
+    handleListenerError(err);
+  }));
 }
 window.setupFirestoreRealtimeListeners = setupFirestoreRealtimeListeners;
 
@@ -6547,7 +7261,7 @@ function openPublishNoticeModal(editNoticeId = null) {
       if (submitBtn) submitBtn.innerHTML = '<span>✓</span><span>Save Changes</span>';
       if (titleInput) titleInput.value = notice.title || '';
       if (audienceSelect) audienceSelect.value = notice.audience || 'All Students & Parents';
-      if (authorInput) authorInput.value = notice.author || 'Admin Farhan';
+      if (authorInput) authorInput.value = notice.author || getAdminShortName();
       if (contentInput) contentInput.value = notice.content || '';
     }
   } else {
@@ -6556,7 +7270,7 @@ function openPublishNoticeModal(editNoticeId = null) {
     if (submitBtn) submitBtn.innerHTML = '<svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg><span>Publish Notice</span>';
     if (titleInput) titleInput.value = '';
     if (audienceSelect) audienceSelect.value = 'All Students & Parents';
-    if (authorInput) authorInput.value = 'Admin Farhan';
+    if (authorInput) authorInput.value = getAdminShortName();
     if (contentInput) contentInput.value = '';
     clearAllFormErrors(modal);
     initFormDraftAutoSave('new_notice', ['notice-title-input', 'notice-audience-select', 'notice-content-input']);
@@ -6586,7 +7300,7 @@ function handleSaveNotice() {
   const editId = idInput ? idInput.value.trim() : '';
   const title = titleInput ? titleInput.value.trim() : '';
   const audience = audienceSelect ? audienceSelect.value : 'All Students & Parents';
-  const author = (authorInput && authorInput.value.trim()) ? authorInput.value.trim() : 'Admin Farhan';
+  const author = (authorInput && authorInput.value.trim()) ? authorInput.value.trim() : getAdminShortName();
   const content = contentInput ? contentInput.value.trim() : '';
 
   const modalContainer = document.getElementById('publish-notice-modal') || document.body;
@@ -7113,11 +7827,11 @@ function getStudentBalanceDue(student) {
 const PORTAL_ROLES = {
   admin: {
     id: 'admin',
-    name: 'Admin Farhan Al-Husseini',
-    shortName: 'Admin Farhan',
+    name: 'Majid',
+    shortName: 'Majid',
     title: 'Super Administrator',
     badge: 'Super Admin',
-    initials: 'AF',
+    initials: 'M',
     desc: 'Complete Student & Financial Records',
     icon: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />`
   },
@@ -7610,6 +8324,12 @@ function renderProfileDropdownContent() {
       </span>
       <span class="font-bold text-[#0E4D45]">${CURRENT_YEAR || 2026} Active</span>
     </div>
+
+    <!-- Sign Out -->
+    <button type="button" onclick="handleSignOut()" class="mt-2.5 w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-[#B91C1C] hover:bg-red-50 border border-transparent hover:border-[#FECACA] transition-colors cursor-pointer">
+      <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+      <span>Sign Out</span>
+    </button>
   `;
 }
 
@@ -7646,6 +8366,14 @@ function updateRolePillUI() {
   if (drawerAvatar) drawerAvatar.textContent = current.initials;
   if (drawerName) drawerName.textContent = current.name;
   if (drawerRole) drawerRole.textContent = current.title;
+
+  // Admin profile photo (admin role only) — initials otherwise.
+  const __adminPhoto = (AppState.currentRole === 'admin') ? getAdminPhotoUrl() : '';
+  if (__adminPhoto) {
+    const __photoImg = `<img src="${__adminPhoto}" alt="" class="w-full h-full rounded-full object-cover" data-i="${current.initials}" onerror="this.replaceWith(document.createTextNode(this.dataset.i))">`;
+    if (avatarEl) avatarEl.innerHTML = __photoImg;
+    if (drawerAvatar) drawerAvatar.innerHTML = __photoImg;
+  }
 
   // Re-render dropdown content if it is currently open
   const menu = document.getElementById('profile-dropdown-menu');
@@ -7711,6 +8439,8 @@ window.addEventListener('resize', () => {
 });
 
 function renderApp() {
+  // Login gate: never render the portal for a signed-out / unverified admin.
+  if (!isPortalUnlocked()) return;
   const container = document.getElementById('main-dynamic-content');
   if (!container) return;
 
@@ -15794,7 +16524,7 @@ function waiveStudentMonthFee(studentId, monthIndex) {
   m.amountPaid = m.feeDue;
   m.remainingDue = 0;
   m.waived = true;
-  m.waivedNote = 'Scholarship / Waived by Admin Farhan';
+  m.waivedNote = 'Scholarship / Waived by ' + getAdminShortName();
 
   closeMonthDetailModal();
   renderApp();
@@ -16142,6 +16872,8 @@ function openSettingsModal() {
       }
     }
     renderSettingsCurrencySummary();
+    renderAdminProfileSection();
+    loadAdminSessionsList();
     modal.classList.add('active');
   }
 }
@@ -16327,48 +17059,8 @@ function seedRequiredAcademyData() {
 window.seedRequiredAcademyData = seedRequiredAcademyData;
 window.checkAndSeedInitialAcademyData = checkAndSeedInitialAcademyData;
 
-// Initial Boot
+// Initial Boot — the login gate runs first; the portal boots only after a verified admin signs in.
+// (The boot steps live in bootPortalAfterAuth() in section 0B.)
 document.addEventListener('DOMContentLoaded', () => {
-  // Fast first paint: render immediately from the local cache. The cloud
-  // seed check used to be awaited here, and its Firestore .get() calls
-  // (long-polling, no timeout) left the page blank with a spinner for
-  // ~3.5 minutes when Firestore was slow/unreachable. It now runs in the
-  // background (itself time-boxed to 8s per read) and re-renders when done.
-  reconcileStudentsWithPaymentLedger();
-  seedInitialActivityNotifications();
-  updateHeaderDateDisplay();
-  if (window.location.hash) {
-    const hash = window.location.hash.replace('#', '');
-    if (['dashboard', 'fee-matrix', 'students', 'teachers', 'trials-notices', 'library'].includes(hash)) {
-      AppState.activeNav = hash;
-    }
-  }
-  renderApp();
-  // Load exchange rates (local cache, then Firestore settings/currency)
-  // and run the monthly auto-update check once. PKR figures render from
-  // the seeded defaults meanwhile, so the Dashboard is never blocked.
-  if (!currencySettingsLoaded && !currencySettingsLoading) {
-    currencySettingsLoading = true;
-    loadCurrencySettings().catch(function () {}).finally(function () {
-      currencySettingsLoaded = true;
-      currencySettingsLoading = false;
-      renderApp();
-    });
-  }
-  updateRolePillUI();
-  renderNotificationsDropdownContent();
-  // One-time repair of the two wrong teacher countries (Basit/Saad saved
-  // as Pakistan) in the local cache; the teachers listener repairs the
-  // cloud copy again when it arrives.
-  repairTeacherCountries();
-  setupFirestoreRealtimeListeners();
-  if (typeof checkAndSeedInitialAcademyData === 'function') {
-    checkAndSeedInitialAcademyData()
-      .catch((e) => console.warn('[Seed] Background seed check failed:', e && e.message))
-      .finally(() => {
-        reconcileStudentsWithPaymentLedger();
-        renderApp();
-      });
-  }
+  initAuthGate();
 });
-

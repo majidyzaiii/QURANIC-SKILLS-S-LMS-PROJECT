@@ -886,3 +886,15 @@ html, body {
 }
 #currency-settings-modal input[data-currency-rate] { height: 32px; }
 #initials-custom-text { height: 28px; }
+
+/* ---- Admin login gate: hide the whole portal until a verified admin signs in ---- */
+body.auth-locked > header,
+body.auth-locked > main,
+body.auth-locked > footer,
+body.auth-locked > nav#mobile-bottom-nav,
+body.auth-locked > aside#mobile-drawer,
+body.auth-locked #mobile-drawer-backdrop,
+body.auth-locked .modal-backdrop,
+body.auth-locked .bulk-action-bar { display: none !important; }
+body:not(.auth-locked) #auth-screen-root { display: none; }
+#auth-screen-root { min-height: 100vh; }

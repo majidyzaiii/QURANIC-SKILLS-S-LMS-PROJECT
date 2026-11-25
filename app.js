@@ -5327,7 +5327,7 @@ function copyWeeklyScheduleToClipboard() {
 }
 
 const WORLD_COUNTRIES = [
-  // ⭐ Top Academy Regions
+  // Top Academy Regions
   { group: 'Top Academy Regions', name: 'United Kingdom (UK)', code: 'UK', tz: 'GMT+1 (BST)' },
   { group: 'Top Academy Regions', name: 'United States (USA)', code: 'USA', tz: 'GMT-5 (CST)' },
   { group: 'Top Academy Regions', name: 'Canada', code: 'Canada', tz: 'GMT-4 (EDT)' },
@@ -16356,7 +16356,7 @@ function renderManagerPortalView() {
           <table class="w-full text-left border-collapse min-w-0 md:min-w-[750px] responsive-table-cards">
             <thead>
               <tr class="border-b border-[#ECEAE4] text-[11px] font-semibold text-[#7A8684]">
-                <th class="pb-3">Student Token</th>
+                <th class="pb-3">Student</th>
                 <th class="pb-3">Guardian</th>
                 <th class="pb-3">Contact Details</th>
                 <th class="pb-3">Course Track</th>
@@ -16370,9 +16370,14 @@ function renderManagerPortalView() {
                 const feeStatus = getStudentFeeStatus(s);
                 return `
                   <tr class="hover:bg-[#F8F6F1]/50 transition-colors">
-                    <td class="py-3.5" data-label="Student Token">
-                      <div class="font-bold text-[#141F1E]">${display.displayName}</div>
-                      <div class="text-[11px] text-[#7A8684]">${s.timezone}</div>
+                    <td class="py-3.5" data-label="Student">
+                      <div class="flex items-center gap-3">
+                        <img src="${s.avatar || s.photo || getAvatarUrl(display.displayName)}" alt="${display.displayName}" class="w-10 h-10 rounded-full object-cover shrink-0 border border-[#ECEAE4] shadow-2xs" onerror="this.onerror=null; this.src='${getAvatarUrl(display.displayName)}';">
+                        <div class="min-w-0">
+                          <div class="font-bold text-[#141F1E]">${display.displayName}</div>
+                          <div class="text-[11px] text-[#7A8684]">${s.timezone}</div>
+                        </div>
+                      </div>
                     </td>
                     <td class="py-3.5 text-[#7A8684] font-medium" data-label="Guardian">
                       <span class="px-2 py-0.5 rounded bg-[#ECEAE4] text-[11px]">${display.guardianDisplay}</span>
@@ -16453,6 +16458,17 @@ function renderManagerPortalView() {
 // 10. MODULE 3: TEACHER PORTAL (30-SEC ZERO-TYPING WORKFLOW)
 // ==========================================
 
+// Five small SVG stars for a 0-5 rating (plain unicode stars mojibake in the file).
+function renderStars(rating) {
+  const r = Math.max(0, Math.min(5, Math.round(Number(rating) || 0)));
+  let out = '';
+  for (let i = 1; i <= 5; i++) {
+    const fill = i <= r ? '#F59E0B' : '#E8E6DF';
+    out += `<svg class="w-3.5 h-3.5 inline-block shrink-0" viewBox="0 0 24 24" fill="${fill}"><path d="M12 2l2.9 6.26 6.6.57-5 4.4 1.5 6.47L12 16.9 5.99 19.7l1.5-6.47-5-4.4 6.6-.57L12 2z"/></svg>`;
+  }
+  return `<span class="inline-flex items-center gap-0.5" title="${r} out of 5">${out}</span>`;
+}
+
 function renderTeacherPortalView() {
   const currentTeacher = getCurrentTeacher();
   const activeNav = AppState.activeNav || 'teacher-schedule';
@@ -16473,16 +16489,24 @@ function renderTeacherPortalView() {
     `;
   }
 
+  // Only this teacher's own students — never the whole directory.
+  const myStudents = getTeacherStudents(currentTeacher);
+  const todaysClasses = getTeacherTodayClasses(currentTeacher);
+  const weekClasses = getTeacherWeekClasses(currentTeacher);
+  const unscheduledCount = myStudents.filter(s => !hasExplicitSchedule(s)).length;
+  const teacherAvatar = currentTeacher.avatar || getAvatarUrl(currentTeacher.name);
+
   const headerBanner = `
-    <!-- Greeting & Schedule Summary -->
-    <div class="p-6 bg-[#FFFFFF] rounded-2xl border border-[#ECEAE4] shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-      <div>
-        <div class="flex items-center gap-2">
-          <h2 class="text-xl font-bold text-[#141F1E]">Assalam-o-Alaikum, ${currentTeacher.name}</h2>
+    <!-- Teacher greeting -->
+    <div class="p-4 sm:p-5 bg-[#FFFFFF] rounded-2xl border border-[#ECEAE4] shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-4">
+      <img src="${teacherAvatar}" alt="${currentTeacher.name}" class="w-12 h-12 rounded-full object-cover shrink-0 border border-[#ECEAE4] shadow-2xs" onerror="this.onerror=null; this.src='${getAvatarUrl(currentTeacher.name)}';">
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2 flex-wrap">
+          <h2 class="text-lg font-bold text-[#141F1E]">Assalam-o-Alaikum, ${currentTeacher.name}</h2>
           <span class="ts-badge ts-badge-paid">Teacher Portal</span>
         </div>
-        <p class="text-xs text-[#7A8684] mt-1">
-          Student PII is locked for privacy. Log Sabaq in 30 seconds using zero-typing pills.
+        <p class="text-xs text-[#7A8684] mt-0.5">
+          ${myStudents.length} ${myStudents.length === 1 ? 'student' : 'students'} assigned • ${todaysClasses.length} ${todaysClasses.length === 1 ? 'class' : 'classes'} today
         </p>
       </div>
       <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2">
@@ -16502,11 +16526,6 @@ function renderTeacherPortalView() {
   `;
 
   let bodyContent = '';
-  // Only this teacher's own students — never the whole directory.
-  const myStudents = getTeacherStudents(currentTeacher);
-  const todaysClasses = getTeacherTodayClasses(currentTeacher);
-  const weekClasses = getTeacherWeekClasses(currentTeacher);
-  const unscheduledCount = myStudents.filter(s => !hasExplicitSchedule(s)).length;
 
   if (activeNav === 'teacher-logger') {
     bodyContent = `
@@ -16543,9 +16562,9 @@ function renderTeacherPortalView() {
                   </div>
                 </div>
                 <div class="text-right flex flex-col items-end gap-2">
-                  <div class="text-amber-500 font-bold text-sm">${'â­'.repeat(s.lastSabaq.rating || 5)}</div>
+                  <div class="text-amber-500 font-bold text-sm">${renderStars(s.lastSabaq.rating || 5)}</div>
                   <button onclick="openSabaqLoggerModal('${s.id}')" class="px-3 py-1.5 text-xs font-bold rounded-full bg-[#FFFFFF] border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#0E4D45] hover:text-white transition-all shadow-sm">
-                    Re-log Lesson â†—
+                    Re-log Lesson
                   </button>
                 </div>
               </div>
@@ -16561,8 +16580,8 @@ function renderTeacherPortalView() {
       <div class="ts-card p-6">
         <div class="flex items-center justify-between mb-4">
           <div>
-            <h3 class="text-base font-bold text-[#141F1E]">My Assigned Students (Privacy Protected)</h3>
-            <p class="text-xs text-[#7A8684]">Student contact PII is locked by Academy Admin policy</p>
+            <h3 class="text-base font-bold text-[#141F1E]">My Students</h3>
+            <p class="text-xs text-[#7A8684]">Your assigned students — lessons, ratings and progress</p>
           </div>
           <span class="ts-badge ts-badge-paid">${myStudents.length} ${myStudents.length === 1 ? 'Student' : 'Students'} Assigned</span>
         </div>
@@ -16572,7 +16591,7 @@ function renderTeacherPortalView() {
           <table class="w-full text-left border-collapse min-w-0 md:min-w-[700px] responsive-table-cards">
             <thead>
               <tr class="border-b border-[#ECEAE4] text-[11px] font-semibold text-[#7A8684]">
-                <th class="pb-3">Student Token</th>
+                <th class="pb-3">Student</th>
                 <th class="pb-3">Course Track</th>
                 <th class="pb-3">Current Lesson</th>
                 <th class="pb-3">Last Rating</th>
@@ -16586,14 +16605,19 @@ function renderTeacherPortalView() {
                 const prog = getStudentProgress(s);
                 return `
                   <tr class="hover:bg-[#F8F6F1]/50 transition-colors">
-                    <td class="py-3.5" data-label="Student Token">
-                      <div class="font-bold text-[#141F1E]">${display.displayName}</div>
-                      <div class="text-[11px] text-[#7A8684]">${s.timezone}</div>
+                    <td class="py-3.5" data-label="Student">
+                      <div class="flex items-center gap-3">
+                        <img src="${s.avatar || s.photo || getAvatarUrl(display.displayName)}" alt="${display.displayName}" class="w-10 h-10 rounded-full object-cover shrink-0 border border-[#ECEAE4] shadow-2xs" onerror="this.onerror=null; this.src='${getAvatarUrl(display.displayName)}';">
+                        <div class="min-w-0">
+                          <div class="font-bold text-[#141F1E]">${display.displayName}</div>
+                          <div class="text-[11px] text-[#7A8684]">${s.timezone}</div>
+                        </div>
+                      </div>
                     </td>
                     <td class="py-3.5 text-[#334E4B] font-medium" data-label="Course Track">${s.course}</td>
                     <td class="py-3.5 text-[#0E4D45] font-semibold" data-label="Current Lesson">${s.lastSabaq ? s.lastSabaq.surah : 'First Lesson Pending'}</td>
                     <td class="py-3.5" data-label="Rating">
-                      <div class="text-amber-500 font-bold">${'â­'.repeat(s.lastSabaq ? s.lastSabaq.rating : 5)}</div>
+                      <div class="text-amber-500 font-bold">${renderStars(s.lastSabaq ? s.lastSabaq.rating : 5)}</div>
                     </td>
                     <td class="py-3.5" data-label="Progress">
                       <div class="font-bold text-[#0E4D45] tabular-nums">${prog.attendancePct === null ? '—' : prog.attendancePct + '%'}</div>
@@ -16734,7 +16758,7 @@ function renderStudentParentPortalView() {
           <div class="text-right">
             <span class="text-xs text-[#7A8684]">Current Outstanding Due</span>
             <p class="text-xl font-bold ${balanceDue > 0 ? 'text-[#991B1B]' : 'text-[#065F46]'}">
-              ${balanceDue > 0 ? `${activeStudent.currency}${balanceDue} Due` : 'Fully Paid âœ“'}
+              ${balanceDue > 0 ? `${activeStudent.currency}${balanceDue} Due` : 'Fully Paid'}
             </p>
           </div>
         </div>
@@ -16745,7 +16769,7 @@ function renderStudentParentPortalView() {
             <div class="month-cell ${m.status} p-2 text-center">
               <span class="font-bold">${m.month}</span>
               <span class="text-[9px] mt-0.5">
-                ${m.status === 'paid' ? 'âœ“ Paid' : (m.status === 'partial' ? `Partial (${activeStudent.currency}${m.amountPaid})` : (m.status === 'advance' ? 'ADV' : (m.status === 'defaulter' ? 'Due' : '-')))}
+                ${m.status === 'paid' ? 'Paid' : (m.status === 'partial' ? `Partial (${activeStudent.currency}${m.amountPaid})` : (m.status === 'advance' ? 'ADV' : (m.status === 'defaulter' ? 'Due' : '-')))}
               </span>
             </div>
           `).join('')}
@@ -16753,7 +16777,7 @@ function renderStudentParentPortalView() {
 
         <div class="flex flex-wrap items-center justify-end gap-3 pt-4 border-t border-[#ECEAE4]">
           <button onclick="openReceiptModal('TXN-9020')" class="px-4 py-2 text-xs font-bold rounded-full bg-[#FFFFFF] border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#F8F6F1] transition-colors">
-            View Last Official Receipt â†—
+            View Last Official Receipt
           </button>
           <button onclick="openReceiveFeeModal('${activeStudent.id}')" class="px-5 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors shadow-sm">
             Pay Tuition Online
@@ -16825,7 +16849,7 @@ function renderStudentParentPortalView() {
           </div>
           <h3 class="text-xl font-bold">${activeStudent.course}</h3>
           <p class="text-xs text-[#A3C2BE] mt-1">
-            Teacher: Ustadh Bilal Tariq â€¢ Daily 30 min Live One-on-One Session
+            Teacher: Ustadh Bilal Tariq • Daily 30 min Live One-on-One Session
           </p>
         </div>
         <button onclick="simulateJoinRoom('C-201')" class="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#FFFFFF] text-[#0E4D45] font-bold text-sm hover:bg-[#F8F6F1] transition-all shadow-md">
@@ -16850,7 +16874,7 @@ function renderStudentParentPortalView() {
             </div>
             <div class="text-right">
               <div class="text-base text-amber-500 font-bold">
-                ${'â­'.repeat(activeStudent.lastSabaq ? activeStudent.lastSabaq.rating : 5)}
+                ${renderStars(activeStudent.lastSabaq ? activeStudent.lastSabaq.rating : 5)}
               </div>
               <span class="ts-badge ts-badge-sage mt-1">${activeStudent.lastSabaq ? activeStudent.lastSabaq.status : 'Cleared'}</span>
             </div>

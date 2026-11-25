@@ -8958,7 +8958,7 @@ function renderAdminDashboardView() {
             ${amountCollectionPct > 0 ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium bg-[#E0F2F1] text-[#0E4D45] tabular-nums" title="Share of this month's billed fees collected (in PKR)">${amountCollectionPct}%</span>` : ''}
           </div>
           <div class="kpi-labels">
-            <p class="text-xs font-medium text-[#7A8684]">Fee Collected (${MONTHS_LIST[CURRENT_MONTH_INDEX]})</p>
+            <p class="text-xs font-medium text-[#7A8684]">Fee Collected</p>
             <p class="text-[11px] text-[#7A8684] mt-0.5">${paidHeadcount} of ${grandTotal} students paid</p>
           </div>
         </div>

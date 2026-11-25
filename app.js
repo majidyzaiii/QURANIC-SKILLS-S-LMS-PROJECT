@@ -4431,11 +4431,6 @@ function formatMinutesTo12h(mins) {
   return `${h12}:${mm} ${ap}`;
 }
 
-function parseDurationToMinutes(dur) {
-  const n = parseInt(String(dur || '45m'), 10);
-  return isNaN(n) ? 45 : n;
-}
-
 // "18:00" (24h) -> "6:00 PM"
 function format24hTo12h(t) {
   const m = String(t || '').match(/(\d{1,2}):(\d{2})/);
@@ -4488,32 +4483,14 @@ function renderTeacherScheduleTimeline(teacher) {
       </button>`;
   }).join('');
 
-  // Timeline rows, with a dashed "Open slot" row for gaps of 60+ minutes.
-  const rows = [];
-  classes.forEach((c, i) => {
-    const start = parsePktTimeToMinutes(c.slot.pktTime);
-    if (i > 0) {
-      const prev = classes[i - 1];
-      const prevEnd = parsePktTimeToMinutes(prev.slot.pktTime) + parseDurationToMinutes(prev.slot.duration);
-      if (start - prevEnd >= 60) rows.push({ open: true, from: prevEnd, to: start });
-    }
-    rows.push({ cls: c, start });
-  });
+  // Timeline rows: one row per class, nothing between them.
+  const rows = classes.map((c) => ({ cls: c, start: parsePktTimeToMinutes(c.slot.pktTime) }));
 
   const timeline = classes.length === 0 ? `
     <div class="p-6 rounded-2xl border border-dashed border-[#ECEAE4] bg-[#F8F6F1]/50 text-center">
       <p class="text-xs font-bold text-[#141F1E]">No classes on ${selLabel}.</p>
       <p class="text-[11px] text-[#7A8684] mt-1">Classes appear here from each student's weekly schedule — Admin sets it in Edit Student → Weekly Timetable.</p>
     </div>` : rows.map((r) => {
-    if (r.open) {
-      return `
-      <div class="flex gap-3 mb-3">
-        <div class="w-[52px] shrink-0 text-right pt-3.5">
-          <div class="text-xs font-bold text-[#7A8684]">${formatMinutesTo12h(r.from)}</div>
-        </div>
-        <div class="flex-1 border-[1.5px] border-dashed border-[#C9C4B8] rounded-2xl px-3.5 py-3 text-[11px] font-semibold text-[#7A8684]">+ Open slot — free until ${formatMinutesTo12h(r.to)}</div>
-      </div>`;
-    }
     const c = r.cls;
     const s = c.student;
     const slot = c.slot;
@@ -5247,6 +5224,12 @@ function openViewWeeklyScheduleModal(studentId) {
   const body = document.getElementById('view-weekly-schedule-body');
   if (!modal || !body) return;
 
+  // Teachers only VIEW the timetable: editing is admin-only, and the
+  // guardian contact details + tuition fee are never shown to teachers.
+  const isTeacherView = AppState.authRole === 'teacher';
+  const editBtn = document.getElementById('view-schedule-edit-btn');
+  if (editBtn) editBtn.style.display = isTeacherView ? 'none' : '';
+
   const student = AppState.students.find(s => s.id === studentId);
   if (!student) return;
 
@@ -5296,6 +5279,7 @@ function openViewWeeklyScheduleModal(studentId) {
       </div>
     </div>
 
+    ${isTeacherView ? '' : `
     <!-- Guardian PII & Residential Contact Details Card -->
     <div class="p-3.5 bg-[#F8F6F1] rounded-2xl border border-[#ECEAE4] grid grid-cols-1 sm:grid-cols-3 gap-3">
       <div>
@@ -5316,7 +5300,7 @@ function openViewWeeklyScheduleModal(studentId) {
         <span class="text-[10px] text-[#7A8684] block font-semibold">Residential Street Address</span>
         <span class="text-xs text-[#141F1E] font-medium block truncate" title="${student.address || ''}">${student.address || 'Address on record'}</span>
       </div>
-    </div>
+    </div>`}
 
     <!-- Dual Timezone Synchronization Indicator -->
     <div class="p-3 bg-[#E8EFEE] rounded-xl border border-[#CBD5E1] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
@@ -5394,7 +5378,7 @@ function openViewWeeklyScheduleModal(studentId) {
     </div>
 
     <!-- Weekly Summary KPI Pills -->
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+    <div class="grid grid-cols-1 sm:grid-cols-${isTeacherView ? '2' : '3'} gap-3">
       <div class="p-3 bg-[#FFFFFF] rounded-xl border border-[#ECEAE4] flex items-center justify-between">
         <span class="text-xs text-[#7A8684] font-medium">Weekly Classes</span>
         <span class="text-sm font-bold text-[#0E4D45]">${metrics.activeCount} Days / week</span>
@@ -5403,10 +5387,11 @@ function openViewWeeklyScheduleModal(studentId) {
         <span class="text-xs text-[#7A8684] font-medium">Weekly Contact Time</span>
         <span class="text-sm font-bold text-[#141F1E]">${metrics.hours} Hours / week</span>
       </div>
+      ${isTeacherView ? '' : `
       <div class="p-3 bg-[#FFFFFF] rounded-xl border border-[#ECEAE4] flex items-center justify-between">
         <span class="text-xs text-[#7A8684] font-medium">Tuition Rate</span>
         <span class="text-sm font-bold text-[#0E4D45]">${studentFeePKRHtml(student)}/month</span>
-      </div>
+      </div>`}
     </div>
   `;
 
@@ -5419,6 +5404,10 @@ function closeViewWeeklyScheduleModal() {
 }
 
 function openEditStudentFromView() {
+  if (AppState.authRole === 'teacher') {
+    showToastNotification('Only the admin can edit student records.', 'error');
+    return;
+  }
   const studentId = currentViewingStudentId;
   closeViewWeeklyScheduleModal();
   if (studentId) {

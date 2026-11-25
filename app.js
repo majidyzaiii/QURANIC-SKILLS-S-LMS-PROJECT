@@ -244,14 +244,20 @@ function renderAuthScreen() {
         : '');
     inner = `
       <h1 class="text-base font-bold text-[#141F1E]">Admin Sign In</h1>
+      <p class="text-xs text-[#7A8684] mt-1.5 leading-relaxed text-center">Enter your credentials to access the academy dashboard</p>
       ${notice}
       <div id="auth-error" class="${AuthState.authError ? '' : 'hidden'} mt-4 px-3.5 py-2.5 rounded-xl bg-red-50 border border-red-200 text-[11px] font-semibold text-[#B91C1C]">${AuthState.authError || ''}</div>
       <label class="block text-[11px] font-bold text-[#141F1E] mt-5 mb-1.5">Email</label>
       <input type="email" id="auth-email" value="${AuthState.lastEmail || ''}" placeholder="you@example.com" autocomplete="username" class="w-full bg-white border border-[#ECEAE4] rounded-xl px-3.5 py-2.5 text-sm text-[#141F1E] outline-none focus:border-[#0E4D45]">
-      <label class="block text-[11px] font-bold text-[#141F1E] mt-4 mb-1.5">Password</label>
-      <input type="password" id="auth-password" placeholder="Your password" autocomplete="current-password" onkeydown="if(event.key==='Enter'){handleAuthSignIn();}" class="w-full bg-white border border-[#ECEAE4] rounded-xl px-3.5 py-2.5 text-sm text-[#141F1E] outline-none focus:border-[#0E4D45]">
-      <button type="button" id="auth-signin-btn" onclick="handleAuthSignIn()" class="mt-5 w-full px-4 py-2.5 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors shadow-sm cursor-pointer disabled:opacity-60">Sign In</button>
-      <button type="button" onclick="handleAuthShowReset()" class="mt-3 w-full text-[11px] font-semibold text-[#0E4D45] hover:underline cursor-pointer">Forgot password?</button>`;
+      <div class="flex items-center justify-between mt-4 mb-1.5">
+        <label for="auth-password" class="block text-[11px] font-bold text-[#141F1E]">Password</label>
+        <button type="button" onclick="handleAuthShowReset()" class="text-[11px] font-semibold text-[#0E4D45] hover:underline cursor-pointer">Forgot password?</button>
+      </div>
+      <div class="relative">
+        <input type="password" id="auth-password" placeholder="Your password" autocomplete="current-password" onkeydown="if(event.key==='Enter'){handleAuthSignIn();}" class="w-full bg-white border border-[#ECEAE4] rounded-xl px-3.5 py-2.5 text-sm text-[#141F1E] outline-none focus:border-[#0E4D45]">
+        <button type="button" id="auth-password-toggle" onclick="toggleAuthPasswordVisibility()" aria-label="Show password" class="absolute right-4 top-1/2 -translate-y-1/2 text-[#7A8684] hover:text-[#0E4D45] cursor-pointer flex items-center justify-center"><svg class="auth-eye-off w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88"/></svg><svg class="auth-eye-open w-5 h-5 hidden" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.01 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.01-9.963-7.178z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg></button>
+      </div>
+      <button type="button" id="auth-signin-btn" onclick="handleAuthSignIn()" class="mt-5 w-full px-4 py-2.5 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors shadow-sm cursor-pointer disabled:opacity-60">Sign In</button>`;
   }
   root.innerHTML = authScreenShell(inner);
 }
@@ -286,6 +292,21 @@ async function handleAuthSignIn() {
   }
 }
 window.handleAuthSignIn = handleAuthSignIn;
+
+function toggleAuthPasswordVisibility() {
+  const input = document.getElementById('auth-password');
+  const btn = document.getElementById('auth-password-toggle');
+  if (!input || !btn) return;
+  const show = input.type === 'password';
+  input.type = show ? 'text' : 'password';
+  btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+  const eye = btn.querySelector('.auth-eye-open');
+  const eyeOff = btn.querySelector('.auth-eye-off');
+  if (eye) eye.classList.toggle('hidden', !show);
+  if (eyeOff) eyeOff.classList.toggle('hidden', show);
+  input.focus();
+}
+window.toggleAuthPasswordVisibility = toggleAuthPasswordVisibility;
 
 function handleAuthShowReset() {
   AuthState.view = 'reset';

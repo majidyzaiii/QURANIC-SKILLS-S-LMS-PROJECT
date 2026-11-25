@@ -897,7 +897,7 @@ body.auth-locked #mobile-drawer-backdrop,
 body.auth-locked .modal-backdrop,
 body.auth-locked .bulk-action-bar { display: none !important; }
 body:not(.auth-locked) #auth-screen-root { display: none; }
-#auth-screen-root { min-height: 100vh; }
+#auth-screen-root { min-height: 100vh; position: relative; }
 
 /* ==========================================================================
    Login screens — split-screen redesign (LIBRARIIS-style), 2026-11-25.
@@ -914,6 +914,7 @@ body:not(.auth-locked) #auth-screen-root { display: none; }
 /* Base: the shell becomes the split root — no outer padding, cream bg. */
 #auth-screen-root > div.min-h-screen {
   display: flex;
+  position: relative;
   min-height: 100vh;
   padding: 0;
   align-items: stretch;
@@ -965,36 +966,61 @@ body:not(.auth-locked) #auth-screen-root { display: none; }
 #auth-screen-root .max-w-md > .text-center.mb-6 > div:first-child { display: none; }
 /* Auth headings (Admin Sign In / Reset password / Verify your email) are
    centred too; labels and fields stay left-aligned. */
-#auth-screen-root .max-w-md > .bg-white > h1 { text-align: center; }
+#auth-screen-root .max-w-md > .bg-white > h1 { text-align: center; color: #0E4D45; font-size: 22px; }
 
-/* Pills, LIBRARIIS-style (Majid 2026-11-25): the long full-width pill boxes
-   were wrong — the reference has UNDERLINE fields and a compact centred
-   LOGIN pill. So: Email/Password inputs become underline fields (no box,
-   hairline bottom border, teal on focus), and every pill button in the auth
-   card becomes a compact 220px pill centred in the form — on mobile AND on
-   PC. Text links (Forgot password? etc.) align left like the reference. */
+/* Tagline under the logo on the photo panel (mockup: "Empowering minds
+   through sacred learning.") and the © footer — both are ::after text
+   layers, so no app.js markup change is needed for them. The tagline sits
+   just below the logo's wordmark; the © sits at the bottom of the panel. */
+#auth-screen-root > div.min-h-screen::after {
+  content: "Empowering minds through sacred learning.";
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  width: 50%;
+  top: 58%;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 15px;
+  font-weight: 500;
+  pointer-events: none;
+}
+#auth-screen-root::after {
+  content: "© 2026 Quranic Skills LMS";
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  width: 50%;
+  bottom: 28px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 11px;
+  pointer-events: none;
+}
+
+/* Fields are white pills again (mockup 2026-11-25): round white boxes with
+   a light border, a touch taller than before. Password gets extra right
+   padding so typed text never runs under the eye toggle. Primary auth
+   buttons are full-width pills again, a touch taller. Text links under the
+   forms (Back to sign in etc.) stay left-aligned. */
 #auth-screen-root input[type="email"],
 #auth-screen-root input[type="password"] {
-  background: transparent;
-  border: 0;
-  border-bottom: 1px solid #D8D5CC;
-  border-radius: 0;
+  background: #FFFFFF;
+  border: 1px solid #E8E6DF;
+  border-radius: 9999px;
   box-shadow: none;
-  padding: 6px 2px 8px;
+  padding: 12px 18px;
 }
 #auth-screen-root input[type="email"]:focus,
 #auth-screen-root input[type="password"]:focus {
-  border-bottom-color: #0E4D45;
+  border-color: #0E4D45;
   outline: none;
 }
+#auth-screen-root #auth-password { padding-right: 44px; }
 #auth-screen-root .max-w-md > .bg-white button.rounded-full {
-  display: block;
-  width: 220px;
-  max-width: 100%;
-  margin-left: auto;
-  margin-right: auto;
+  padding-top: 14px;
+  padding-bottom: 14px;
 }
-#auth-screen-root button[onclick="handleAuthShowReset()"],
 #auth-screen-root button[onclick="handleAuthBackToLogin()"],
 #auth-screen-root button[onclick="handleSignOut()"] {
   text-align: left;
@@ -1060,4 +1086,17 @@ body:not(.auth-locked) #auth-screen-root { display: none; }
     margin: 0 auto;
     padding: 28px 20px 48px;
   }
+  /* Mobile: tagline sits below the logo wordmark in the banner; © is grey
+     on the cream below the form; heading a touch larger like the mockup. */
+  #auth-screen-root > div.min-h-screen::after {
+    width: 100%;
+    top: 245px;
+    font-size: 13.5px;
+  }
+  #auth-screen-root::after {
+    width: 100%;
+    bottom: 20px;
+    color: #7A8684;
+  }
+  #auth-screen-root .max-w-md > .bg-white > h1 { font-size: 26px; }
 }

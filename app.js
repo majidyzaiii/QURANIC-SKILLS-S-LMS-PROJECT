@@ -201,19 +201,19 @@ function generateRandomPassword() {
 // { status: 'created' | 'exists' | 'failed', message }.
 async function createTeacherLogin(email) {
   const clean = String(email || '').trim();
-  if (!clean) return { status: 'failed', message: 'Email missing hai.' };
+  if (!clean) return { status: 'failed', message: 'Email is missing.' };
   const secondaryAuth = getSecondaryAuth();
-  if (!secondaryAuth) return { status: 'failed', message: 'Firebase connected nahi hai.' };
+  if (!secondaryAuth) return { status: 'failed', message: 'Firebase is not connected.' };
   try {
     const cred = await secondaryAuth.createUserWithEmailAndPassword(clean, generateRandomPassword());
     try { await cred.user.sendEmailVerification(); } catch (e) { /* resend happens at first login */ }
     await secondaryAuth.signOut();
     return { status: 'created', message: 'Login account ban gaya — verification email bhej di gayi.' };
   } catch (e) {
-    if (e && e.code === 'auth/email-already-in-use') return { status: 'exists', message: 'Is email ka login pehle se bana hua hai.' };
-    if (e && e.code === 'auth/invalid-email') return { status: 'failed', message: 'Email ka format ghalat hai.' };
-    if (e && e.code === 'auth/operation-not-allowed') return { status: 'failed', message: 'Email/Password sign-in Firebase Console mein band hai.' };
-    return { status: 'failed', message: (e && e.message) || 'Login account nahi ban saka.' };
+    if (e && e.code === 'auth/email-already-in-use') return { status: 'exists', message: 'A login already exists for this email.' };
+    if (e && e.code === 'auth/invalid-email') return { status: 'failed', message: 'The email format is incorrect.' };
+    if (e && e.code === 'auth/operation-not-allowed') return { status: 'failed', message: 'Email/Password sign-in is disabled in the Firebase Console.' };
+    return { status: 'failed', message: (e && e.message) || 'The login account could not be created.' };
   }
 }
 window.createTeacherLogin = createTeacherLogin;
@@ -226,27 +226,27 @@ async function checkTeacherLoginStatus(email) {
   const clean = String(email || '').trim();
   if (!statusEl) return;
   if (!clean || !clean.includes('@')) {
-    statusEl.textContent = 'Login status dekhne ke liye sahi email likhein.';
+    statusEl.textContent = 'Enter a valid email to check the login status.';
     if (btnEl) btnEl.classList.add('hidden');
     return;
   }
   const auth = getAuth();
   if (!auth || typeof auth.fetchSignInMethodsForEmail !== 'function') {
-    statusEl.textContent = 'Login status abhi check nahi ho saka.';
+    statusEl.textContent = 'The login status could not be checked right now.';
     if (btnEl) btnEl.classList.add('hidden');
     return;
   }
   try {
     const methods = await auth.fetchSignInMethodsForEmail(clean);
     if (methods && methods.length > 0) {
-      statusEl.textContent = 'Login account bana hua hai — teacher Forgot password se apna password set kar sakta hai.';
+      statusEl.textContent = 'A login account exists — the teacher can set their password via Forgot password.';
       if (btnEl) btnEl.classList.add('hidden');
     } else {
-      statusEl.textContent = 'Is email ka login account abhi nahi bana.';
+      statusEl.textContent = 'No login account exists for this email yet.';
       if (btnEl) btnEl.classList.remove('hidden');
     }
   } catch (e) {
-    statusEl.textContent = 'Login status check nahi ho saka — dobara koshish karein.';
+    statusEl.textContent = 'The login status could not be checked — please try again.';
     if (btnEl) btnEl.classList.add('hidden');
   }
 }
@@ -255,15 +255,15 @@ window.checkTeacherLoginStatus = checkTeacherLoginStatus;
 async function createLoginForEditTeacher() {
   const email = document.getElementById('edit-teacher-email')?.value?.trim();
   const btnEl = document.getElementById('edit-teacher-login-btn');
-  if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Ban raha hai...'; }
+  if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Creating...'; }
   const result = await createTeacherLogin(email);
   if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Create login account'; }
   if (result.status === 'created') {
     showToastNotification(`✓ Login account ban gaya — verification email ${email} pe bhej di gayi.`);
   } else if (result.status === 'exists') {
-    showToastNotification('Is email ka login pehle se bana hua hai.');
+    showToastNotification('A login already exists for this email.');
   } else {
-    showToastNotification(`Login account nahi ban saka: ${result.message}`, 'error');
+    showToastNotification(`Login account could not be created: ${result.message}`, 'error');
   }
   await checkTeacherLoginStatus(email);
 }
@@ -279,23 +279,23 @@ function mapAuthError(err) {
     case 'auth/invalid-credential':
     case 'auth/user-not-found':
     case 'auth/wrong-password':
-      return 'Email ya password ghalat hai. Dobara koshish karein.';
+      return 'Email or password is incorrect. Please try again.';
     case 'auth/invalid-email':
-      return 'Sahi email address likhein.';
+      return 'Enter a valid email address.';
     case 'auth/user-disabled':
-      return 'Ye admin account band hai. Firebase Console se check karein.';
+      return 'This admin account is disabled. Check the Firebase Console.';
     case 'auth/too-many-requests':
-      return 'Bohat zyada koshishein ho gayi hain — kuch der baad dobara koshish karein.';
+      return 'Too many attempts — please try again after a while.';
     case 'auth/operation-not-allowed':
-      return 'Email login abhi Firebase Console mein on nahi hai. Authentication → Sign-in method mein Email/Password enable karein.';
+      return 'Email login is not enabled in the Firebase Console yet. Enable Email/Password under Authentication → Sign-in method.';
     case 'auth/network-request-failed':
-      return 'Internet connection ka masla hai — connection check karke dobara koshish karein.';
+      return 'There is a problem with the internet connection — check the connection and try again.';
     case 'auth/weak-password':
-      return 'Password kamzor hai — kam az kam 6 characters ka mazboot password rakhein.';
+      return 'The password is too weak — use a strong password of at least 6 characters.';
     case 'auth/requires-recent-login':
-      return 'Ye kaam karne ke liye dobara sign in karein.';
+      return 'Please sign in again to do this.';
     default:
-      return 'Sign in nahi ho saka. Dobara koshish karein.' + (code ? ' (' + code + ')' : '');
+      return 'Could not sign in. Please try again.' + (code ? ' (' + code + ')' : '');
   }
 }
 
@@ -395,8 +395,8 @@ async function handleAuthSignIn() {
   const password = (passEl && passEl.value) || '';
   AuthState.lastEmail = email;
   AuthState.lastErrorCode = '';
-  if (!email || !password) { showAuthError('Email aur password dono likhein.'); return; }
-  if (!auth) { showAuthError('Sign-in system load nahi hua — page refresh karein.'); return; }
+  if (!email || !password) { showAuthError('Enter both email and password.'); return; }
+  if (!auth) { showAuthError('The sign-in system did not load — please refresh the page.'); return; }
   if (btn) { btn.disabled = true; btn.textContent = 'Signing in…'; }
   const errEl = document.getElementById('auth-error');
   if (errEl) errEl.classList.add('hidden');
@@ -448,11 +448,11 @@ async function handleAuthSendReset() {
   const email = (emailEl && emailEl.value || '').trim();
   AuthState.lastEmail = email;
   if (!email) {
-    if (errEl) { errEl.textContent = 'Email likhein.'; errEl.classList.remove('hidden'); }
+    if (errEl) { errEl.textContent = 'Enter your email.'; errEl.classList.remove('hidden'); }
     return;
   }
   if (!auth) {
-    if (errEl) { errEl.textContent = 'Sign-in system load nahi hua — page refresh karein.'; errEl.classList.remove('hidden'); }
+    if (errEl) { errEl.textContent = 'The sign-in system did not load — please refresh the page.'; errEl.classList.remove('hidden'); }
     return;
   }
   try {
@@ -478,14 +478,14 @@ async function handleAuthResendVerification() {
     const btn = document.getElementById('auth-resend-btn');
     if (btn) {
       btn.disabled = true;
-      btn.textContent = 'Link sent — 60s wait karein';
+      btn.textContent = 'Link sent — wait 60s';
       setTimeout(() => {
         const b = document.getElementById('auth-resend-btn');
         if (b) { b.disabled = false; b.textContent = 'Resend verification link'; }
       }, 60000);
     }
     const note = document.getElementById('auth-verify-note');
-    if (note) note.textContent = 'Verification link dobara bhej di gayi hai — inbox (aur Spam) check karein.';
+    if (note) note.textContent = 'The verification link has been sent again — check your inbox (and Spam).';
   } catch (err) {
     AuthState.lastErrorCode = (err && err.code) || '';
     const note = document.getElementById('auth-verify-note');
@@ -505,7 +505,7 @@ async function handleAuthRecheckVerification() {
       handleAuthStateChange(fresh);
     } else {
       const note = document.getElementById('auth-verify-note');
-      if (note) note.textContent = 'Abhi tak verify nahi hua — pehle email mein link par click karein, phir dobara check karein.';
+      if (note) note.textContent = 'Not verified yet — click the link in the email first, then check again.';
     }
   } catch (err) {
     AuthState.lastErrorCode = (err && err.code) || '';
@@ -889,10 +889,10 @@ async function saveAdminProfile() {
       noteEl.className = ok ? 'text-[11px] text-[#0E4D45]' : 'text-[11px] text-[#B91C1C]';
     }
   };
-  if (!name) { setNote('Display name zaroori hai.', false); return; }
+  if (!name) { setNote('A display name is required.', false); return; }
   if (photoUrl) {
     const ok = await preloadImage(photoUrl);
-    if (!ok) { setNote('Photo URL load nahi hui — sahi image link dalein.', false); return; }
+    if (!ok) { setNote('The photo URL did not load — enter a valid image link.', false); return; }
   }
   const profile = { displayName: name, photoUrl: photoUrl, phone: phone, email: email, updatedAt: new Date().toISOString() };
   AppState.adminProfile = profile;
@@ -1012,7 +1012,7 @@ async function loadAdminSessionsList() {
     snap.forEach(doc => rows.push(Object.assign({ id: doc.id }, doc.data() || {})));
     renderAdminSessionsList(rows);
   } catch (e) {
-    listEl.innerHTML = '<p class="text-[11px] text-[#B91C1C]">Devices load nahi ho sakay — dobara koshish karein.</p>';
+    listEl.innerHTML = '<p class="text-[11px] text-[#B91C1C]">Devices could not be loaded — please try again.</p>';
   }
 }
 window.loadAdminSessionsList = loadAdminSessionsList;
@@ -4464,13 +4464,13 @@ function renderTeacherSalaryTab(teacher) {
       <!-- My Salary (read-only) -->
       <div class="ts-card p-6">
         <div class="flex items-center justify-between gap-3 mb-1">
-          <h3 class="text-base font-bold text-[#141F1E]">Meri Salary</h3>
+          <h3 class="text-base font-bold text-[#141F1E]">My Salary</h3>
           <span class="ts-badge ${calc.isPaid ? 'ts-badge-paid' : 'ts-badge-partial'}">${calc.isPaid ? 'Paid' : 'Pending'}</span>
         </div>
         <p class="text-xs text-[#7A8684] mb-5">${monthLabel} • ${calc.activeCount} Active Student${calc.activeCount === 1 ? '' : 's'} • ${formatPayrollUnits(calc.units)} units</p>
         <p class="text-[11px] font-semibold text-[#7A8684]">Net Payable • ${monthLabel}</p>
         <p class="text-3xl font-bold text-[#0E4D45] tabular-nums">${formatPKR(calc.netPayable)}</p>
-        ${calc.isPaid ? `<p class="text-[11px] text-[#065F46] font-semibold mt-1">Paid on ${paidDate} — ${formatPKR(calc.paidAmount)}</p>` : `<p class="text-[11px] text-[#7A8684] mt-1">Admin ne abhi is mahine ki salary pay nahi ki.</p>`}
+        ${calc.isPaid ? `<p class="text-[11px] text-[#065F46] font-semibold mt-1">Paid on ${paidDate} — ${formatPKR(calc.paidAmount)}</p>` : `<p class="text-[11px] text-[#7A8684] mt-1">The admin has not paid this month's salary yet.</p>`}
         <div class="mt-5 space-y-2.5">
           <div class="flex items-center justify-between py-2 border-b border-[#F8F6F1]">
             <span class="text-xs font-semibold text-[#334E4B]">Basic Salary</span>
@@ -4505,11 +4505,11 @@ function renderTeacherSalaryTab(teacher) {
             <span class="text-sm font-bold text-[#0E4D45] tabular-nums">${formatPKR(calc.netPayable)}</span>
           </div>
         </div>
-        <p class="text-[11px] text-[#7A8684] mt-4">Units: har active student ki class duration ke hisaab se — 15 min = 0.5, 30 min = 1, 45 min = 1.5, 60 min = 2 units. Basic ${formatPayrollUnits(settings.basicUnits)} units tak hai; us se zyada par extra pay milti hai.</p>
+        <p class="text-[11px] text-[#7A8684] mt-4">Units: based on each active student's class duration — 15 min = 0.5, 30 min = 1, 45 min = 1.5, 60 min = 2 units. Basic covers up to ${formatPayrollUnits(settings.basicUnits)} units; extra pay applies above that.</p>
       </div>
       ${history.length === 0 ? '' : `
       <div class="ts-card p-6">
-        <h3 class="text-base font-bold text-[#141F1E] mb-4">Pichle Mahine</h3>
+        <h3 class="text-base font-bold text-[#141F1E] mb-4">Previous Months</h3>
         <div class="space-y-2">
           ${history.map(h => `
           <div class="flex items-center justify-between py-2 border-b border-[#F8F6F1] last:border-0">
@@ -4640,14 +4640,14 @@ function openTeacherProgressModal(studentId) {
     ${isHifz ? `
     <div>
       <p class="text-[11px] font-semibold text-[#7A8684] mb-2">Hifz Progress — Surahs Covered</p>
-      ${p.distinctSurahs.length === 0 ? `<p class="text-xs text-[#7A8684]">Abhi koi surah log nahi hui.</p>` : `
+      ${p.distinctSurahs.length === 0 ? `<p class="text-xs text-[#7A8684]">No surah has been logged yet.</p>` : `
       <div class="flex flex-wrap gap-1.5">
         ${p.distinctSurahs.map(s => `<span class="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#E8EFEE] text-[#0E4D45]">${s}</span>`).join('')}
       </div>`}
     </div>` : ''}
     <div>
       <p class="text-[11px] font-semibold text-[#7A8684] mb-2">Recent Sabaq</p>
-      ${p.recentHistory.length === 0 ? `<p class="text-xs text-[#7A8684]">Abhi koi sabaq log nahi hai.</p>` : `
+      ${p.recentHistory.length === 0 ? `<p class="text-xs text-[#7A8684]">No sabaq logged yet.</p>` : `
       <div class="space-y-2">
         ${p.recentHistory.map(e => `
         <div class="flex items-center justify-between gap-3 py-2 border-b border-[#F8F6F1] last:border-0">
@@ -4729,8 +4729,8 @@ function renderTeacherLeaveTab(teacher) {
       <!-- Leave Request -->
       <div class="ts-card p-6">
         <div class="mb-4">
-          <h3 class="text-base font-bold text-[#141F1E]">Chhutti ki Request</h3>
-          <p class="text-xs text-[#7A8684]">Apni chhutti ki tareekh aur wajah likhein — Manager approve karega aur substitute assign karega.</p>
+          <h3 class="text-base font-bold text-[#141F1E]">Leave Request</h3>
+          <p class="text-xs text-[#7A8684]">Enter your leave dates and reason — the Manager will approve it and assign a substitute.</p>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
@@ -4742,9 +4742,9 @@ function renderTeacherLeaveTab(teacher) {
             <input id="leave-to-date" type="date" value="${today}" class="mt-1 w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-xl px-3 py-2.5 text-xs font-semibold text-[#141F1E] outline-none focus:border-[#0E4D45] focus:bg-white" />
           </div>
           <div>
-            <label class="text-[11px] font-bold text-[#7A8684]">Wajah</label>
+            <label class="text-[11px] font-bold text-[#7A8684]">Reason</label>
             <select id="leave-reason" class="mt-1 w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-xl px-3 py-2.5 text-xs font-semibold text-[#141F1E] outline-none focus:border-[#0E4D45] focus:bg-white cursor-pointer">
-              <option value="Bimari">Bimari</option>
+              <option value="Illness">Illness</option>
               <option value="Family emergency">Family emergency</option>
               <option value="Personal">Personal</option>
               <option value="Other">Other</option>
@@ -4753,20 +4753,20 @@ function renderTeacherLeaveTab(teacher) {
           <div>
             <label class="text-[11px] font-bold text-[#7A8684]">Preferred Substitute (optional)</label>
             <select id="leave-substitute" class="mt-1 w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-xl px-3 py-2.5 text-xs font-semibold text-[#141F1E] outline-none focus:border-[#0E4D45] focus:bg-white cursor-pointer">
-              <option value="">Koi nahi — Manager decide karein</option>
+              <option value="">None — let the Manager decide</option>
               ${others.map(t => `<option value="${t.id}">${t.name}</option>`).join('')}
             </select>
           </div>
           <div class="sm:col-span-2">
             <label class="text-[11px] font-bold text-[#7A8684]">Note (optional)</label>
-            <textarea id="leave-note" rows="2" placeholder="Mukhtasir note likhein..." class="mt-1 w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-xl px-3 py-2.5 text-xs font-semibold text-[#141F1E] outline-none focus:border-[#0E4D45] focus:bg-white resize-y"></textarea>
+            <textarea id="leave-note" rows="2" placeholder="Write a short note..." class="mt-1 w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-xl px-3 py-2.5 text-xs font-semibold text-[#141F1E] outline-none focus:border-[#0E4D45] focus:bg-white resize-y"></textarea>
           </div>
         </div>
-        <button onclick="handleSubmitLeaveRequest()" class="mt-4 px-5 py-2.5 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors shadow-sm cursor-pointer">Request Bhejein</button>
+        <button onclick="handleSubmitLeaveRequest()" class="mt-4 px-5 py-2.5 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors shadow-sm cursor-pointer">Send Request</button>
       </div>
       <div class="ts-card p-6">
-        <h3 class="text-base font-bold text-[#141F1E] mb-4">Meri Requests</h3>
-        ${mine.length === 0 ? `<p class="text-xs text-[#7A8684]">Abhi koi request nahi bheji.</p>` : `
+        <h3 class="text-base font-bold text-[#141F1E] mb-4">My Requests</h3>
+        ${mine.length === 0 ? `<p class="text-xs text-[#7A8684]">No request sent yet.</p>` : `
         <div class="space-y-3">
           ${mine.map(r => `
           <div class="p-4 rounded-2xl border border-[#ECEAE4] bg-[#F8F6F1]/50 flex items-start justify-between gap-3">
@@ -4785,7 +4785,7 @@ function renderTeacherLeaveTab(teacher) {
 function handleSubmitLeaveRequest() {
   // Admin previewing a teacher's portal must not file a request as them.
   if (AppState.authRole !== 'teacher') {
-    showToastNotification('⚠️ Preview mein request nahi bhej sakte — teacher ko khud login karna hoga.');
+    showToastNotification('⚠️ Requests cannot be sent from Preview — the teacher must log in themselves.');
     return Promise.resolve(false);
   }
   const teacher = getCurrentTeacher();
@@ -4796,11 +4796,11 @@ function handleSubmitLeaveRequest() {
   const preferredSubstituteId = document.getElementById('leave-substitute')?.value || '';
   const note = (document.getElementById('leave-note')?.value || '').trim();
   if (!fromDate) {
-    showToastNotification('⚠️ Chhutti ki shuru ki tareekh chunein.');
+    showToastNotification('⚠️ Please select the leave start date.');
     return Promise.resolve(false);
   }
   if (toDate < fromDate) {
-    showToastNotification('⚠️ Aakhri tareekh pehli tareekh se pehle nahi ho sakti.');
+    showToastNotification('⚠️ The end date cannot be before the start date.');
     return Promise.resolve(false);
   }
   const req = {
@@ -4814,7 +4814,7 @@ function handleSubmitLeaveRequest() {
     substituteTeacherId: ''
   };
   return dbSaveLeaveRequest(req).then(() => {
-    showToastNotification('✓ Chhutti ki request bhej di gayi — Manager jawaab dega.');
+    showToastNotification('✓ Leave request sent — the Manager will respond.');
     renderApp();
     return true;
   });
@@ -4845,7 +4845,7 @@ function handleLeaveRequestDecision(requestId, decision) {
 // Leave-requests card for the manager's Substitute Dispatch tab.
 function renderManagerLeaveRequests() {
   const reqs = getAllLeaveRequests();
-  if (reqs.length === 0) return `<p class="text-xs text-[#7A8684]">Abhi koi leave request nahi hai.</p>`;
+  if (reqs.length === 0) return `<p class="text-xs text-[#7A8684]">There are no leave requests yet.</p>`;
   return `<div class="space-y-3">${reqs.map(r => {
     const others = (AppState.teachers || []).filter(t => t.id !== r.teacherId);
     return `
@@ -4862,7 +4862,7 @@ function renderManagerLeaveRequests() {
       ${r.status === 'Pending' ? `
       <div class="flex flex-wrap items-center gap-2 mt-3">
         <select id="leave-sub-${r.id}" class="text-xs bg-white border border-[#ECEAE4] rounded-full px-3 py-2 text-[#0E4D45] font-bold outline-none cursor-pointer">
-          <option value="">Substitute choose karein (optional)</option>
+          <option value="">Choose a substitute (optional)</option>
           ${others.map(t => `<option value="${t.id}" ${r.preferredSubstituteId === t.id ? 'selected' : ''}>${t.name}</option>`).join('')}
         </select>
         <button onclick="handleLeaveRequestDecision('${r.id}', 'Approved')" class="px-4 py-2 text-[11px] font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors cursor-pointer">Approve</button>
@@ -7837,11 +7837,11 @@ async function handleSaveNewTeacher() {
   // match any teacher, so the app would wrongly treat them as admin.
   const login = await createTeacherLogin(email);
   if (login.status === 'created') {
-    showToastNotification(`✓ Teacher ${name} (${teacherId}) added! Login account bhi ban gaya — verification email ${email} pe bhej di gayi. Teacher Forgot password se apna password banaye.`);
+    showToastNotification(`✓ Teacher ${name} (${teacherId}) added! A login account was also created — a verification email was sent to ${email}. The teacher can set their password via Forgot password.`);
   } else if (login.status === 'exists') {
-    showToastNotification(`✓ Teacher ${name} (${teacherId}) added! Is email ka login pehle se bana hua hai.`);
+    showToastNotification(`✓ Teacher ${name} (${teacherId}) added! A login already exists for this email.`);
   } else {
-    showToastNotification(`Teacher ${name} add ho gaya, lekin login account nahi ban saka: ${login.message} Edit Teacher se dobara koshish karein.`, 'error');
+    showToastNotification(`Teacher ${name} was added, but the login account could not be created: ${login.message} Please try again from Edit Teacher.`, 'error');
   }
 }
 
@@ -9395,7 +9395,7 @@ function teacherInitials(name) {
 function switchRole(role) {
   // Teachers stay in their own portal — role switching is the admin's preview tool.
   if (AppState.authRole === 'teacher' && role !== 'teacher') {
-    showToastNotification('Teacher account sirf Teacher Portal dekh sakta hai.', 'error');
+    showToastNotification('A teacher account can only view the Teacher Portal.', 'error');
     return;
   }
   AppState.currentRole = role;
@@ -16301,7 +16301,7 @@ function renderManagerPortalView() {
       <div class="ts-card p-6 mb-4">
         <div class="mb-4">
           <h3 class="text-base font-bold text-[#141F1E]">Teacher Leave Requests</h3>
-          <p class="text-xs text-[#7A8684]">Chhutti ki requests — approve karein aur substitute choose karein.</p>
+          <p class="text-xs text-[#7A8684]">Leave requests — approve them and choose a substitute.</p>
         </div>
         ${renderManagerLeaveRequests()}
       </div>
@@ -16551,7 +16551,7 @@ function renderTeacherPortalView() {
               </div>
             `;
           }).join('')}
-          ${myStudents.filter(s => s.lastSabaq).length === 0 ? `<p class="text-xs text-[#7A8684]">Abhi koi Sabaq log nahi hai — upar "Log New Lesson" se pehla Sabaq log karein.</p>` : ''}
+          ${myStudents.filter(s => s.lastSabaq).length === 0 ? `<p class="text-xs text-[#7A8684]">No Sabaq logged yet — log the first Sabaq from "Log New Lesson" above.</p>` : ''}
         </div>
       </div>
     `;
@@ -16566,7 +16566,7 @@ function renderTeacherPortalView() {
           </div>
           <span class="ts-badge ts-badge-paid">${myStudents.length} ${myStudents.length === 1 ? 'Student' : 'Students'} Assigned</span>
         </div>
-        ${myStudents.length === 0 ? `<p class="text-xs text-[#7A8684] mt-3">Abhi koi student assign nahi hai — Admin se apne students assign karwayein.</p>` : ''}
+        ${myStudents.length === 0 ? `<p class="text-xs text-[#7A8684] mt-3">No students assigned yet — ask the Admin to assign your students.</p>` : ''}
 
         <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse min-w-0 md:min-w-[700px] responsive-table-cards">
@@ -17758,7 +17758,7 @@ function handleSaveSabaq() {
     return;
   }
   if (AppState.authRole === 'teacher' && !getTeacherStudents().some(s => s.id === student.id)) {
-    setFormFieldError('logger-student-select', 'Ye student aap ko assign nahi hai.');
+    setFormFieldError('logger-student-select', 'This student is not assigned to you.');
     return;
   }
   const surah = document.getElementById('logger-surah-input')?.value || 'Surah Al-Mulk (Ayah 1-15)';

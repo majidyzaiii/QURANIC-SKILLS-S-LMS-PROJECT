@@ -570,12 +570,70 @@ function renderAdminProfileSection() {
 function previewAdminPhoto() {
   const url = ((document.getElementById('admin-profile-photo') || {}).value || '').trim();
   const box = document.getElementById('admin-profile-photo-preview');
+  const removeBtn = document.getElementById('admin-profile-photo-remove');
+  if (removeBtn) removeBtn.classList.toggle('hidden', !url);
   if (!box) return;
   const initials = getAdminInitials(getAdminDisplayName());
   if (!url) { box.textContent = initials; return; }
   box.innerHTML = `<img src="${url.replace(/["<>]/g, '')}" alt="" class="w-full h-full rounded-full object-cover" data-i="${initials}" onerror="this.replaceWith(document.createTextNode(this.dataset.i))">`;
 }
 window.previewAdminPhoto = previewAdminPhoto;
+
+// Photo upload (Majid 2026-11-25): pick a photo from the device instead of
+// pasting a link. The image is shrunk to max 256px and stored as a small
+// JPEG data URL in the profile, so it saves to Firestore like a link did.
+function handleAdminProfilePhotoSelect(event) {
+  const file = event && event.target && event.target.files && event.target.files[0];
+  const noteEl = document.getElementById('admin-profile-save-note');
+  const setNote = (msg, ok) => {
+    if (noteEl) {
+      noteEl.textContent = msg;
+      noteEl.className = ok ? 'text-[11px] text-[#0E4D45]' : 'text-[11px] text-[#B91C1C]';
+    }
+  };
+  if (!file) return;
+  if (!file.type || file.type.indexOf('image/') !== 0) {
+    setNote('Please choose an image file.', false);
+    event.target.value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const maxSide = 256;
+        const w = img.naturalWidth || img.width;
+        const h = img.naturalHeight || img.height;
+        if (!w || !h) { setNote('Photo could not be read — try another image.', false); return; }
+        const scale = Math.min(1, maxSide / Math.max(w, h));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(w * scale));
+        canvas.height = Math.max(1, Math.round(h * scale));
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        const photoEl = document.getElementById('admin-profile-photo');
+        if (photoEl) photoEl.value = canvas.toDataURL('image/jpeg', 0.85);
+        previewAdminPhoto();
+        setNote('Photo ready — press Save Profile to keep it.', true);
+      } catch (e) {
+        setNote('Photo could not be read — try another image.', false);
+      }
+    };
+    img.onerror = () => setNote('Photo could not be read — try another image.', false);
+    img.src = reader.result;
+  };
+  reader.onerror = () => setNote('Photo could not be read — try another image.', false);
+  reader.readAsDataURL(file);
+  event.target.value = '';
+}
+window.handleAdminProfilePhotoSelect = handleAdminProfilePhotoSelect;
+
+function removeAdminProfilePhoto() {
+  const photoEl = document.getElementById('admin-profile-photo');
+  if (photoEl) photoEl.value = '';
+  previewAdminPhoto();
+}
+window.removeAdminProfilePhoto = removeAdminProfilePhoto;
 
 function preloadImage(url) {
   return new Promise((resolve) => {

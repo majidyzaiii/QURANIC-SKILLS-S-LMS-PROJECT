@@ -192,7 +192,6 @@ function authScreenShell(innerHtml) {
       <div class="bg-white rounded-2xl border border-[#E8E6DF] shadow-sm px-6 py-7 sm:px-8">
         ${innerHtml}
       </div>
-      <p class="text-center text-[11px] text-[#7A8684] mt-4 leading-relaxed">Protected by Firebase Authentication.<br>No public signup — admin access only.</p>
     </div>
   </div>`;
 }
@@ -245,7 +244,6 @@ function renderAuthScreen() {
         : '');
     inner = `
       <h1 class="text-base font-bold text-[#141F1E]">Admin Sign In</h1>
-      <p class="text-xs text-[#7A8684] mt-1.5 leading-relaxed">Sign in with your admin email and password to open the portal.</p>
       ${notice}
       <div id="auth-error" class="${AuthState.authError ? '' : 'hidden'} mt-4 px-3.5 py-2.5 rounded-xl bg-red-50 border border-red-200 text-[11px] font-semibold text-[#B91C1C]">${AuthState.authError || ''}</div>
       <label class="block text-[11px] font-bold text-[#141F1E] mt-5 mb-1.5">Email</label>

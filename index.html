@@ -2537,7 +2537,21 @@
                 <button type="button" id="admin-profile-photo-remove" onclick="removeAdminProfilePhoto()" class="hidden px-4 py-2 text-xs font-bold rounded-full bg-white border border-[#ECEAE4] text-[#141F1E] hover:border-[#0E4D45] transition-colors cursor-pointer">Remove</button>
                 <input type="file" id="admin-profile-photo-file" accept="image/*" class="hidden" onchange="handleAdminProfilePhotoSelect(event)">
               </div>
-              <p class="text-[11px] text-[#7A8684] mt-1">Choose a photo from your device — it is shrunk to a small size and saved with your profile. Leave blank to use your initials instead.</p>
+              <div id="admin-profile-photo-cropper" class="hidden mt-3">
+                <div id="admin-profile-photo-crop-stage" class="relative w-[280px] max-w-full aspect-square mx-auto rounded-xl overflow-hidden bg-[#141F1E] touch-none select-none cursor-grab">
+                  <img id="admin-profile-photo-crop-img" alt="" class="absolute max-w-none" draggable="false">
+                </div>
+                <div class="flex items-center gap-2 mt-2">
+                  <span class="text-[11px] font-semibold text-[#141F1E]">Zoom</span>
+                  <input type="range" id="admin-profile-photo-crop-zoom" min="1" max="3" step="0.01" value="1" class="flex-1 accent-[#0E4D45]">
+                </div>
+                <p class="text-[11px] text-[#7A8684] mt-1">Photo ko ghaseet kar frame set karein, phir Crop dabayein.</p>
+                <div class="flex items-center gap-2 mt-2">
+                  <button type="button" onclick="applyAdminProfilePhotoCrop()" class="px-4 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors shadow-sm cursor-pointer">Crop karein</button>
+                  <button type="button" onclick="cancelAdminProfilePhotoCrop()" class="px-4 py-2 text-xs font-bold rounded-full bg-white border border-[#ECEAE4] text-[#141F1E] hover:border-[#0E4D45] transition-colors cursor-pointer">Cancel</button>
+                </div>
+              </div>
+              <p class="text-[11px] text-[#7A8684] mt-1">Choose a photo from your device — frame it with the cropper, then save. Leave blank to use your initials instead.</p>
             </div>
             <div>
               <label class="block font-semibold text-[#141F1E] mb-1">Email (login account)</label>
@@ -3205,7 +3219,7 @@
   <script src="chart.min.js"></script>
 
   <!-- Application Logic -->
-  <script src="app.js?v=20261125-profile-photo"></script>
+  <script src="app.js?v=20261125-profile-crop"></script>
   <!-- ==========================================================================
        COMMAND PALETTE (Ctrl+K) — shared across all portals
        ========================================================================== -->

@@ -565,6 +565,9 @@ function renderAdminProfileSection() {
   if (emailEl) emailEl.value = email;
   if (labelEl) labelEl.textContent = email || '—';
   previewAdminPhoto();
+  const cropBox = document.getElementById('admin-profile-photo-cropper');
+  if (cropBox) cropBox.classList.add('hidden');
+  AdminPhotoCrop = null;
 }
 
 function previewAdminPhoto() {
@@ -579,9 +582,84 @@ function previewAdminPhoto() {
 }
 window.previewAdminPhoto = previewAdminPhoto;
 
-// Photo upload (Majid 2026-11-25): pick a photo from the device instead of
-// pasting a link. The image is shrunk to max 256px and stored as a small
-// JPEG data URL in the profile, so it saves to Firestore like a link did.
+// Photo upload + crop (Majid 2026-11-25): pick a photo from the device,
+// frame it in the square cropper (drag to pan, slider to zoom), then it is
+// cropped to a 256px JPEG data URL in the profile, so it saves to Firestore
+// like a link did.
+let AdminPhotoCrop = null;
+
+function adminProfilePhotoCropRender() {
+  const c = AdminPhotoCrop;
+  if (!c) return;
+  const stage = document.getElementById('admin-profile-photo-crop-stage');
+  const img = document.getElementById('admin-profile-photo-crop-img');
+  if (!stage || !img) return;
+  const dw = c.bw * c.scale, dh = c.bh * c.scale;
+  c.x = Math.min(0, Math.max(stage.clientWidth - dw, c.x));
+  c.y = Math.min(0, Math.max(stage.clientHeight - dh, c.y));
+  img.style.width = dw + 'px';
+  img.style.height = dh + 'px';
+  img.style.left = c.x + 'px';
+  img.style.top = c.y + 'px';
+}
+
+function openAdminProfilePhotoCropper(img) {
+  const stage = document.getElementById('admin-profile-photo-crop-stage');
+  const imgEl = document.getElementById('admin-profile-photo-crop-img');
+  const box = document.getElementById('admin-profile-photo-cropper');
+  const zoom = document.getElementById('admin-profile-photo-crop-zoom');
+  if (!stage || !imgEl || !box) return;
+  const size = stage.clientWidth || 280;
+  const k = Math.max(size / img.naturalWidth, size / img.naturalHeight);
+  AdminPhotoCrop = {
+    img: img, scale: 1, k: k,
+    bw: img.naturalWidth * k, bh: img.naturalHeight * k,
+    x: (size - img.naturalWidth * k) / 2,
+    y: (size - img.naturalHeight * k) / 2
+  };
+  imgEl.src = img.src;
+  if (zoom) {
+    zoom.value = 1;
+    zoom.oninput = () => {
+      const c = AdminPhotoCrop;
+      if (!c) return;
+      const s = document.getElementById('admin-profile-photo-crop-stage');
+      const oldScale = c.scale;
+      const newScale = parseFloat(zoom.value) || 1;
+      const cx = ((s && s.clientWidth) || 280) / 2, cy = ((s && s.clientHeight) || 280) / 2;
+      const ratio = newScale / oldScale;
+      c.x = cx - (cx - c.x) * ratio;
+      c.y = cy - (cy - c.y) * ratio;
+      c.scale = newScale;
+      adminProfilePhotoCropRender();
+    };
+  }
+  stage.onpointerdown = (e) => {
+    const c = AdminPhotoCrop;
+    if (!c) return;
+    e.preventDefault();
+    try { stage.setPointerCapture(e.pointerId); } catch (err) {}
+    stage.style.cursor = 'grabbing';
+    const startX = e.clientX, startY = e.clientY, origX = c.x, origY = c.y;
+    const move = (ev) => {
+      c.x = origX + (ev.clientX - startX);
+      c.y = origY + (ev.clientY - startY);
+      adminProfilePhotoCropRender();
+    };
+    const up = () => {
+      stage.style.cursor = 'grab';
+      stage.removeEventListener('pointermove', move);
+      stage.removeEventListener('pointerup', up);
+      stage.removeEventListener('pointercancel', up);
+    };
+    stage.addEventListener('pointermove', move);
+    stage.addEventListener('pointerup', up);
+    stage.addEventListener('pointercancel', up);
+  };
+  box.classList.remove('hidden');
+  adminProfilePhotoCropRender();
+}
+
 function handleAdminProfilePhotoSelect(event) {
   const file = event && event.target && event.target.files && event.target.files[0];
   const noteEl = document.getElementById('admin-profile-save-note');
@@ -601,32 +679,58 @@ function handleAdminProfilePhotoSelect(event) {
   reader.onload = () => {
     const img = new Image();
     img.onload = () => {
-      try {
-        const maxSide = 256;
-        const w = img.naturalWidth || img.width;
-        const h = img.naturalHeight || img.height;
-        if (!w || !h) { setNote('Photo could not be read — try another image.', false); return; }
-        const scale = Math.min(1, maxSide / Math.max(w, h));
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.max(1, Math.round(w * scale));
-        canvas.height = Math.max(1, Math.round(h * scale));
-        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-        const photoEl = document.getElementById('admin-profile-photo');
-        if (photoEl) photoEl.value = canvas.toDataURL('image/jpeg', 0.85);
-        previewAdminPhoto();
-        setNote('Photo ready — press Save Profile to keep it.', true);
-      } catch (e) {
-        setNote('Photo could not be read — try another image.', false);
-      }
+      if (!img.naturalWidth || !img.naturalHeight) { setNote('Photo could not be read — try another image.', false); return; }
+      openAdminProfilePhotoCropper(img);
     };
     img.onerror = () => setNote('Photo could not be read — try another image.', false);
     img.src = reader.result;
   };
   reader.onerror = () => setNote('Photo could not be read — try another image.', false);
   reader.readAsDataURL(file);
-  event.target.value = '';
 }
 window.handleAdminProfilePhotoSelect = handleAdminProfilePhotoSelect;
+
+function applyAdminProfilePhotoCrop() {
+  const c = AdminPhotoCrop;
+  const noteEl = document.getElementById('admin-profile-save-note');
+  const setNote = (msg, ok) => {
+    if (noteEl) {
+      noteEl.textContent = msg;
+      noteEl.className = ok ? 'text-[11px] text-[#0E4D45]' : 'text-[11px] text-[#B91C1C]';
+    }
+  };
+  if (!c || !c.img) return;
+  const stage = document.getElementById('admin-profile-photo-crop-stage');
+  const size = (stage && stage.clientWidth) || 280;
+  try {
+    const sx = Math.max(0, (-c.x) / (c.scale * c.k));
+    const sy = Math.max(0, (-c.y) / (c.scale * c.k));
+    let sw = size / (c.scale * c.k);
+    let sh = size / (c.scale * c.k);
+    sw = Math.min(sw, c.img.naturalWidth - sx);
+    sh = Math.min(sh, c.img.naturalHeight - sy);
+    const canvas = document.createElement('canvas');
+    canvas.width = 256; canvas.height = 256;
+    canvas.getContext('2d').drawImage(c.img, sx, sy, sw, sh, 0, 0, 256, 256);
+    const photoEl = document.getElementById('admin-profile-photo');
+    if (photoEl) photoEl.value = canvas.toDataURL('image/jpeg', 0.85);
+    previewAdminPhoto();
+    cancelAdminProfilePhotoCrop();
+    setNote('Photo cropped — press Save Profile to keep it.', true);
+  } catch (e) {
+    setNote('Photo could not be cropped — try another image.', false);
+  }
+}
+window.applyAdminProfilePhotoCrop = applyAdminProfilePhotoCrop;
+
+function cancelAdminProfilePhotoCrop() {
+  AdminPhotoCrop = null;
+  const box = document.getElementById('admin-profile-photo-cropper');
+  if (box) box.classList.add('hidden');
+  const fileInput = document.getElementById('admin-profile-photo-file');
+  if (fileInput) fileInput.value = '';
+}
+window.cancelAdminProfilePhotoCrop = cancelAdminProfilePhotoCrop;
 
 function removeAdminProfilePhoto() {
   const photoEl = document.getElementById('admin-profile-photo');

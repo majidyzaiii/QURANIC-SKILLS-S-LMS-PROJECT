@@ -407,6 +407,7 @@ function handleAuthStateChange(user) {
     AuthState.verificationEmailSent = false;
     AppState.authRole = 'admin';
     AppState.currentTeacher = null;
+    AppState.previewTeacherId = null;
     AppState.currentRole = 'admin';
     AppState.activeNav = 'dashboard';
     stopSessionHeartbeat();
@@ -2682,6 +2683,7 @@ const AppState = {
   currentRole: 'admin', // 'admin' | 'manager' | 'teacher' | 'student'
   authRole: 'admin', // the signed-in account's real role: 'admin' or 'teacher' (set by resolveAuthRole; preview switching never changes it)
   currentTeacher: null, // the signed-in teacher's record (teacher sessions only)
+  previewTeacherId: null, // admin preview: which teacher's portal the admin is viewing (admin sessions only)
   activeNav: 'dashboard', // 'dashboard' | 'fee-matrix' | 'students' | 'teachers' | 'trials-notices' | 'library'
   selectedFilter: 'all', // 'all' | 'paid' | 'partial' | 'advance' | 'defaulter'
   groupByFamily: true,
@@ -8545,10 +8547,33 @@ function resolveAuthRole() {
   return AppState.authRole;
 }
 
-// The signed-in teacher, or — for the admin's portal preview — the first teacher.
+// The signed-in teacher, or — for the admin's portal preview — the teacher
+// the admin picked (previewTeacherId), falling back to the first teacher.
 function getCurrentTeacher() {
-  return AppState.currentTeacher || (AppState.teachers || [])[0] || null;
+  if (AppState.currentTeacher) return AppState.currentTeacher;
+  if (AppState.previewTeacherId) {
+    const picked = (AppState.teachers || []).find(t => String(t.id) === String(AppState.previewTeacherId));
+    if (picked) return picked;
+  }
+  return (AppState.teachers || [])[0] || null;
 }
+
+// Admin preview: open any teacher's portal (from their payroll card or the
+// "Preview as" picker inside the Teacher Portal). Teachers cannot use this.
+function setPreviewTeacher(teacherId) {
+  if (AppState.authRole === 'teacher') return;
+  AppState.previewTeacherId = teacherId || null;
+  renderApp();
+}
+window.setPreviewTeacher = setPreviewTeacher;
+
+function previewTeacherPortal(teacherId) {
+  if (AppState.authRole === 'teacher') return;
+  AppState.previewTeacherId = teacherId || null;
+  switchRole('teacher');
+  setNavTab('teacher-schedule');
+}
+window.previewTeacherPortal = previewTeacherPortal;
 
 // Only the students assigned to this teacher (by teacherId, falling back
 // to the assignedTeacher name for older records).
@@ -14760,6 +14785,11 @@ function renderAdminTeacherPayrollView() {
         </td>
         <td class="py-3.5 text-right pl-2" data-label="Action">
           <div class="flex items-center justify-end gap-1.5 whitespace-nowrap">
+            <button onclick="previewTeacherPortal('${t.id}')"
+              class="px-3 py-1 text-[11px] font-semibold rounded-lg bg-white border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#E8EFEE] hover:border-[#0E4D45] transition-colors whitespace-nowrap cursor-pointer"
+              title="View this teacher's portal">
+              Portal
+            </button>
             <button onclick="openEditTeacherModal('${t.id}')"
               class="px-3 py-1 text-[11px] font-semibold rounded-lg bg-white border border-[#ECEAE4] text-[#141F1E] hover:bg-[#F8F6F1] hover:border-[#0E4D45] hover:text-[#0E4D45] transition-colors whitespace-nowrap cursor-pointer"
               title="Edit Teacher">
@@ -14846,6 +14876,11 @@ function renderAdminTeacherPayrollView() {
           <button onclick="openEditTeacherModal('${t.id}')"
             class="px-3 py-2 text-xs font-semibold rounded-lg bg-white border border-[#ECEAE4] text-[#141F1E] hover:bg-[#F8F6F1] hover:border-[#0E4D45] hover:text-[#0E4D45] transition-colors cursor-pointer">
             Edit
+          </button>
+          <button onclick="previewTeacherPortal('${t.id}')"
+            class="px-3 py-2 text-xs font-semibold rounded-lg bg-white border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#E8EFEE] hover:border-[#0E4D45] transition-colors cursor-pointer"
+            title="View this teacher's portal">
+            Portal
           </button>
         </div>
       </div>
@@ -15587,10 +15622,19 @@ function renderTeacherPortalView() {
           Student PII is locked for privacy. Log Sabaq in 30 seconds using zero-typing pills.
         </p>
       </div>
-      <button onclick="openSabaqLoggerModal()" class="px-5 py-2.5 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors shadow-sm flex items-center gap-2">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-        <span>Open 30-Sec Sabaq Logger</span>
-      </button>
+      <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+        ${AppState.authRole === 'admin' ? `
+        <label class="flex items-center gap-2 text-[11px] font-bold text-[#7A8684]">
+          Preview as
+          <select onchange="setPreviewTeacher(this.value)" class="text-xs bg-[#F8F6F1] border border-[#ECEAE4] rounded-full px-3 py-2 text-[#0E4D45] font-bold outline-none cursor-pointer">
+            ${(AppState.teachers || []).map(t => `<option value="${t.id}" ${currentTeacher && t.id === currentTeacher.id ? 'selected' : ''}>${t.name}</option>`).join('')}
+          </select>
+        </label>` : ''}
+        <button onclick="openSabaqLoggerModal()" class="px-5 py-2.5 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors shadow-sm flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+          <span>Open 30-Sec Sabaq Logger</span>
+        </button>
+      </div>
     </div>
   `;
 

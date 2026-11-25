@@ -93,4 +93,7 @@ collection: a match means Teacher (locked to the Teacher Portal, only
 their assigned students by `teacherId`, falling back to the
 `assignedTeacher` name); no match means Admin (full access + portal
 preview switching). The admin account (`majidyzaiii@gmail.com`) has no
-teacher record, so it always stays Admin.
+teacher record, so it always stays Admin. Admin preview: profile dropdown
+-> Teacher opens the first teacher's portal; the **Preview as** picker at
+the top of the Teacher Portal (or the **Portal** button on any teacher's
+payroll card) switches to any teacher's portal.

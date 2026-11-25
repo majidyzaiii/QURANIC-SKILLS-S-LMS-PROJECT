@@ -4533,7 +4533,6 @@ function renderTeacherScheduleTimeline(teacher) {
               <div class="text-xs font-bold text-[#141F1E] truncate">${display.displayName}</div>
               <div class="text-[11px] text-[#7A8684] mt-0.5">${s.course || 'Quran Class'} • ${slot.duration || '45m'}</div>
               <div class="text-[11px] text-[#7A8684]">${format24hTo12h(slot.time)} student time</div>
-              <button onclick="openViewWeeklyScheduleModal('${s.id}')" class="text-[11px] font-semibold text-[#0E4D45] hover:underline cursor-pointer mt-0.5">View timetable</button>
             </div>
             <div class="shrink-0 flex flex-col items-end gap-1.5">
               ${pill}
@@ -5377,7 +5376,7 @@ function openViewWeeklyScheduleModal(studentId) {
                 </td>
                 <td class="py-3 px-3" data-label="Pakistan Time">
                   ${day.active ? `
-                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#E8EFEE] text-[#0E4D45] font-semibold text-[11px] border border-[#CBD5E1]">
+                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#E8EFEE] text-[#0E4D45] font-semibold text-[11px] border border-[#CBD5E1] whitespace-nowrap">
                       <span class="text-[10px] text-[#7A8684]">PKT</span>
                       <span>${pktTime}</span>
                     </span>

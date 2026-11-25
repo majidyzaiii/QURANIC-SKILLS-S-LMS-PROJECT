@@ -4034,6 +4034,20 @@ const WEEK_DAY_LABELS = {
   sun: { short: 'Sun', full: 'Sunday' }
 };
 
+// UTC offset of an IANA timezone in hours, for today (DST-aware).
+// Returns null when the zone is not a valid IANA name.
+function getIanaOffsetHours(timeZone) {
+  try {
+    const dtf = new Intl.DateTimeFormat('en-US', { timeZone, hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const parts = dtf.formatToParts(new Date());
+    const get = (t) => Number(parts.find(p => p.type === t).value);
+    const asUTC = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour') % 24, get('minute'), get('second'));
+    return Math.round((asUTC - Date.now()) / 60000) / 60;
+  } catch (e) {
+    return null;
+  }
+}
+
 function parseTimezoneOffset(tzStr) {
   if (!tzStr) return 5;
   const match = tzStr.match(/GMT([+-]\d+)/i) || tzStr.match(/UTC([+-]\d+)/i);
@@ -4050,6 +4064,14 @@ function parseTimezoneOffset(tzStr) {
   if (tzStr.includes('AEST')) return 10;
   if (tzStr.includes('PKT')) return 5;
   if (tzStr.includes('AST')) return 3;
+  // IANA zones (Europe/London, America/New_York, Asia/Dubai, ...): compute
+  // the live UTC offset with Intl so DST is handled. Without this, every
+  // IANA-zone student fell through to PKT (offset 5) and the teacher saw
+  // the unconverted time as PKT. Falls back to PKT on failure.
+  if (tzStr.includes('/')) {
+    const iana = getIanaOffsetHours(tzStr.trim());
+    if (iana !== null && Number.isFinite(iana)) return iana;
+  }
   return 5;
 }
 
@@ -4484,19 +4506,19 @@ function renderWeeklyMatrixEditor(containerId, scheduleData, studentTz) {
               </label>
             </div>
 
-            <!-- Single Clean Time Input on Right with Locked PKT Hint / Off Day State -->
+            <!-- Single Clean Time Input on Right with Local-Time Hint / Off Day State -->
             <div class="flex-1 flex items-center justify-end gap-2">
               <div id="${containerId}-time-wrap-${dayKey}" class="relative w-full max-w-[280px] flex items-center ${!day.active ? 'hidden' : ''}">
                 <input 
                   type="text" 
                   id="${containerId}-time-${dayKey}" 
                   value="${day.active ? defaultTime : ''}" 
-                  placeholder="10:00 AM - 10:45 AM (PKT)" 
+                  placeholder="10:00 AM - 10:45 AM" 
                   ${!day.active ? 'disabled' : ''} 
                   class="w-full bg-white border border-[#E5E7EB] rounded-xl pl-3 pr-14 py-1.5 text-xs text-[#141F1E] font-medium outline-none transition-all focus:border-[#0E4D45] focus:ring-1 focus:ring-[#0E4D45]"
                 >
                 <span class="absolute right-2 px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wider bg-[#F8F6F1] border border-[#ECEAE4] text-[#0E4D45] pointer-events-none select-none">
-                  PKT
+                  Local
                 </span>
               </div>
               <span id="${containerId}-off-${dayKey}" class="text-xs text-[#94A3B8] font-medium pr-2 ${day.active ? 'hidden' : ''}">Off Day</span>

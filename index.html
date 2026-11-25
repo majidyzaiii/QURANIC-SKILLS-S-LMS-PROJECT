@@ -1627,6 +1627,16 @@
           <div id="edit-schedule-matrix-container" class="space-y-1.5">
             <!-- Populated dynamically by app.js -->
           </div>
+          <div>
+            <label class="block text-xs font-semibold text-[#141F1E] mb-1">Meeting Link (Zoom / Google Meet) — optional</label>
+            <input
+              type="url"
+              id="edit-schedule-meeting-link"
+              placeholder="https://..."
+              class="w-full bg-white border border-[#E5E7EB] rounded-xl px-3.5 py-2 text-xs text-[#141F1E] outline-none focus:border-[#0E4D45] focus:ring-1 focus:ring-[#0E4D45]"
+            >
+            <p class="text-[11px] text-[#7A8684] mt-1">Is student ki class ke liye alag link — khaali chhodein to teacher ka apna link use hoga.</p>
+          </div>
         </div>
         </div>
 
@@ -2129,6 +2139,17 @@
               class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#141F1E] outline-none focus:border-[#0E4D45] focus:bg-white transition-all"
             >
           </div>
+          <!-- Meeting Link (Zoom / Google Meet) — optional -->
+          <div>
+            <label class="block text-xs font-semibold text-[#141F1E] mb-1">Meeting Link (Zoom / Google Meet)</label>
+            <input
+              type="url"
+              id="add-teacher-meeting-link"
+              placeholder="https://..."
+              class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#141F1E] outline-none focus:border-[#0E4D45] focus:bg-white transition-all"
+            >
+            <p class="text-[11px] text-[#7A8684] mt-1">Teacher ki classes isi link pe hongi.</p>
+          </div>
         </div>
       </div>
 
@@ -2261,6 +2282,17 @@
               placeholder=""
               class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#141F1E] outline-none focus:border-[#0E4D45] focus:bg-white transition-all"
             >
+          </div>
+          <!-- Meeting Link (Zoom / Google Meet) — optional -->
+          <div>
+            <label class="block text-xs font-semibold text-[#141F1E] mb-1">Meeting Link (Zoom / Google Meet)</label>
+            <input
+              type="url"
+              id="edit-teacher-meeting-link"
+              placeholder="https://..."
+              class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#141F1E] outline-none focus:border-[#0E4D45] focus:bg-white transition-all"
+            >
+            <p class="text-[11px] text-[#7A8684] mt-1">Teacher ki classes isi link pe hongi.</p>
           </div>
         </div>
       </div>
@@ -3231,7 +3263,7 @@
   <script src="chart.min.js"></script>
 
   <!-- Application Logic -->
-  <script src="app.js?v=20261125-teacher-signup"></script>
+  <script src="app.js?v=20261125-teacher-schedule"></script>
   <!-- ==========================================================================
        COMMAND PALETTE (Ctrl+K) — shared across all portals
        ========================================================================== -->

@@ -4167,9 +4167,22 @@ function getStudentWeeklySchedule(student) {
     return obj;
   }
 
-  // If already object format
+  // If already object format — normalize day keys first. The baseline seed
+  // students were saved with full day names (monday, tuesday, ...) while
+  // every reader (matrix editor, slots, pill summary) uses short keys
+  // (mon, tue, ...). Without this, those students showed no classes at
+  // all. Normalizing here fixes every consumer at once; the next edit
+  // save writes short keys back to the record.
   if (typeof student.weeklySchedule === 'object') {
-    return student.weeklySchedule;
+    const raw = student.weeklySchedule;
+    const fullToShort = { monday: 'mon', tuesday: 'tue', wednesday: 'wed', thursday: 'thu', friday: 'fri', saturday: 'sat', sunday: 'sun' };
+    const norm = {};
+    WEEK_DAYS.forEach(k => { norm[k] = { active: false, time: '' }; });
+    Object.keys(raw).forEach(k => {
+      const short = fullToShort[String(k).toLowerCase()] || String(k).toLowerCase().slice(0, 3);
+      if (norm[short] !== undefined && raw[k]) norm[short] = raw[k];
+    });
+    return norm;
   }
 
   return fallback;
@@ -4217,6 +4230,160 @@ function getStudentScheduleSlots(student) {
     }
   });
   return slots;
+}
+
+// ---------- Teacher schedule (real classes from real student data) ----------
+// The academy runs on Pakistan time: "today" is the weekday in PKT, and a
+// class belongs to today when its stored day matches today's PKT weekday.
+// Times are stored per student (their local time) and shown both as stored
+// and converted to PKT via getStudentScheduleSlots().
+const PKT_DAY_SHORT = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+
+function getTodayDayShortPKT(date) {
+  try {
+    const label = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Karachi', weekday: 'short' }).format(date || new Date());
+    return String(label).toLowerCase().slice(0, 3);
+  } catch (e) {
+    return PKT_DAY_SHORT[(date || new Date()).getDay()];
+  }
+}
+
+function getTodayDateLabelPKT(date) {
+  try {
+    return new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Karachi', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(date || new Date());
+  } catch (e) {
+    return (date || new Date()).toDateString();
+  }
+}
+
+// A student counts as scheduled only when their record carries an explicit
+// weekly schedule with at least one active day. Students with no schedule
+// at all are NOT given phantom classes (getStudentWeeklySchedule's Mon/Wed/
+// Fri fallback is for display summaries, not for the teacher's real day).
+function hasExplicitSchedule(student) {
+  if (!student || !student.weeklySchedule) return false;
+  if (Array.isArray(student.weeklySchedule)) return student.weeklySchedule.length > 0;
+  if (typeof student.weeklySchedule === 'object') {
+    const sched = getStudentWeeklySchedule(student);
+    return WEEK_DAYS.some(d => sched[d] && sched[d].active);
+  }
+  return false;
+}
+
+function parsePktTimeToMinutes(pktTime) {
+  const m = String(pktTime || '').match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (!m) return 24 * 60; // unparsable times sort last
+  let h = parseInt(m[1], 10);
+  const mins = parseInt(m[2], 10);
+  const ap = m[3].toUpperCase();
+  if (ap === 'PM' && h < 12) h += 12;
+  if (ap === 'AM' && h === 12) h = 0;
+  return h * 60 + mins;
+}
+
+// Today's real classes for one teacher: { student, slot } sorted by PKT time.
+function getTeacherTodayClasses(teacher) {
+  const students = getTeacherStudents(teacher);
+  const todayKey = getTodayDayShortPKT();
+  const dayLabel = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' }[todayKey];
+  const classes = [];
+  students.forEach(s => {
+    if (!hasExplicitSchedule(s)) return;
+    getStudentScheduleSlots(s).forEach(slot => {
+      if (slot.day === dayLabel) classes.push({ student: s, slot });
+    });
+  });
+  classes.sort((a, b) => parsePktTimeToMinutes(a.slot.pktTime) - parsePktTimeToMinutes(b.slot.pktTime));
+  return classes;
+}
+
+// Whole-week classes for one teacher, grouped by day label, for the
+// "This Week" overview under today's schedule.
+function getTeacherWeekClasses(teacher) {
+  const students = getTeacherStudents(teacher);
+  const week = { Mon: [], Tue: [], Wed: [], Thu: [], Fri: [], Sat: [], Sun: [] };
+  students.forEach(s => {
+    if (!hasExplicitSchedule(s)) return;
+    getStudentScheduleSlots(s).forEach(slot => {
+      if (week[slot.day]) week[slot.day].push({ student: s, slot });
+    });
+  });
+  Object.keys(week).forEach(d => week[d].sort((a, b) => parsePktTimeToMinutes(a.slot.pktTime) - parsePktTimeToMinutes(b.slot.pktTime)));
+  return week;
+}
+
+// Meeting link for a class: the student's own link first, then the
+// teacher's link (one room per teacher). Empty string = no link set.
+function getClassJoinLink(student) {
+  const sLink = student && String(student.meetingLink || '').trim();
+  if (sLink) return sLink;
+  const teacher = getCurrentTeacher();
+  const tLink = teacher && String(teacher.meetingLink || '').trim();
+  return tLink || '';
+}
+window.getClassJoinLink = getClassJoinLink;
+
+// Open the real meeting room for a class (Zoom / Google Meet / any link).
+// Without a link, say so plainly instead of faking a join.
+function joinClassRoom(studentId) {
+  const s = (AppState.students || []).find(x => x.id === studentId);
+  const link = getClassJoinLink(s);
+  if (!link) {
+    showToastNotification('No meeting link set for this class — ask the admin to add it in Edit Teacher or Edit Student.', 'error');
+    return;
+  }
+  const url = /^https?:\/\//i.test(link) ? link : 'https://' + link;
+  window.open(url, '_blank', 'noopener');
+}
+window.joinClassRoom = joinClassRoom;
+
+// One real class card (same look as the old demo cards, real data).
+function teacherTodayClassCard(entry) {
+  const s = entry.student;
+  const slot = entry.slot;
+  const display = getStudentDisplay(s, 'teacher');
+  const avatar = s.avatar || getAvatarUrl(display.displayName);
+  const last = s.lastSabaq;
+  const lastLine = last
+    ? `Last Lesson: ${last.surah || last.type || 'Sabaq'}${last.status ? ` (${last.status})` : ''}`
+    : 'No sabaq logged yet';
+  const lastClass = last ? 'text-[#065F46]' : 'text-[#7A8684]';
+  return `
+          <div class="p-4 rounded-2xl border border-[#ECEAE4] bg-[#F8F6F1]/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <img
+                src="${avatar}"
+                alt="${display.displayName}"
+                class="w-10 h-10 rounded-full object-cover shrink-0 border border-[#ECEAE4] shadow-2xs"
+                onerror="this.onerror=null; this.src='${getAvatarUrl(display.displayName)}';"
+              />
+              <div>
+                <h4 class="text-xs font-bold text-[#141F1E]">${display.displayName}</h4>
+                <div class="flex items-center gap-2 mt-0.5">
+                  <span class="text-[11px] text-[#7A8684]">${s.course || 'Quran Class'} • ${slot.duration || '45m'}</span>
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#E8EFEE] text-[#0E4D45] text-[10px] font-medium border border-[#CBD5E1]">
+                    ${slot.time} ⇄ ${slot.pktTime}
+                  </span>
+                </div>
+                <p class="text-[10px] ${lastClass} font-semibold mt-0.5">${lastLine}</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="openViewWeeklyScheduleModal('${s.id}')" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#E8EFEE] transition-colors cursor-pointer shadow-2xs">
+                <svg class="w-3.5 h-3.5 text-[#0E4D45]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+                <span>Timetable</span>
+              </button>
+              <button onclick="joinClassRoom('${s.id}')" class="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold rounded-lg bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors shadow-2xs cursor-pointer">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                <span>Start Class</span>
+              </button>
+              <button onclick="openSabaqLoggerModal('${s.id}')" class="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold rounded-lg bg-[#FFFFFF] border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#F8F6F1] transition-colors cursor-pointer">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                <span>Log Sabaq</span>
+              </button>
+            </div>
+          </div>
+  `;
 }
 
 function getSchedulePillSummary(student) {
@@ -6239,6 +6406,9 @@ function openEditStudentModal(studentId) {
   // Render 7-Day Matrix Editor
   renderWeeklyMatrixEditor('edit-schedule-matrix-container', getStudentWeeklySchedule(student), currentTz);
 
+  const meetingLinkInput = document.getElementById('edit-schedule-meeting-link');
+  if (meetingLinkInput) meetingLinkInput.value = student.meetingLink || '';
+
   modal.classList.add('active');
 }
 
@@ -6388,6 +6558,7 @@ function handleSaveEditSchedule() {
   student.classDuration = (rawDuration === '15' || rawDuration === '45' || rawDuration === '60') ? Number(rawDuration) : 30;
   student.familyId = familyId;
   student.weeklySchedule = newWeeklySchedule;
+  student.meetingLink = document.getElementById('edit-schedule-meeting-link')?.value?.trim() || '';
   student.classSchedule = getSchedulePillSummary(student);
 
   saveToStorage('lms_students', AppState.students);
@@ -7109,6 +7280,7 @@ async function handleSaveNewTeacher() {
   const cnic = document.getElementById('add-teacher-cnic')?.value?.trim();
   const email = document.getElementById('add-teacher-email')?.value?.trim();
   const phone = document.getElementById('add-teacher-phone')?.value?.trim();
+  const meetingLink = document.getElementById('add-teacher-meeting-link')?.value?.trim() || '';
 
   clearAllFormErrors('add-teacher-modal');
 
@@ -7148,6 +7320,7 @@ async function handleSaveNewTeacher() {
     phone: phone,
     whatsapp: phone,
     email: email,
+    meetingLink: meetingLink,
     avatar: avatar
   };
 
@@ -7266,6 +7439,9 @@ function openEditTeacherModal(teacherId) {
   const phoneInput = document.getElementById('edit-teacher-phone');
   if (phoneInput) phoneInput.value = teacher.phone || teacher.whatsapp || '';
 
+  const meetingLinkInput = document.getElementById('edit-teacher-meeting-link');
+  if (meetingLinkInput) meetingLinkInput.value = teacher.meetingLink || '';
+
   clearAllFormErrors('edit-teacher-modal');
   modal.classList.add('active');
 }
@@ -7309,6 +7485,7 @@ async function handleSaveEditTeacher() {
   teacher.fatherName = fatherName;
   teacher.cnic = cnic;
   teacher.email = email;
+  teacher.meetingLink = document.getElementById('edit-teacher-meeting-link')?.value?.trim() || '';
   teacher.phone = phone;
   teacher.whatsapp = phone;
   // Keep avatar initials in step with the name (only for generated
@@ -15772,6 +15949,9 @@ function renderTeacherPortalView() {
   let bodyContent = '';
   // Only this teacher's own students — never the whole directory.
   const myStudents = getTeacherStudents(currentTeacher);
+  const todaysClasses = getTeacherTodayClasses(currentTeacher);
+  const weekClasses = getTeacherWeekClasses(currentTeacher);
+  const unscheduledCount = myStudents.filter(s => !hasExplicitSchedule(s)).length;
 
   if (activeNav === 'teacher-logger') {
     bodyContent = `
@@ -15877,81 +16057,38 @@ function renderTeacherPortalView() {
     bodyContent = `
       <!-- Today's Class Schedule -->
       <div class="ts-card p-6">
-        <h3 class="text-base font-bold text-[#141F1E] mb-4">Today's Class Schedule</h3>
-        
+        <div class="flex items-center justify-between gap-3 mb-4">
+          <h3 class="text-base font-bold text-[#141F1E]">Today's Class Schedule</h3>
+          <span class="text-[11px] font-semibold text-[#7A8684]">${getTodayDateLabelPKT()}</span>
+        </div>
         <div class="space-y-3">
-          <div class="p-4 rounded-2xl border border-[#ECEAE4] bg-[#F8F6F1]/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div class="flex items-center gap-3">
-              <img 
-                src="${AppState.students.find(s => s.id === 'QA-1042')?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop&crop=faces'}" 
-                alt="Ahmed Raza" 
-                class="w-10 h-10 rounded-full object-cover shrink-0 border border-[#ECEAE4] shadow-2xs" 
-                onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=Ahmed+Raza&background=0E4D45&color=fff';" 
-              />
-              <div>
-                <h4 class="text-xs font-bold text-[#141F1E]">QA-1042 • Ahmed Raza (UK)</h4>
-                <div class="flex items-center gap-2 mt-0.5">
-                  <span class="text-[11px] text-[#7A8684]">Advanced Tajweed</span>
-                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#E8EFEE] text-[#0E4D45] text-[10px] font-medium border border-[#CBD5E1]">
-                    10:00 AM BST ⇄ PKT 02:00 PM
-                  </span>
-                </div>
-                <p class="text-[10px] text-[#065F46] font-semibold mt-0.5">Last Lesson: Surah Maryam Ayah 1-22 (Cleared)</p>
-              </div>
-            </div>
-            <div class="flex items-center gap-2">
-              <button onclick="openViewWeeklyScheduleModal('QA-1042')" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#E8EFEE] transition-colors cursor-pointer shadow-2xs">
-                <svg class="w-3.5 h-3.5 text-[#0E4D45]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
-                <span>Timetable</span>
-              </button>
-              <button onclick="simulateJoinRoom('C-201')" class="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold rounded-lg bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors shadow-2xs cursor-pointer">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                <span>Start Class</span>
-              </button>
-              <button onclick="openSabaqLoggerModal('QA-1042')" class="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold rounded-lg bg-[#FFFFFF] border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#F8F6F1] transition-colors cursor-pointer">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                <span>Log Sabaq</span>
-              </button>
-            </div>
-          </div>
-
-          <div class="p-4 rounded-2xl border border-[#ECEAE4] bg-[#F8F6F1]/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div class="flex items-center gap-3">
-              <img 
-                src="${AppState.students.find(s => s.id === 'QA-1008')?.avatar || 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=100&h=100&fit=crop&crop=faces'}" 
-                alt="Tariq Mansoor" 
-                class="w-10 h-10 rounded-full object-cover shrink-0 border border-[#ECEAE4] shadow-2xs" 
-                onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=Tariq+Mansoor&background=0E4D45&color=fff';" 
-              />
-              <div>
-                <h4 class="text-xs font-bold text-[#141F1E]">QA-1008 • Tariq Mansoor (USA)</h4>
-                <div class="flex items-center gap-2 mt-0.5">
-                  <span class="text-[11px] text-[#7A8684]">Hifz Juz 3</span>
-                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#E8EFEE] text-[#0E4D45] text-[10px] font-medium border border-[#CBD5E1]">
-                    11:00 AM CST ⇄ PKT 09:00 PM
-                  </span>
-                </div>
-                <p class="text-[10px] text-[#92400E] font-semibold mt-0.5">Last Lesson: Al-Baqarah 255-260 (Needs Revision)</p>
-              </div>
-            </div>
-            <div class="flex items-center gap-2">
-              <button onclick="openViewWeeklyScheduleModal('QA-1008')" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#E8EFEE] transition-colors cursor-pointer shadow-2xs">
-                <svg class="w-3.5 h-3.5 text-[#0E4D45]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
-                <span>Timetable</span>
-              </button>
-              <button onclick="simulateJoinRoom('C-202')" class="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold rounded-lg bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors shadow-2xs cursor-pointer">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                <span>Start Class</span>
-              </button>
-              <button onclick="openSabaqLoggerModal('QA-1008')" class="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold rounded-lg bg-[#FFFFFF] border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#F8F6F1] transition-colors cursor-pointer">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                <span>Log Sabaq</span>
-              </button>
-            </div>
-          </div>
+          ${todaysClasses.length === 0 ? `
+          <div class="p-6 rounded-2xl border border-dashed border-[#ECEAE4] bg-[#F8F6F1]/50 text-center">
+            <p class="text-xs font-bold text-[#141F1E]">No classes scheduled for today.</p>
+            <p class="text-[11px] text-[#7A8684] mt-1">Classes appear here from each student's weekly schedule — Admin sets it in Edit Student → Weekly Timetable.</p>
+          </div>` : todaysClasses.map(c => teacherTodayClassCard(c)).join('')}
         </div>
       </div>
+      <!-- This Week -->
+      <div class="ts-card p-6">
+        <h3 class="text-base font-bold text-[#141F1E] mb-4">This Week</h3>
+        <div class="space-y-2">
+          ${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => {
+            const dayClasses = weekClasses[d] || [];
+            return `
+          <div class="flex items-start gap-3 py-2 border-b border-[#F8F6F1] last:border-0">
+            <span class="w-10 shrink-0 text-[11px] font-bold text-[#0E4D45] pt-0.5">${d}</span>
+            ${dayClasses.length === 0 ? `<span class="text-[11px] text-[#B9BDBA]">—</span>` : dayClasses.map(c => {
+              const disp = getStudentDisplay(c.student, 'teacher');
+              return `<span class="text-[11px] text-[#141F1E] font-semibold">${disp.displayName} <span class="text-[#7A8684] font-medium">${c.slot.time} (${c.slot.duration || '45m'})</span></span>`;
+            }).join('<span class="text-[#B9BDBA]">•</span>')}
+          </div>`;
+          }).join('')}
+        </div>
+        ${unscheduledCount > 0 ? `<p class="text-[11px] text-[#7A8684] mt-3">${unscheduledCount} student${unscheduledCount === 1 ? '' : 's'} have no weekly schedule set — Admin can set it in Edit Student → Weekly Timetable.</p>` : ''}
+      </div>
     `;
+
   }
 
   return `

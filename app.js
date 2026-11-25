@@ -3693,13 +3693,13 @@ function handleRouteHash() {
     const validNavs = [
       'dashboard', 'fee-matrix', 'students', 'teachers', 'trials-notices',
       'manager-radar', 'manager-trials', 'manager-substitute', 'manager-students',
-      'teacher-schedule', 'teacher-logger', 'teacher-my-students',
+      'teacher-schedule', 'teacher-logger', 'teacher-my-students', 'teacher-salary',
       'student-portal', 'student-ledger', 'student-receipts', 'library'
     ];
     if (validNavs.includes(raw)) {
       if (['manager-radar', 'manager-trials', 'manager-substitute', 'manager-students'].includes(raw)) {
         AppState.currentRole = 'manager';
-      } else if (['teacher-schedule', 'teacher-logger', 'teacher-my-students'].includes(raw)) {
+      } else if (['teacher-schedule', 'teacher-logger', 'teacher-my-students', 'teacher-salary'].includes(raw)) {
         AppState.currentRole = 'teacher';
       } else if (['student-portal', 'student-ledger', 'student-receipts'].includes(raw)) {
         AppState.currentRole = 'student';
@@ -4405,6 +4405,100 @@ function teacherTodayClassCard(entry) {
               </button>
             </div>
           </div>
+  `;
+}
+
+// ---------- Teacher salary tab (read-only, own pay only) ----------
+// Month key "2026-11" -> "Nov 2026" (MONTHS_LIST uses short names).
+function formatPayrollMonthKey(monthKey) {
+  const m = String(monthKey || '').match(/^(\d{4})-(\d{2})$/);
+  if (!m) return String(monthKey || '');
+  const idx = parseInt(m[2], 10) - 1;
+  return `${MONTHS_LIST[idx] || m[2]} ${m[1]}`;
+}
+
+// Past-month payroll history for one teacher (frozen snapshots only),
+// newest first, excluding the current month shown above.
+function getTeacherPayrollHistory(teacher) {
+  const currentKey = getPayrollMonthKey();
+  const months = (teacher && teacher.payrollMonths) || {};
+  return Object.keys(months)
+    .filter(k => k !== currentKey)
+    .sort().reverse()
+    .map(k => {
+      const r = months[k] || {};
+      const net = (r.status === 'Paid' && typeof r.paidAmount === 'number')
+        ? r.paidAmount
+        : (Number(r.basicExtra) || 0) + (Number(r.allowance) || 0) + (Number(r.bonus) || 0) - (Number(r.deduction) || 0);
+      return { monthKey: k, status: r.status || 'Pending', net, paidAt: r.paidAt || null };
+    });
+}
+
+// Read-only salary view for the signed-in teacher: the exact numbers the
+// admin sees (computeTeacherPayroll), no edit controls, no other teacher.
+function renderTeacherSalaryTab(teacher) {
+  const calc = computeTeacherPayroll(teacher);
+  const settings = getPayrollSettings();
+  const monthLabel = `${MONTHS_LIST[CURRENT_MONTH_INDEX]} ${CURRENT_YEAR}`;
+  const history = getTeacherPayrollHistory(teacher);
+  const paidDate = calc.paidAt ? new Date(calc.paidAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+  return `
+      <!-- My Salary (read-only) -->
+      <div class="ts-card p-6">
+        <div class="flex items-center justify-between gap-3 mb-1">
+          <h3 class="text-base font-bold text-[#141F1E]">Meri Salary</h3>
+          <span class="ts-badge ${calc.isPaid ? 'ts-badge-paid' : 'ts-badge-partial'}">${calc.isPaid ? 'Paid' : 'Pending'}</span>
+        </div>
+        <p class="text-xs text-[#7A8684] mb-5">${monthLabel} • ${calc.activeCount} Active Student${calc.activeCount === 1 ? '' : 's'} • ${formatPayrollUnits(calc.units)} units</p>
+        <p class="text-[11px] font-semibold text-[#7A8684]">Net Payable • ${monthLabel}</p>
+        <p class="text-3xl font-bold text-[#0E4D45] tabular-nums">${formatPKR(calc.netPayable)}</p>
+        ${calc.isPaid ? `<p class="text-[11px] text-[#065F46] font-semibold mt-1">Paid on ${paidDate} — ${formatPKR(calc.paidAmount)}</p>` : `<p class="text-[11px] text-[#7A8684] mt-1">Admin ne abhi is mahine ki salary pay nahi ki.</p>`}
+        <div class="mt-5 space-y-2.5">
+          <div class="flex items-center justify-between py-2 border-b border-[#F8F6F1]">
+            <span class="text-xs font-semibold text-[#334E4B]">Basic Salary</span>
+            <span class="text-xs font-bold text-[#141F1E] tabular-nums">${formatPKR(settings.basicSalary)}</span>
+          </div>
+          <div class="flex items-center justify-between py-2 border-b border-[#F8F6F1]">
+            <span class="text-xs font-semibold text-[#334E4B]">Extra Pay <span class="text-[#7A8684] font-medium">(${formatPayrollUnits(calc.extraUnits)} extra units × ${formatPKR(settings.extraRate)})</span></span>
+            <span class="text-xs font-bold text-[#141F1E] tabular-nums">${formatPKR(calc.extraPay)}</span>
+          </div>
+          <div class="flex items-center justify-between py-2 border-b border-[#F8F6F1]">
+            <span class="text-xs font-semibold text-[#334E4B]">Basic + Extra</span>
+            <span class="text-xs font-bold text-[#141F1E] tabular-nums">${formatPKR(calc.basicExtra)}</span>
+          </div>
+          <div class="flex items-center justify-between py-2 border-b border-[#F8F6F1]">
+            <span class="text-xs font-semibold text-[#334E4B]">Allowance</span>
+            <span class="text-xs font-bold text-[#141F1E] tabular-nums">${formatPKR(calc.allowance)}</span>
+          </div>
+          <div class="flex items-center justify-between py-2 border-b border-[#F8F6F1]">
+            <span class="text-xs font-semibold text-[#334E4B]">Bonus</span>
+            <span class="text-xs font-bold text-[#141F1E] tabular-nums">${formatPKR(calc.bonus)}</span>
+          </div>
+          <div class="flex items-center justify-between py-2 border-b border-[#F8F6F1]">
+            <span class="text-xs font-semibold text-[#334E4B]">Deduction</span>
+            <span class="text-xs font-bold text-[#DC2626] tabular-nums">− ${formatPKR(calc.deduction)}</span>
+          </div>
+          <div class="flex items-center justify-between py-2">
+            <span class="text-xs font-bold text-[#141F1E]">Net Payable</span>
+            <span class="text-sm font-bold text-[#0E4D45] tabular-nums">${formatPKR(calc.netPayable)}</span>
+          </div>
+        </div>
+        <p class="text-[11px] text-[#7A8684] mt-4">Units: har active student ki class duration ke hisaab se — 15 min = 0.5, 30 min = 1, 45 min = 1.5, 60 min = 2 units. Basic ${formatPayrollUnits(settings.basicUnits)} units tak hai; us se zyada par extra pay milti hai.</p>
+      </div>
+      ${history.length === 0 ? '' : `
+      <div class="ts-card p-6">
+        <h3 class="text-base font-bold text-[#141F1E] mb-4">Pichle Mahine</h3>
+        <div class="space-y-2">
+          ${history.map(h => `
+          <div class="flex items-center justify-between py-2 border-b border-[#F8F6F1] last:border-0">
+            <span class="text-xs font-bold text-[#141F1E]">${formatPayrollMonthKey(h.monthKey)}</span>
+            <span class="flex items-center gap-2">
+              <span class="ts-badge ${h.status === 'Paid' ? 'ts-badge-paid' : 'ts-badge-partial'}">${h.status}</span>
+              <span class="text-xs font-bold text-[#0E4D45] tabular-nums">${formatPKR(h.net)}</span>
+            </span>
+          </div>`).join('')}
+        </div>
+      </div>`}
   `;
 }
 
@@ -9110,6 +9204,7 @@ function renderNavLinks() {
       { id: 'teacher-schedule', label: "Today's Schedule", shortLabel: 'Schedule', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
       { id: 'teacher-logger', label: '30-Sec Sabaq Logger', shortLabel: 'Logger', icon: 'M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z' },
       { id: 'teacher-my-students', label: 'My Students', shortLabel: 'Students', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
+      { id: 'teacher-salary', label: 'My Salary', shortLabel: 'Salary', icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z' },
       { id: 'library', label: 'Library', shortLabel: 'Library', icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253' }
     ];
   } else if (AppState.currentRole === 'student') {
@@ -16074,6 +16169,8 @@ function renderTeacherPortalView() {
         </div>
       </div>
     `;
+  } else if (activeNav === 'teacher-salary') {
+    bodyContent = renderTeacherSalaryTab(currentTeacher);
   } else {
     // Default: teacher-schedule
     bodyContent = `

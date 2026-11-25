@@ -24,8 +24,8 @@ UI-only and the data is still open in test mode.
 1. Open https://console.firebase.google.com/project/quranic-skills-lms/firestore/rules
 2. Delete everything in the rules editor and paste the whole contents of
    the file `firestore.rules` from the GitHub repo.
-3. Click **Publish**. From now on, only a signed-in admin can read or
-   change any data (students, teachers, fees, settings, sessions).
+3. Click **Publish**. From now on, only a signed-in user (admin or teacher)
+   can read or change any data (students, teachers, fees, settings, sessions).
 
 ## Step 4 — Sign in on the site
 1. Open https://quranic-skills-s-lms-project.vercel.app/
@@ -53,5 +53,44 @@ UI-only and the data is still open in test mode.
   site. Only the account created in step 2 can sign in.
 - There is NO SMS OTP and NO 6-digit email code: the email verification LINK
   is the second factor Majid chose. Password reset also goes by email link.
-- Teacher / Manager / Parent logins are NOT part of this change — the login
-  gate covers the whole app for the admin only, for now.
+- Manager / Parent logins are NOT built yet — only Admin and Teacher sign in
+  so far. Teachers land straight in the Teacher Portal (see step 5).
+- Firestore rules still allow ANY signed-in user to read/write — the teacher
+  separation is enforced in the app for now (a teacher only ever sees their
+  own students). Data-level rules per role are the next hardening step.
+
+## Step 5 — Teacher accounts (one per teacher)
+
+Do this for EACH teacher, one at a time. Start with one teacher to test.
+
+1. **Create the Firebase user** (same as step 2, but for the teacher):
+   In Firebase Console go to **Authentication -> Users -> Add user**.
+   Email: the teacher's REAL email (their own inbox — the password-reset
+   link goes there). Password: choose a strong password and give it to the
+   teacher privately (never in a group chat). Click **Add user**.
+   Console-created users are auto-verified — no verification link needed.
+2. **Link that email to the teacher's record in the LMS** (Admin login):
+   Teacher Payroll -> teacher card -> **Edit** -> **Gmail / Email Address**
+   field mein wahi email likhein jo step 1 mein dali thi -> **Save**.
+   NOTE: the teacher records currently hold placeholder emails
+   (`abdulbasit@quranicskills.com`, `maryam.khan@quranicskills.com`,
+   `saad.ahmed@quranicskills.com`) — these are NOT real inboxes. Replace
+   each one with the teacher's real email before they sign in.
+3. **Teacher signs in** on the same login page with that email/password.
+   They land straight in the **Teacher Portal** and see ONLY the students
+   assigned to them (My Students, Sabaq Logger list, Sabaq history).
+   They cannot switch to Admin / Manager / Parent — the portal switcher
+   shows only Teacher, and role-switch shortcuts are blocked.
+4. **If a teacher sees the Admin dashboard instead**: the email in their
+   teacher record does not match the Firebase user email exactly
+   (spelling / capital letters). Fix it in Edit Teacher and ask them to
+   sign in again — no code change needed.
+
+## How the app decides the role
+
+On every render the app looks up the signed-in email in the `teachers`
+collection: a match means Teacher (locked to the Teacher Portal, only
+their assigned students by `teacherId`, falling back to the
+`assignedTeacher` name); no match means Admin (full access + portal
+preview switching). The admin account (`majidyzaiii@gmail.com`) has no
+teacher record, so it always stays Admin.

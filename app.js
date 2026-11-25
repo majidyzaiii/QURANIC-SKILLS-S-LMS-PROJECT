@@ -187,7 +187,7 @@ function authScreenShell(innerHtml) {
     <div class="w-full max-w-md">
       <div class="text-center mb-6">
         <div class="text-xl font-bold text-[#0E4D45] tracking-tight">Quranic Skills Academy</div>
-        <div class="text-[11px] font-bold text-[#7A8684] tracking-widest mt-1">ADMIN PORTAL</div>
+        <div class="text-[11px] font-bold text-[#7A8684] tracking-widest mt-1">ACADEMY PORTAL</div>
       </div>
       <div class="bg-white rounded-2xl border border-[#E8E6DF] shadow-sm px-6 py-7 sm:px-8">
         ${innerHtml}
@@ -228,7 +228,7 @@ function renderAuthScreen() {
   } else if (AuthState.view === 'reset') {
     inner = `
       <h1 class="text-base font-bold text-[#141F1E]">Reset password</h1>
-      <p class="text-xs text-[#7A8684] mt-2 leading-relaxed">Enter your admin email and we will send a password-reset link.</p>
+      <p class="text-xs text-[#7A8684] mt-2 leading-relaxed">Enter your email and we will send a password-reset link.</p>
       ${AuthState.resetSentTo ? `<div class="mt-4 px-3.5 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-[11px] font-semibold text-emerald-800">Reset link sent to ${AuthState.resetSentTo} — check your inbox (and Spam).</div>` : ''}
       <div id="auth-reset-error" class="hidden mt-4 px-3.5 py-2.5 rounded-xl bg-red-50 border border-red-200 text-[11px] font-semibold text-[#B91C1C]"></div>
       <label class="block text-[11px] font-bold text-[#141F1E] mt-5 mb-1.5">Email</label>
@@ -243,8 +243,8 @@ function renderAuthScreen() {
         ? '<div class="px-3.5 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] font-semibold text-amber-800 mb-4">Your session lost access. Please sign in again.</div>'
         : '');
     inner = `
-      <h1 class="text-base font-bold text-[#141F1E]">Admin Sign In</h1>
-      <p class="text-xs text-[#7A8684] mt-1.5 leading-relaxed text-center">Enter your credentials to access the academy dashboard</p>
+      <h1 class="text-base font-bold text-[#141F1E]">Sign In</h1>
+      <p class="text-xs text-[#7A8684] mt-1.5 leading-relaxed text-center">Enter your credentials to access your portal</p>
       ${notice}
       <div id="auth-error" class="${AuthState.authError ? '' : 'hidden'} mt-4 px-3.5 py-2.5 rounded-xl bg-red-50 border border-red-200 text-[11px] font-semibold text-[#B91C1C]">${AuthState.authError || ''}</div>
       <label class="block text-[11px] font-bold text-[#141F1E] mt-5 mb-1.5">Email</label>
@@ -405,6 +405,10 @@ function handleAuthStateChange(user) {
     AuthState.resetSentTo = '';
     AuthState.booted = false;
     AuthState.verificationEmailSent = false;
+    AppState.authRole = 'admin';
+    AppState.currentTeacher = null;
+    AppState.currentRole = 'admin';
+    AppState.activeNav = 'dashboard';
     stopSessionHeartbeat();
     document.body.classList.add('auth-locked');
     renderAuthScreen();
@@ -2676,6 +2680,8 @@ window.getMonthFeeCollected = getMonthFeeCollected;
 // App State
 const AppState = {
   currentRole: 'admin', // 'admin' | 'manager' | 'teacher' | 'student'
+  authRole: 'admin', // the signed-in account's real role: 'admin' or 'teacher' (set by resolveAuthRole; preview switching never changes it)
+  currentTeacher: null, // the signed-in teacher's record (teacher sessions only)
   activeNav: 'dashboard', // 'dashboard' | 'fee-matrix' | 'students' | 'teachers' | 'trials-notices' | 'library'
   selectedFilter: 'all', // 'all' | 'paid' | 'partial' | 'advance' | 'defaulter'
   groupByFamily: true,
@@ -8428,7 +8434,8 @@ function renderProfileDropdownContent() {
   if (!menu) return;
 
   const current = PORTAL_ROLES[AppState.currentRole] || PORTAL_ROLES.admin;
-  const rolesList = ['admin', 'manager', 'teacher', 'student'];
+  // Teachers see only their own portal in the switcher — the other portals are the admin's preview.
+  const rolesList = AppState.authRole === 'teacher' ? ['teacher'] : ['admin', 'manager', 'teacher', 'student'];
 
   const itemsHtml = rolesList.map(rKey => {
     const r = PORTAL_ROLES[rKey];
@@ -8514,7 +8521,64 @@ function renderProfileDropdownContent() {
   `;
 }
 
+// Teacher login (Majid 2026-11-25): the signed-in account's real role.
+// A teacher account is a Firebase user whose email matches a teacher
+// record's email (set in Edit Teacher). Admin preview switching never
+// changes authRole — only the displayed currentRole, and only for admins.
+function resolveAuthRole() {
+  const prevRole = AppState.currentRole;
+  const prevAuth = AppState.authRole;
+  const email = ((AuthState.user && AuthState.user.email) || '').trim().toLowerCase();
+  const teacher = email ? (AppState.teachers || []).find(t => (t.email || '').trim().toLowerCase() === email) : null;
+  if (teacher) {
+    AppState.authRole = 'teacher';
+    AppState.currentTeacher = teacher;
+    if (AppState.currentRole !== 'teacher') {
+      AppState.currentRole = 'teacher';
+      AppState.activeNav = 'teacher-schedule';
+    }
+  } else {
+    AppState.authRole = 'admin';
+    AppState.currentTeacher = null;
+  }
+  if ((AppState.currentRole !== prevRole || AppState.authRole !== prevAuth) && typeof updateRolePillUI === 'function') updateRolePillUI();
+  return AppState.authRole;
+}
+
+// The signed-in teacher, or — for the admin's portal preview — the first teacher.
+function getCurrentTeacher() {
+  return AppState.currentTeacher || (AppState.teachers || [])[0] || null;
+}
+
+// Only the students assigned to this teacher (by teacherId, falling back
+// to the assignedTeacher name for older records).
+function getTeacherStudents(teacher) {
+  const t = teacher || getCurrentTeacher();
+  if (!t) return [];
+  const tid = String(t.id || '').trim();
+  const tname = String(t.name || '').trim();
+  return (AppState.students || []).filter(s => {
+    if (tid && String(s.teacherId || '').trim() === tid) return true;
+    if (tname && String(s.assignedTeacher || '').trim() === tname) return true;
+    return false;
+  });
+}
+
+// Header initials from a teacher's real name ('Qari Abdul Basit' -> 'AB').
+function teacherInitials(name) {
+  const words = String(name || '').trim().split(/\s+/).filter(w => !/^(qari|ustadh|ustadha|maulana|mufti|hafiz|qariya)$/i.test(w));
+  const pick = words.slice(-2);
+  if (pick.length >= 2) return (pick[0][0] + pick[1][0]).toUpperCase();
+  if (pick.length === 1) return pick[0].slice(0, 2).toUpperCase();
+  return 'T';
+}
+
 function switchRole(role) {
+  // Teachers stay in their own portal — role switching is the admin's preview tool.
+  if (AppState.authRole === 'teacher' && role !== 'teacher') {
+    showToastNotification('Teacher account sirf Teacher Portal dekh sakta hai.', 'error');
+    return;
+  }
   AppState.currentRole = role;
   
   // Set default nav for each role
@@ -8529,23 +8593,28 @@ function switchRole(role) {
 
 function updateRolePillUI() {
   const current = PORTAL_ROLES[AppState.currentRole] || PORTAL_ROLES.admin;
+  // A signed-in teacher sees their own real name, not the demo persona.
+  const signedTeacher = (AppState.authRole === 'teacher' && AppState.currentTeacher) ? AppState.currentTeacher : null;
+  const displayName = signedTeacher ? signedTeacher.name : current.name;
+  const displayShort = signedTeacher ? signedTeacher.name : current.shortName;
+  const displayInitials = signedTeacher ? teacherInitials(signedTeacher.name) : current.initials;
 
   const avatarEl = document.getElementById('top-user-avatar');
   const userNameEl = document.getElementById('top-user-name');
   const userRoleEl = document.getElementById('top-user-role');
   const heroGreetingEl = document.getElementById('hero-user-name');
-  
-  if (avatarEl) avatarEl.textContent = current.initials;
-  if (userNameEl) userNameEl.textContent = current.name;
+
+  if (avatarEl) avatarEl.textContent = displayInitials;
+  if (userNameEl) userNameEl.textContent = displayName;
   if (userRoleEl) userRoleEl.textContent = current.title;
-  if (heroGreetingEl) heroGreetingEl.textContent = current.shortName;
+  if (heroGreetingEl) heroGreetingEl.textContent = displayShort;
 
   // Sync mobile drawer profile
   const drawerAvatar = document.getElementById('drawer-user-avatar');
   const drawerName = document.getElementById('drawer-user-name');
   const drawerRole = document.getElementById('drawer-user-role');
-  if (drawerAvatar) drawerAvatar.textContent = current.initials;
-  if (drawerName) drawerName.textContent = current.name;
+  if (drawerAvatar) drawerAvatar.textContent = displayInitials;
+  if (drawerName) drawerName.textContent = displayName;
   if (drawerRole) drawerRole.textContent = current.title;
 
   // Admin profile photo (admin role only) — initials otherwise.
@@ -8622,6 +8691,7 @@ window.addEventListener('resize', () => {
 function renderApp() {
   // Login gate: never render the portal for a signed-out / unverified admin.
   if (!isPortalUnlocked()) return;
+  resolveAuthRole(); // Derive the signed-in account's real role (teacher vs admin) before rendering.
   const container = document.getElementById('main-dynamic-content');
   if (!container) return;
 
@@ -15486,7 +15556,7 @@ function renderManagerPortalView() {
 // ==========================================
 
 function renderTeacherPortalView() {
-  const currentTeacher = AppState.teachers[0] || null;
+  const currentTeacher = getCurrentTeacher();
   const activeNav = AppState.activeNav || 'teacher-schedule';
   if (activeNav === 'library') return renderQuranLibraryView();
 
@@ -15525,6 +15595,8 @@ function renderTeacherPortalView() {
   `;
 
   let bodyContent = '';
+  // Only this teacher's own students — never the whole directory.
+  const myStudents = getTeacherStudents(currentTeacher);
 
   if (activeNav === 'teacher-logger') {
     bodyContent = `
@@ -15542,7 +15614,7 @@ function renderTeacherPortalView() {
 
         <div class="space-y-4">
           <h4 class="text-xs font-bold text-[#7A8684] uppercase tracking-wider">Recent Sabaq Submissions</h4>
-          ${AppState.students.filter(s => s.lastSabaq).map(s => {
+          ${myStudents.filter(s => s.lastSabaq).map(s => {
             const display = getStudentDisplay(s, 'teacher');
             return `
               <div class="p-4 rounded-2xl bg-[#F8F6F1] border border-[#ECEAE4] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -15569,6 +15641,7 @@ function renderTeacherPortalView() {
               </div>
             `;
           }).join('')}
+          ${myStudents.filter(s => s.lastSabaq).length === 0 ? `<p class="text-xs text-[#7A8684]">Abhi koi Sabaq log nahi hai — upar "Log New Lesson" se pehla Sabaq log karein.</p>` : ''}
         </div>
       </div>
     `;
@@ -15581,8 +15654,9 @@ function renderTeacherPortalView() {
             <h3 class="text-base font-bold text-[#141F1E]">My Assigned Students (Privacy Protected)</h3>
             <p class="text-xs text-[#7A8684]">Student contact PII is locked by Academy Admin policy</p>
           </div>
-          <span class="ts-badge ts-badge-paid">${AppState.students.length} ${AppState.students.length === 1 ? 'Student' : 'Students'} Assigned</span>
+          <span class="ts-badge ts-badge-paid">${myStudents.length} ${myStudents.length === 1 ? 'Student' : 'Students'} Assigned</span>
         </div>
+        ${myStudents.length === 0 ? `<p class="text-xs text-[#7A8684] mt-3">Abhi koi student assign nahi hai — Admin se apne students assign karwayein.</p>` : ''}
 
         <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse min-w-0 md:min-w-[700px] responsive-table-cards">
@@ -15596,7 +15670,7 @@ function renderTeacherPortalView() {
               </tr>
             </thead>
             <tbody class="divide-y divide-[#ECEAE4] text-xs">
-              ${AppState.students.map(s => {
+              ${myStudents.map(s => {
                 const display = getStudentDisplay(s, 'teacher');
                 return `
                   <tr class="hover:bg-[#F8F6F1]/50 transition-colors">
@@ -16767,11 +16841,15 @@ function openSabaqLoggerModal(preselectedStudentId = 'QA-1042') {
 
   const select = document.getElementById('logger-student-select');
   if (select) {
-    select.innerHTML = AppState.students.map(s => `
+    // Teachers log Sabaq only for their own students; admins see everyone.
+    const visibleStudents = AppState.authRole === 'teacher' ? getTeacherStudents() : AppState.students;
+    select.innerHTML = visibleStudents.length
+      ? visibleStudents.map(s => `
       <option value="${s.id}" ${s.id === preselectedStudentId ? 'selected' : ''}>
         ${s.id} • ${s.firstName} (${s.country})
       </option>
-    `).join('');
+    `).join('')
+      : '<option value="">No students assigned yet</option>';
   }
 
   modal.classList.add('active');
@@ -16794,6 +16872,10 @@ function handleSaveSabaq() {
   const student = AppState.students.find(s => s.id === studentId);
   if (!student) {
     setFormFieldError('logger-student-select', 'Selected student record could not be found.');
+    return;
+  }
+  if (AppState.authRole === 'teacher' && !getTeacherStudents().some(s => s.id === student.id)) {
+    setFormFieldError('logger-student-select', 'Ye student aap ko assign nahi hai.');
     return;
   }
   const surah = document.getElementById('logger-surah-input')?.value || 'Surah Al-Mulk (Ayah 1-15)';

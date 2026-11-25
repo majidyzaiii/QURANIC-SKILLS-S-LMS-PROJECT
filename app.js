@@ -10777,9 +10777,6 @@ function renderAdminFeeMatrixView() {
 
         <!-- Primary Action Button: Receive Fee (Full-width on mobile, auto-width on desktop) -->
         <div class="w-full sm:w-auto mt-2 sm:mt-0 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-          <button onclick="openCurrencySettingsModal()" class="w-full sm:w-auto px-4 py-2.5 sm:py-2 text-xs font-bold rounded-full bg-white border border-[#0E4D45] text-[#0E4D45] hover:bg-[#E8EFEE] transition-colors shadow-sm flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap" title="Exchange rates — all amounts shown in PKR">
-            <span>Currency Settings</span>
-          </button>
           <button onclick="openReceiveFeeModal()" class="w-full sm:w-auto px-5 py-2.5 sm:py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors shadow-sm flex items-center justify-center gap-1.5 cursor-pointer">
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
             <span>Receive Fee</span>
@@ -16135,19 +16132,16 @@ function openSettingsModal() {
         const el = document.getElementById('setting-fee-due-day');
         if (el) el.value = AppState.settings.dueDay;
       }
-      if (AppState.settings.gracePeriod) {
-        const el = document.getElementById('setting-fee-grace');
-        if (el) el.value = AppState.settings.gracePeriod;
+      if (AppState.settings.whatsappNumber) {
+        const el = document.getElementById('setting-academy-whatsapp');
+        if (el) el.value = AppState.settings.whatsappNumber;
       }
-      if (AppState.settings.feeAllocationMethod) {
-        const el = document.getElementById('setting-fee-fifo');
-        if (el) el.value = AppState.settings.feeAllocationMethod;
-      }
-      if (AppState.settings.lateFeePercentage !== undefined) {
-        const el = document.getElementById('setting-late-fee');
-        if (el) el.value = AppState.settings.lateFeePercentage;
+      if (AppState.settings.supportEmail) {
+        const el = document.getElementById('setting-academy-email');
+        if (el) el.value = AppState.settings.supportEmail;
       }
     }
+    renderSettingsCurrencySummary();
     modal.classList.add('active');
   }
 }
@@ -16157,30 +16151,40 @@ function closeSettingsModal() {
   if (modal) modal.classList.remove('active');
 }
 
+// Live currency summary inside the Academy Settings modal (same values as
+// the Dashboard rates bar — never hardcoded).
+function renderSettingsCurrencySummary() {
+  const el = document.getElementById('settings-currency-summary');
+  if (!el) return;
+  const cs = getCurrencySettings();
+  const usd = getCurrencyRate('USD');
+  const gbp = getCurrencyRate('GBP');
+  const parts = [];
+  if (usd) parts.push('1 USD = Rs. ' + Number(usd).toFixed(2));
+  if (gbp) parts.push('1 GBP = Rs. ' + Number(gbp).toFixed(2));
+  parts.push('Rates ' + currencyMonthLabel(cs.month));
+  el.textContent = parts.join(' \u2022 ');
+}
+window.renderSettingsCurrencySummary = renderSettingsCurrencySummary;
+
 function saveAcademySettings() {
   const academyName = document.getElementById('setting-academy-name')?.value?.trim() || 'Quranic Skills Academy';
+  const whatsappNumber = document.getElementById('setting-academy-whatsapp')?.value?.trim() || '';
   const timezone = document.getElementById('setting-academy-timezone')?.value || 'GMT+5 (PKT)';
+  const supportEmail = document.getElementById('setting-academy-email')?.value?.trim() || '';
   const dueDay = document.getElementById('setting-fee-due-day')?.value || '5';
-  const gracePeriod = document.getElementById('setting-fee-grace')?.value || '5';
-  const feeAllocationMethod = document.getElementById('setting-fee-fifo')?.value || 'enabled';
-  const lateFeePercentage = Number(document.getElementById('setting-late-fee')?.value) || 5;
-  const whatsappAlerts = document.getElementById('setting-toggle-whatsapp')?.checked ?? true;
   const contactLock = document.getElementById('setting-toggle-pii')?.checked ?? true;
   const classDuration = document.getElementById('setting-class-duration')?.value || '30';
-  const sabaqWindow = document.getElementById('setting-sabaq-window')?.value || '2';
 
   AppState.settings = {
     ...AppState.settings,
     academyName,
+    whatsappNumber,
     timezone,
+    supportEmail,
     dueDay,
-    gracePeriod,
-    feeAllocationMethod,
-    lateFeePercentage,
-    whatsappAlerts,
     contactLock,
-    classDuration,
-    sabaqWindow
+    classDuration
   };
   saveCache('lms_settings', AppState.settings);
   if (typeof db !== 'undefined' && db && db.collection) {
@@ -16190,8 +16194,40 @@ function saveAcademySettings() {
   }
 
   closeSettingsModal();
-  showToastNotification(`\u2713 Settings Saved: ${academyName} (Due: ${dueDay}th, Late Fee: ${lateFeePercentage}%)`);
+  showToastNotification(`\u2713 Settings Saved: ${academyName} (Due: ${dueDay}th)`);
 }
+
+// Full academy backup: one JSON file with students, teachers, the payment
+// ledger and all settings. Read-only export — there is no import.
+function downloadFullBackup() {
+  const students = Array.isArray(AppState.students) ? AppState.students : [];
+  const teachers = Array.isArray(AppState.teachers) ? AppState.teachers : [];
+  const ledger = (typeof PAYMENT_LEDGER !== 'undefined' && Array.isArray(PAYMENT_LEDGER)) ? PAYMENT_LEDGER : [];
+  const backup = {
+    app: 'Quranic Skills LMS',
+    exportedAt: new Date().toISOString(),
+    academyName: (AppState.settings && AppState.settings.academyName) || 'Quranic Skills Academy',
+    academySettings: AppState.settings || {},
+    payrollSettings: getPayrollSettings(),
+    currencySettings: getCurrencySettings(),
+    students: students,
+    teachers: teachers,
+    paymentLedger: ledger
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const d = new Date();
+  const stamp = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'quranic-skills-backup-' + stamp + '.json';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  showToastNotification('\u2713 Full backup downloaded (' + students.length + ' students, ' + teachers.length + ' teachers, ' + ledger.length + ' payments)');
+}
+window.downloadFullBackup = downloadFullBackup;
 
 function getNotificationIconHtml(type) {
   if (type === 'fee') {

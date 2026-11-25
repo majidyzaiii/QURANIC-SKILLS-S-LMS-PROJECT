@@ -2388,7 +2388,7 @@
           </div>
           <div>
             <h3 class="text-base font-bold text-[#141F1E]">Academy Configuration & System Settings</h3>
-            <p class="text-xs text-[#7A8684] mt-0.5">Global policies, fee rules, privacy controls & WhatsApp notifications.</p>
+            <p class="text-xs text-[#7A8684] mt-0.5">Academy profile, fee rules, privacy controls, currency, payroll & backup.</p>
           </div>
         </div>
         <button onclick="closeSettingsModal()" class="modal-close"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
@@ -2441,37 +2441,6 @@
                 <option value="15">15th of Month</option>
               </select>
             </div>
-            <div>
-              <label class="block font-semibold text-[#141F1E] mb-1">Defaulter Grace Period</label>
-              <select id="setting-fee-grace" class="w-full bg-white border border-[#ECEAE4] rounded-xl px-3 py-2 text-[#141F1E] font-medium outline-none">
-                <option value="3">3 Days</option>
-                <option value="5" selected>5 Days Grace</option>
-                <option value="7">7 Days Grace</option>
-                <option value="10">10 Days Grace</option>
-              </select>
-            </div>
-            <div>
-              <label class="block font-semibold text-[#141F1E] mb-1">Fee Allocation Method</label>
-              <select id="setting-fee-fifo" class="w-full bg-white border border-[#ECEAE4] rounded-xl px-3 py-2 text-[#0E4D45] font-bold outline-none">
-                <option value="enabled" selected>Oldest due first (auto)</option>
-                <option value="manual">Manual Allocation</option>
-              </select>
-              <p class="text-[11px] text-[#7A8684] mt-1">Pays the oldest unpaid month first.</p>
-            </div>
-            <div>
-              <label class="block font-semibold text-[#141F1E] mb-1">Late Fee (%)</label>
-              <input type="number" id="setting-fee-late" min="0" max="100" step="0.5" value="5" class="w-full bg-white border border-[#ECEAE4] rounded-xl px-3 py-2 text-[#141F1E] font-medium outline-none focus:border-[#0E4D45]">
-            </div>
-          </div>
-          <div class="flex items-center justify-between p-2 bg-white rounded-xl border border-[#ECEAE4]">
-            <div>
-              <div class="font-bold text-[#141F1E]">Automated WhatsApp Fee Alert System</div>
-              <div class="text-[10.5px] text-[#7A8684]">Enable 1-click pre-filled WhatsApp fee reminders for Defaulter/Partial students</div>
-            </div>
-            <label class="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" id="setting-toggle-whatsapp" checked class="sr-only peer">
-              <div class="w-10 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#0E4D45]"></div>
-            </label>
           </div>
         </div>
 
@@ -2509,14 +2478,33 @@
                 <option value="60">60 Minutes (Full Hour)</option>
               </select>
             </div>
-            <div>
-              <label class="block font-semibold text-[#141F1E] mb-1" title="Daily lesson (Sabaq) log">Mandatory lesson log window</label>
-              <select id="setting-sabaq-window" class="w-full bg-white border border-[#ECEAE4] rounded-xl px-3 py-2 text-[#141F1E] font-medium outline-none">
-                <option value="1">Within 1 Hour of Class</option>
-                <option value="2" selected>Within 2 Hours of Class</option>
-                <option value="24">Same Day Midnight</option>
-              </select>
-            </div>
+          </div>
+        </div>
+
+        <!-- SECTION 5: CURRENCY SETTINGS -->
+        <div class="modal-section space-y-2">
+          <h4 class="modal-section-title">5. Currency Settings</h4>
+          <div class="p-3 bg-white rounded-xl border border-[#ECEAE4] space-y-2">
+            <p id="settings-currency-summary" class="text-[11px] text-[#7A8684]">Loading rates…</p>
+            <button type="button" onclick="closeSettingsModal(); openCurrencySettingsModal()" class="px-4 py-2 text-xs font-bold rounded-full bg-white border border-[#0E4D45] text-[#0E4D45] hover:bg-[#E8EFEE] transition-colors cursor-pointer">Open Currency Settings</button>
+          </div>
+        </div>
+
+        <!-- SECTION 6: PAYROLL SETTINGS -->
+        <div class="modal-section space-y-2">
+          <h4 class="modal-section-title">6. Payroll Settings</h4>
+          <div class="p-3 bg-white rounded-xl border border-[#ECEAE4] space-y-2">
+            <p class="text-[11px] text-[#7A8684]">Basic salary, student units, allowance and deduction for Teacher Payroll (PKR).</p>
+            <button type="button" onclick="closeSettingsModal(); openPayrollSettingsModal()" class="px-4 py-2 text-xs font-bold rounded-full bg-white border border-[#0E4D45] text-[#0E4D45] hover:bg-[#E8EFEE] transition-colors cursor-pointer">Open Payroll Settings</button>
+          </div>
+        </div>
+
+        <!-- SECTION 7: DATA BACKUP -->
+        <div class="modal-section space-y-2">
+          <h4 class="modal-section-title">7. Data Backup</h4>
+          <div class="p-3 bg-white rounded-xl border border-[#ECEAE4] space-y-2">
+            <p class="text-[11px] text-[#7A8684]">Download a full copy of academy data — students, teachers, payment ledger and all settings — as one JSON file.</p>
+            <button type="button" onclick="downloadFullBackup()" class="px-4 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors shadow-sm cursor-pointer">Download Full Backup</button>
           </div>
         </div>
 
@@ -3162,7 +3150,7 @@
   <script src="chart.min.js"></script>
 
   <!-- Application Logic -->
-  <script src="app.js?v=20261125-two-fixes"></script>
+  <script src="app.js?v=20261125-settings"></script>
   <!-- ==========================================================================
        COMMAND PALETTE (Ctrl+K) — shared across all portals
        ========================================================================== -->

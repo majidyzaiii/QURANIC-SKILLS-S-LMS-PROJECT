@@ -16541,35 +16541,33 @@ function renderTeacherPortalView() {
           </button>
         </div>
 
-        <div class="space-y-4">
-          <h4 class="text-xs font-bold text-[#7A8684] uppercase tracking-wider">Recent Sabaq Submissions</h4>
+        <div>
+          <h4 class="text-xs font-bold text-[#7A8684] uppercase tracking-wider mb-1">Recent Sabaq Submissions</h4>
+          <div class="divide-y divide-[#ECEAE4]">
           ${myStudents.filter(s => s.lastSabaq).map(s => {
             const display = getStudentDisplay(s, 'teacher');
             return `
-              <div class="p-4 rounded-2xl bg-[#F8F6F1] border border-[#ECEAE4] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                  <div class="flex items-center gap-2 mb-1">
+              <div class="flex items-center gap-3 py-3">
+                <img src="${s.avatar || s.photo || getAvatarUrl(display.displayName)}" alt="${display.displayName}" class="w-9 h-9 rounded-full object-cover shrink-0 border border-[#ECEAE4] shadow-2xs" onerror="this.onerror=null; this.src='${getAvatarUrl(display.displayName)}';">
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap">
                     <span class="font-bold text-xs text-[#141F1E]">${display.displayName}</span>
-                    <span class="ts-badge ts-badge-paid">${s.lastSabaq.date}</span>
                     <span class="ts-badge ts-badge-sage">${s.lastSabaq.type}</span>
+                    <span class="text-[11px] text-[#7A8684]">${s.lastSabaq.date}</span>
                   </div>
-                  <p class="text-xs font-semibold text-[#0E4D45]">${s.lastSabaq.surah}</p>
-                  <p class="text-[11px] text-[#334E4B] mt-1 italic">"${s.lastSabaq.teacherNote}"</p>
-                  <div class="flex flex-wrap items-center gap-1.5 mt-2">
-                    ${(s.lastSabaq.tags || []).map(tag => `
-                      <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#E8EFEE] text-[#0E4D45] font-semibold">${tag}</span>
-                    `).join('')}
-                  </div>
+                  <p class="text-xs font-semibold text-[#0E4D45] truncate mt-0.5">${s.lastSabaq.surah}${(s.lastSabaq.tags || []).length ? ` <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#E8EFEE] text-[#0E4D45] font-semibold ml-1">${(s.lastSabaq.tags || []).join(', ')}</span>` : ''}</p>
+                  ${s.lastSabaq.teacherNote ? `<p class="text-[11px] text-[#334E4B] italic truncate mt-0.5">"${s.lastSabaq.teacherNote}"</p>` : ''}
                 </div>
-                <div class="text-right flex flex-col items-end gap-2">
-                  <div class="text-amber-500 font-bold text-sm">${renderStars(s.lastSabaq.rating || 5)}</div>
-                  <button onclick="openSabaqLoggerModal('${s.id}')" class="px-3 py-1.5 text-xs font-bold rounded-full bg-[#FFFFFF] border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#0E4D45] hover:text-white transition-all shadow-sm">
+                <div class="shrink-0 flex flex-col items-end gap-1.5">
+                  ${renderStars(s.lastSabaq.rating || 5)}
+                  <button onclick="openSabaqLoggerModal('${s.id}')" class="px-3 py-1 text-[11px] font-bold rounded-full bg-[#FFFFFF] border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#0E4D45] hover:text-white transition-all shadow-sm whitespace-nowrap">
                     Re-log Lesson
                   </button>
                 </div>
               </div>
             `;
           }).join('')}
+          </div>
           ${myStudents.filter(s => s.lastSabaq).length === 0 ? `<p class="text-xs text-[#7A8684]">No Sabaq logged yet — log the first Sabaq from "Log New Lesson" above.</p>` : ''}
         </div>
       </div>

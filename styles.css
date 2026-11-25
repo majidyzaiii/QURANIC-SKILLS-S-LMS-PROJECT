@@ -959,9 +959,13 @@ body:not(.auth-locked) #auth-screen-root { display: none; }
 }
 
 /* The shell's text heading is removed: the logo IS the name. The small
-   "ADMIN PORTAL" eyebrow stays, left-aligned over the form column. */
-#auth-screen-root .max-w-md > .text-center.mb-6 { text-align: left; }
+   "ADMIN PORTAL" eyebrow stays, CENTRED over the form column (Majid: the
+   heading block belongs in the middle, like the reference). */
+#auth-screen-root .max-w-md > .text-center.mb-6 { text-align: center; }
 #auth-screen-root .max-w-md > .text-center.mb-6 > div:first-child { display: none; }
+/* Auth headings (Admin Sign In / Reset password / Verify your email) are
+   centred too; labels and fields stay left-aligned. */
+#auth-screen-root .max-w-md > .bg-white > h1 { text-align: center; }
 
 /* Flatten the white card: the form sits directly on the cream panel. */
 #auth-screen-root .max-w-md > .bg-white {
@@ -971,9 +975,6 @@ body:not(.auth-locked) #auth-screen-root { display: none; }
   box-shadow: none;
   padding: 0;
 }
-
-/* Footer note under the form, aligned with the form column. */
-#auth-screen-root .max-w-md > p.text-center { text-align: left; }
 
 @media (min-width: 768px) {
   #auth-screen-root > div.min-h-screen { flex-direction: row; }

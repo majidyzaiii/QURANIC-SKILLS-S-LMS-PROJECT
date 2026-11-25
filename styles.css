@@ -1015,7 +1015,10 @@ body:not(.auth-locked) #auth-screen-root { display: none; }
     flex: 1 1 50%;
     min-height: 100vh;
     margin-right: -1px;
-    background-size: 480px auto, cover, cover, cover;
+    /* Logo caps at 480px on wide screens but shrinks with the panel below
+       ~960px viewports, so it never clips at the panel edges (at 796px wide
+       the 480px logo was cut off on both sides). */
+    background-size: min(480px, 72%) auto, cover, cover, cover;
   }
   #auth-screen-root > div.min-h-screen > .w-full.max-w-md {
     flex: 1 1 50%;
@@ -1049,7 +1052,7 @@ body:not(.auth-locked) #auth-screen-root { display: none; }
       linear-gradient(to bottom, rgba(249, 248, 245, 0) 82%, rgba(249, 248, 245, 1) 100%),
       linear-gradient(rgba(14, 77, 69, 0.82), rgba(14, 77, 69, 0.90)),
       url("https://images.pexels.com/photos/10571111/pexels-photo-10571111.jpeg?auto=compress&cs=tinysrgb&w=1200");
-    background-size: 300px auto, cover, cover, cover;
+    background-size: min(300px, 78%) auto, cover, cover, cover;
   }
   #auth-screen-root > div.min-h-screen > .w-full.max-w-md {
     width: 100%;

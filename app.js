@@ -151,6 +151,124 @@ function getAuth() {
   } catch (e) { return null; }
 }
 
+// ==========================================
+// 0C. TEACHER LOGIN CREATION (from the Admin panel)
+// Majid creates teacher logins WITHOUT opening Firebase Console:
+//   - Add Teacher -> Save: the record goes to Firestore AND the Auth
+//     account is created here, in the same save (only when the cloud
+//     save worked — see the note in handleSaveNewTeacher).
+//   - Edit Teacher -> "Create login account": for teachers added before
+//     this feature, or whose account was never created.
+// HOW: a SECOND Firebase app instance ('teacher-signup') with its own
+// Auth object. createUserWithEmailAndPassword on the secondary instance
+// creates the account WITHOUT signing the admin out (the primary Auth
+// object keeps Majid's session). The account is created with a random
+// password nobody sees or stores; the teacher sets their own password
+// via Forgot password after clicking the verification link. Passwords
+// are never written to Firestore, localStorage, or logs.
+// ==========================================
+
+let secondaryAuthInstance = null;
+
+function getSecondaryAuth() {
+  if (typeof firebase === 'undefined' || typeof firebase.initializeApp !== 'function') return null;
+  try {
+    if (!secondaryAuthInstance) {
+      const existing = (firebase.apps || []).find(a => a.name === 'teacher-signup');
+      secondaryAuthInstance = existing ? existing.auth() : firebase.initializeApp(firebaseConfig, 'teacher-signup').auth();
+    }
+    return secondaryAuthInstance;
+  } catch (e) {
+    console.warn('[Teacher Login] Secondary auth unavailable:', e.message);
+    return null;
+  }
+}
+
+function generateRandomPassword() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*';
+  let out = '';
+  try {
+    const bytes = new Uint8Array(24);
+    window.crypto.getRandomValues(bytes);
+    for (const b of bytes) out += chars[b % chars.length];
+  } catch (e) {
+    for (let i = 0; i < 24; i++) out += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return out;
+}
+
+// Create the Firebase Auth login for one teacher email. Returns
+// { status: 'created' | 'exists' | 'failed', message }.
+async function createTeacherLogin(email) {
+  const clean = String(email || '').trim();
+  if (!clean) return { status: 'failed', message: 'Email missing hai.' };
+  const secondaryAuth = getSecondaryAuth();
+  if (!secondaryAuth) return { status: 'failed', message: 'Firebase connected nahi hai.' };
+  try {
+    const cred = await secondaryAuth.createUserWithEmailAndPassword(clean, generateRandomPassword());
+    try { await cred.user.sendEmailVerification(); } catch (e) { /* resend happens at first login */ }
+    await secondaryAuth.signOut();
+    return { status: 'created', message: 'Login account ban gaya — verification email bhej di gayi.' };
+  } catch (e) {
+    if (e && e.code === 'auth/email-already-in-use') return { status: 'exists', message: 'Is email ka login pehle se bana hua hai.' };
+    if (e && e.code === 'auth/invalid-email') return { status: 'failed', message: 'Email ka format ghalat hai.' };
+    if (e && e.code === 'auth/operation-not-allowed') return { status: 'failed', message: 'Email/Password sign-in Firebase Console mein band hai.' };
+    return { status: 'failed', message: (e && e.message) || 'Login account nahi ban saka.' };
+  }
+}
+window.createTeacherLogin = createTeacherLogin;
+
+// Edit Teacher modal: does this email already have a login account?
+// fetchSignInMethodsForEmail returns ['password'] when an account exists.
+async function checkTeacherLoginStatus(email) {
+  const statusEl = document.getElementById('edit-teacher-login-status');
+  const btnEl = document.getElementById('edit-teacher-login-btn');
+  const clean = String(email || '').trim();
+  if (!statusEl) return;
+  if (!clean || !clean.includes('@')) {
+    statusEl.textContent = 'Login status dekhne ke liye sahi email likhein.';
+    if (btnEl) btnEl.classList.add('hidden');
+    return;
+  }
+  const auth = getAuth();
+  if (!auth || typeof auth.fetchSignInMethodsForEmail !== 'function') {
+    statusEl.textContent = 'Login status abhi check nahi ho saka.';
+    if (btnEl) btnEl.classList.add('hidden');
+    return;
+  }
+  try {
+    const methods = await auth.fetchSignInMethodsForEmail(clean);
+    if (methods && methods.length > 0) {
+      statusEl.textContent = 'Login account bana hua hai — teacher Forgot password se apna password set kar sakta hai.';
+      if (btnEl) btnEl.classList.add('hidden');
+    } else {
+      statusEl.textContent = 'Is email ka login account abhi nahi bana.';
+      if (btnEl) btnEl.classList.remove('hidden');
+    }
+  } catch (e) {
+    statusEl.textContent = 'Login status check nahi ho saka — dobara koshish karein.';
+    if (btnEl) btnEl.classList.add('hidden');
+  }
+}
+window.checkTeacherLoginStatus = checkTeacherLoginStatus;
+
+async function createLoginForEditTeacher() {
+  const email = document.getElementById('edit-teacher-email')?.value?.trim();
+  const btnEl = document.getElementById('edit-teacher-login-btn');
+  if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Ban raha hai...'; }
+  const result = await createTeacherLogin(email);
+  if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Create login account'; }
+  if (result.status === 'created') {
+    showToastNotification(`✓ Login account ban gaya — verification email ${email} pe bhej di gayi.`);
+  } else if (result.status === 'exists') {
+    showToastNotification('Is email ka login pehle se bana hua hai.');
+  } else {
+    showToastNotification(`Login account nahi ban saka: ${result.message}`, 'error');
+  }
+  await checkTeacherLoginStatus(email);
+}
+window.createLoginForEditTeacher = createLoginForEditTeacher;
+
 function isPortalUnlocked() {
   return AuthState.status === 'authenticated';
 }
@@ -7049,10 +7167,22 @@ async function handleSaveNewTeacher() {
   clearFormDraft('new_teacher');
   closeAddTeacherModal();
   renderApp();
-  if (cloudSaved) {
-    showToastNotification(`✓ Teacher ${name} (${teacherId}) successfully added to Academy faculty!`);
-  } else {
+  if (!cloudSaved) {
     showToastNotification(`Could not save to cloud: ${firestoreSyncError || 'Firestore is not available'} — saved on this device only.`, 'error');
+    return;
+  }
+  // Cloud save worked, so the record exists for the teacher's first login:
+  // create their login account now (secondary Auth instance — Majid stays
+  // signed in). Never create the login when the cloud save failed: on the
+  // teacher's device the record would be missing and the email would not
+  // match any teacher, so the app would wrongly treat them as admin.
+  const login = await createTeacherLogin(email);
+  if (login.status === 'created') {
+    showToastNotification(`✓ Teacher ${name} (${teacherId}) added! Login account bhi ban gaya — verification email ${email} pe bhej di gayi. Teacher Forgot password se apna password banaye.`);
+  } else if (login.status === 'exists') {
+    showToastNotification(`✓ Teacher ${name} (${teacherId}) added! Is email ka login pehle se bana hua hai.`);
+  } else {
+    showToastNotification(`Teacher ${name} add ho gaya, lekin login account nahi ban saka: ${login.message} Edit Teacher se dobara koshish karein.`, 'error');
   }
 }
 
@@ -7131,6 +7261,7 @@ function openEditTeacherModal(teacherId) {
 
   const emailInput = document.getElementById('edit-teacher-email');
   if (emailInput) emailInput.value = teacher.email || '';
+  checkTeacherLoginStatus(teacher.email || '');
 
   const phoneInput = document.getElementById('edit-teacher-phone');
   if (phoneInput) phoneInput.value = teacher.phone || teacher.whatsapp || '';

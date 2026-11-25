@@ -61,30 +61,46 @@ UI-only and the data is still open in test mode.
 
 ## Step 5 — Teacher accounts (one per teacher)
 
-Do this for EACH teacher, one at a time. Start with one teacher to test.
+No Firebase Console trip is needed any more — the Admin panel creates the
+login account itself. Do this for EACH teacher, one at a time. Start with
+one teacher to test.
 
-1. **Create the Firebase user** (same as step 2, but for the teacher):
-   In Firebase Console go to **Authentication -> Users -> Add user**.
-   Email: the teacher's REAL email (their own inbox — the password-reset
-   link goes there). Password: choose a strong password and give it to the
-   teacher privately (never in a group chat). Click **Add user**.
-   Console-created users are auto-verified — no verification link needed.
-2. **Link that email to the teacher's record in the LMS** (Admin login):
-   Teacher Payroll -> teacher card -> **Edit** -> **Gmail / Email Address**
-   field mein wahi email likhein jo step 1 mein dali thi -> **Save**.
+1. **Add the teacher in the LMS** (Admin login) with the teacher's REAL
+   email (their own inbox — the verification and password-reset links go
+   there): Teacher Payroll -> **Add Teacher** -> **Gmail / Email Address**
+   field -> **Save**. Saving creates the teacher's record in Firestore
+   AND creates their Firebase login account in the same step (a secondary
+   Auth instance, so the admin stays signed in). The account is created
+   with a random password nobody sees or stores, and a verification
+   email is sent to the teacher. For a teacher added earlier, open
+   Teacher Payroll -> teacher card -> **Edit** -> **Teacher login** section
+   -> **Create login account**.
    NOTE: the teacher records currently hold placeholder emails
    (`abdulbasit@quranicskills.com`, `maryam.khan@quranicskills.com`,
    `saad.ahmed@quranicskills.com`) — these are NOT real inboxes. Replace
    each one with the teacher's real email before they sign in.
-3. **Teacher signs in** on the same login page with that email/password.
+2. **Teacher verifies their email**: they open the verification email and
+   click the link.
+3. **Teacher sets their own password**: on the LMS login page they click
+   **Forgot password?**, type the same email, and click the reset link
+   in the email that arrives — then set their own password. Nobody else
+   (not even the admin) ever knows it.
+4. **Teacher signs in** on the same login page with that email/password.
    They land straight in the **Teacher Portal** and see ONLY the students
    assigned to them (My Students, Sabaq Logger list, Sabaq history).
    They cannot switch to Admin / Manager / Parent — the portal switcher
    shows only Teacher, and role-switch shortcuts are blocked.
-4. **If a teacher sees the Admin dashboard instead**: the email in their
+5. **If a teacher sees the Admin dashboard instead**: the email in their
    teacher record does not match the Firebase user email exactly
    (spelling / capital letters). Fix it in Edit Teacher and ask them to
    sign in again — no code change needed.
+6. **If the login account was not created** (e.g. the cloud save failed
+   when the teacher was added): Edit Teacher -> **Teacher login** section
+   shows the status and a **Create login account** button — click it.
+   (Fallback, only if the panel route ever fails: create the user by
+   hand in Firebase Console -> Authentication -> Users -> Add user with
+   the same email; console-created users are auto-verified, so the
+   teacher can skip step 2 and go straight to step 3.)
 
 ## How the app decides the role
 

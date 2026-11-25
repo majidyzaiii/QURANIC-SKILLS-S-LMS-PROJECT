@@ -2116,6 +2116,7 @@
               placeholder="" 
               class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#141F1E] outline-none focus:border-[#0E4D45] focus:bg-white transition-all"
             >
+            <p class="text-[11px] text-[#7A8684] mt-1">Is email se teacher ka login account bhi banega — teacher Forgot password se khud apna password set karega.</p>
           </div>
 
           <!-- WhatsApp Number -->
@@ -2236,8 +2237,19 @@
               type="email"
               id="edit-teacher-email"
               placeholder=""
+              onchange="checkTeacherLoginStatus(this.value)"
               class="w-full bg-[#F8F6F1] border border-[#ECEAE4] rounded-lg h-10 px-3 text-xs text-[#141F1E] outline-none focus:border-[#0E4D45] focus:bg-white transition-all"
             >
+          </div>
+
+          <!-- Teacher login -->
+          <div class="sm:col-span-2 rounded-xl bg-[#F8F6F1] border border-[#ECEAE4] px-3 py-2.5">
+            <p class="text-[11px] font-bold text-[#141F1E]">Teacher login</p>
+            <p id="edit-teacher-login-status" class="text-[11px] text-[#7A8684] mt-0.5">Checking...</p>
+            <button type="button" id="edit-teacher-login-btn" onclick="createLoginForEditTeacher()"
+              class="hidden mt-2 px-4 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors cursor-pointer">
+              Create login account
+            </button>
           </div>
 
           <!-- WhatsApp Number -->
@@ -3219,7 +3231,7 @@
   <script src="chart.min.js"></script>
 
   <!-- Application Logic -->
-  <script src="app.js?v=20261125-teacher-preview"></script>
+  <script src="app.js?v=20261125-teacher-signup"></script>
   <!-- ==========================================================================
        COMMAND PALETTE (Ctrl+K) — shared across all portals
        ========================================================================== -->

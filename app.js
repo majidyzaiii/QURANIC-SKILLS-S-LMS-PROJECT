@@ -4377,53 +4377,198 @@ function joinClassRoom(studentId) {
 }
 window.joinClassRoom = joinClassRoom;
 
-// One real class card (same look as the old demo cards, real data).
-function teacherTodayClassCard(entry) {
-  const s = entry.student;
-  const slot = entry.slot;
-  const display = getStudentDisplay(s, 'teacher');
-  const avatar = s.avatar || getAvatarUrl(display.displayName);
-  const last = s.lastSabaq;
-  const lastLine = last
-    ? `Last Lesson: ${last.surah || last.type || 'Sabaq'}${last.status ? ` (${last.status})` : ''}`
-    : 'No sabaq logged yet';
-  const lastClass = last ? 'text-[#065F46]' : 'text-[#7A8684]';
-  return `
-          <div class="p-4 rounded-2xl border border-[#ECEAE4] bg-[#F8F6F1]/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div class="flex items-center gap-3">
-              <img
-                src="${avatar}"
-                alt="${display.displayName}"
-                class="w-10 h-10 rounded-full object-cover shrink-0 border border-[#ECEAE4] shadow-2xs"
-                onerror="this.onerror=null; this.src='${getAvatarUrl(display.displayName)}';"
-              />
-              <div>
-                <h4 class="text-xs font-bold text-[#141F1E]">${display.displayName}</h4>
-                <div class="flex items-center gap-2 mt-0.5">
-                  <span class="text-[11px] text-[#7A8684]">${s.course || 'Quran Class'} • ${slot.duration || '45m'}</span>
-                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#E8EFEE] text-[#0E4D45] text-[10px] font-medium border border-[#CBD5E1]">
-                    ${slot.time} ⇄ ${slot.pktTime}
-                  </span>
-                </div>
-                <p class="text-[10px] ${lastClass} font-semibold mt-0.5">${lastLine}</p>
-              </div>
+// ---------- Teacher schedule — Tours-style timeline ----------
+// The academy runs on PKT: "today" is the PKT date, and the strip shows
+// Mon–Sun of the current PKT week with each day's real class count.
+function getPktTodayIso() {
+  try {
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Karachi', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+    const g = (t) => parts.find((p) => p.type === t).value;
+    return `${g('year')}-${g('month')}-${g('day')}`;
+  } catch (e) {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+}
+
+function getNowPktMinutes() {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Karachi', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(new Date());
+    const g = (t) => Number(parts.find((p) => p.type === t).value);
+    return (g('hour') % 24) * 60 + g('minute');
+  } catch (e) {
+    const d = new Date();
+    return d.getHours() * 60 + d.getMinutes();
+  }
+}
+
+// Mon–Sun of the current PKT week: [{ iso, label, dateNum, monthShort, year }]
+function getPktWeekDays() {
+  const todayIso = getPktTodayIso();
+  const [y, m, d] = todayIso.split('-').map(Number);
+  const base = new Date(Date.UTC(y, m - 1, d));
+  const dow = (base.getUTCDay() + 6) % 7; // Mon = 0
+  const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const dt = new Date(base.getTime() + (i - dow) * 86400000);
+    days.push({
+      iso: dt.toISOString().split('T')[0],
+      label: labels[i],
+      dateNum: dt.getUTCDate(),
+      monthShort: dt.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' }),
+      year: dt.getUTCFullYear()
+    });
+  }
+  return days;
+}
+
+function formatMinutesTo12h(mins) {
+  const h24 = Math.floor(mins / 60) % 24;
+  const mm = String(mins % 60).padStart(2, '0');
+  const ap = h24 >= 12 ? 'PM' : 'AM';
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+  return `${h12}:${mm} ${ap}`;
+}
+
+function parseDurationToMinutes(dur) {
+  const n = parseInt(String(dur || '45m'), 10);
+  return isNaN(n) ? 45 : n;
+}
+
+// "18:00" (24h) -> "6:00 PM"
+function format24hTo12h(t) {
+  const m = String(t || '').match(/(\d{1,2}):(\d{2})/);
+  if (!m) return t || '';
+  return formatMinutesTo12h(parseInt(m[1], 10) * 60 + parseInt(m[2], 10));
+}
+
+// Class status for one day, from real data only:
+// Completed = a real Sabaq (not the enrollment placeholder) was logged that day;
+// Not logged = that day's class time has passed with no Sabaq logged;
+// Scheduled = the class is still ahead (or on a future day).
+function getTimelineClassStatus(student, dayIso, startMinutes, nowMinutes, isToday) {
+  const last = student && student.lastSabaq;
+  if (last && last.date === dayIso && last.type !== 'Initial Enrollment') return 'Completed';
+  const todayIso = getPktTodayIso();
+  if (isToday && startMinutes <= nowMinutes) return 'Not logged';
+  if (!isToday && dayIso < todayIso) return 'Not logged';
+  return 'Scheduled';
+}
+
+function setScheduleDay(iso) {
+  AppState.selectedScheduleDay = iso;
+  renderApp();
+}
+window.setScheduleDay = setScheduleDay;
+
+// The whole Schedule tab: week date strip + timeline for the selected day.
+function renderTeacherScheduleTimeline(teacher) {
+  const weekClasses = getTeacherWeekClasses(teacher);
+  const todayIso = getPktTodayIso();
+  const days = getPktWeekDays();
+  const selIso = AppState.selectedScheduleDay || todayIso;
+  const selDay = days.find((d) => d.iso === selIso) || days.find((d) => d.iso === todayIso) || days[0];
+  const classes = (weekClasses[selDay.label] || []).slice();
+  const isToday = selDay.iso === todayIso;
+  const nowMinutes = getNowPktMinutes();
+  const unscheduledCount = getTeacherStudents(teacher).filter((s) => !hasExplicitSchedule(s)).length;
+  const selLabel = new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(selDay.iso + 'T12:00:00Z'));
+
+  const strip = days.map((d) => {
+    const count = (weekClasses[d.label] || []).length;
+    const sel = d.iso === selDay.iso;
+    const isTodayCell = d.iso === todayIso;
+    return `
+      <button onclick="setScheduleDay('${d.iso}')" class="flex-1 min-w-0 rounded-2xl px-1 py-2.5 cursor-pointer transition-colors ${sel ? 'bg-[#0E4D45] text-white' : 'bg-white border border-[#ECEAE4] text-[#141F1E] hover:bg-[#F8F6F1]'}">
+        <div class="text-[11px] font-semibold ${sel ? 'text-white/75' : 'text-[#7A8684]'}">${d.label}</div>
+        <div class="text-base font-extrabold leading-tight">${d.dateNum}</div>
+        <div class="text-[10px] font-semibold ${sel ? 'text-white/75' : 'text-[#7A8684]'}">${count === 0 ? 'No class' : count + (count === 1 ? ' class' : ' classes')}</div>
+        ${isTodayCell ? `<div class="flex justify-center mt-1"><span class="w-1 h-1 rounded-full ${sel ? 'bg-white' : 'bg-[#0E4D45]'}"></span></div>` : ''}
+      </button>`;
+  }).join('');
+
+  // Timeline rows, with a dashed "Open slot" row for gaps of 60+ minutes.
+  const rows = [];
+  classes.forEach((c, i) => {
+    const start = parsePktTimeToMinutes(c.slot.pktTime);
+    if (i > 0) {
+      const prev = classes[i - 1];
+      const prevEnd = parsePktTimeToMinutes(prev.slot.pktTime) + parseDurationToMinutes(prev.slot.duration);
+      if (start - prevEnd >= 60) rows.push({ open: true, from: prevEnd, to: start });
+    }
+    rows.push({ cls: c, start });
+  });
+
+  const timeline = classes.length === 0 ? `
+    <div class="p-6 rounded-2xl border border-dashed border-[#ECEAE4] bg-[#F8F6F1]/50 text-center">
+      <p class="text-xs font-bold text-[#141F1E]">No classes on ${selLabel}.</p>
+      <p class="text-[11px] text-[#7A8684] mt-1">Classes appear here from each student's weekly schedule — Admin sets it in Edit Student → Weekly Timetable.</p>
+    </div>` : rows.map((r) => {
+    if (r.open) {
+      return `
+      <div class="flex gap-3 mb-3">
+        <div class="w-[52px] shrink-0 text-right pt-3.5">
+          <div class="text-xs font-bold text-[#7A8684]">${formatMinutesTo12h(r.from)}</div>
+        </div>
+        <div class="flex-1 border-[1.5px] border-dashed border-[#C9C4B8] rounded-2xl px-3.5 py-3 text-[11px] font-semibold text-[#7A8684]">+ Open slot — free until ${formatMinutesTo12h(r.to)}</div>
+      </div>`;
+    }
+    const c = r.cls;
+    const s = c.student;
+    const slot = c.slot;
+    const display = getStudentDisplay(s, 'teacher');
+    const avatar = s.avatar || getAvatarUrl(display.displayName);
+    const pktLabel = String(slot.pktTime || '').replace(/\s*PKT\s*$/i, '');
+    const status = getTimelineClassStatus(s, selDay.iso, r.start, nowMinutes, isToday);
+    const pill = status === 'Completed'
+      ? `<span class="inline-flex items-center px-2.5 py-1 rounded-full bg-[#0E4D45] text-white text-[10px] font-bold">Completed</span>`
+      : status === 'Not logged'
+      ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#FEF3C7] text-[#92400E] text-[10px] font-bold"><span class="w-1.5 h-1.5 rounded-full bg-[#D97706]"></span>Not logged</span>`
+      : `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#EFEDE6] text-[#141F1E] text-[10px] font-bold"><span class="w-1.5 h-1.5 rounded-full bg-[#65A30D]"></span>Scheduled</span>`;
+    const action = isToday && status === 'Scheduled'
+      ? `<button onclick="joinClassRoom('${s.id}')" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-[11px] font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors cursor-pointer">Start Class</button>`
+      : (status === 'Completed' || status === 'Not logged')
+      ? `<button onclick="openSabaqLoggerModal('${s.id}')" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-[11px] font-bold rounded-full bg-white border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#F8F6F1] transition-colors cursor-pointer">Log Sabaq</button>`
+      : '';
+    return `
+      <div class="flex gap-3 mb-3">
+        <div class="w-[52px] shrink-0 text-right pt-3">
+          <div class="text-xs font-bold text-[#141F1E]">${pktLabel}</div>
+          <div class="text-[10px] text-[#7A8684] mt-0.5">${format24hTo12h(slot.time)} student</div>
+        </div>
+        <div class="flex-1 min-w-0 bg-white border border-[#ECEAE4] rounded-2xl p-3">
+          <div class="flex items-start gap-2.5">
+            <img src="${avatar}" alt="${display.displayName}" class="w-10 h-10 rounded-full object-cover shrink-0 border border-[#ECEAE4]" onerror="this.onerror=null; this.src='${getAvatarUrl(display.displayName)}';" />
+            <div class="flex-1 min-w-0">
+              <div class="text-xs font-bold text-[#141F1E] truncate">${display.displayName}</div>
+              <div class="text-[11px] text-[#7A8684] mt-0.5">${s.course || 'Quran Class'} • ${slot.duration || '45m'}</div>
+              <button onclick="openViewWeeklyScheduleModal('${s.id}')" class="text-[11px] font-semibold text-[#0E4D45] hover:underline cursor-pointer mt-0.5">View timetable</button>
             </div>
-            <div class="flex items-center gap-2">
-              <button onclick="openViewWeeklyScheduleModal('${s.id}')" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#E8EFEE] transition-colors cursor-pointer shadow-2xs">
-                <svg class="w-3.5 h-3.5 text-[#0E4D45]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
-                <span>Timetable</span>
-              </button>
-              <button onclick="joinClassRoom('${s.id}')" class="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold rounded-lg bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors shadow-2xs cursor-pointer">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                <span>Start Class</span>
-              </button>
-              <button onclick="openSabaqLoggerModal('${s.id}')" class="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold rounded-lg bg-[#FFFFFF] border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#F8F6F1] transition-colors cursor-pointer">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                <span>Log Sabaq</span>
-              </button>
+            <div class="shrink-0 flex flex-col items-end gap-1.5">
+              ${pill}
+              ${action}
             </div>
           </div>
-  `;
+        </div>
+      </div>`;
+  }).join('');
+
+  return `
+      <!-- Schedule — Tours-style timeline -->
+      <div class="ts-card p-6">
+        <div class="flex items-center justify-between gap-3 mb-4">
+          <h3 class="text-base font-bold text-[#141F1E]">Schedule</h3>
+          <span class="text-[11px] font-semibold text-[#7A8684] px-2.5 py-1 rounded-full bg-white border border-[#ECEAE4]">${selDay.monthShort} ${selDay.year}</span>
+        </div>
+        <div class="flex gap-2 mb-5">
+          ${strip}
+        </div>
+        <p class="text-[11px] font-semibold text-[#7A8684] mb-3">${selLabel}</p>
+        ${timeline}
+        ${unscheduledCount > 0 ? `<p class="text-[11px] text-[#7A8684] mt-3">${unscheduledCount} student${unscheduledCount === 1 ? '' : 's'} have no weekly schedule set — Admin can set it in Edit Student → Weekly Timetable.</p>` : ''}
+      </div>
+    `;
 }
 
 // ---------- Teacher salary tab (read-only, own pay only) ----------
@@ -16492,8 +16637,6 @@ function renderTeacherPortalView() {
   // Only this teacher's own students — never the whole directory.
   const myStudents = getTeacherStudents(currentTeacher);
   const todaysClasses = getTeacherTodayClasses(currentTeacher);
-  const weekClasses = getTeacherWeekClasses(currentTeacher);
-  const unscheduledCount = myStudents.filter(s => !hasExplicitSchedule(s)).length;
   const teacherAvatar = currentTeacher.avatar || getAvatarUrl(currentTeacher.name);
 
   const headerBanner = `
@@ -16646,42 +16789,8 @@ function renderTeacherPortalView() {
   } else if (activeNav === 'teacher-leave') {
     bodyContent = renderTeacherLeaveTab(currentTeacher);
   } else {
-    // Default: teacher-schedule
-    bodyContent = `
-      <!-- Today's Class Schedule -->
-      <div class="ts-card p-6">
-        <div class="flex items-center justify-between gap-3 mb-4">
-          <h3 class="text-base font-bold text-[#141F1E]">Today's Class Schedule</h3>
-          <span class="text-[11px] font-semibold text-[#7A8684]">${getTodayDateLabelPKT()}</span>
-        </div>
-        <div class="space-y-3">
-          ${todaysClasses.length === 0 ? `
-          <div class="p-6 rounded-2xl border border-dashed border-[#ECEAE4] bg-[#F8F6F1]/50 text-center">
-            <p class="text-xs font-bold text-[#141F1E]">No classes scheduled for today.</p>
-            <p class="text-[11px] text-[#7A8684] mt-1">Classes appear here from each student's weekly schedule — Admin sets it in Edit Student → Weekly Timetable.</p>
-          </div>` : todaysClasses.map(c => teacherTodayClassCard(c)).join('')}
-        </div>
-      </div>
-      <!-- This Week -->
-      <div class="ts-card p-6">
-        <h3 class="text-base font-bold text-[#141F1E] mb-4">This Week</h3>
-        <div class="space-y-2">
-          ${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => {
-            const dayClasses = weekClasses[d] || [];
-            return `
-          <div class="flex items-start gap-3 py-2 border-b border-[#F8F6F1] last:border-0">
-            <span class="w-10 shrink-0 text-[11px] font-bold text-[#0E4D45] pt-0.5">${d}</span>
-            ${dayClasses.length === 0 ? `<span class="text-[11px] text-[#B9BDBA]">—</span>` : dayClasses.map(c => {
-              const disp = getStudentDisplay(c.student, 'teacher');
-              return `<span class="text-[11px] text-[#141F1E] font-semibold">${disp.displayName} <span class="text-[#7A8684] font-medium">${c.slot.time} (${c.slot.duration || '45m'})</span></span>`;
-            }).join('<span class="text-[#B9BDBA]">•</span>')}
-          </div>`;
-          }).join('')}
-        </div>
-        ${unscheduledCount > 0 ? `<p class="text-[11px] text-[#7A8684] mt-3">${unscheduledCount} student${unscheduledCount === 1 ? '' : 's'} have no weekly schedule set — Admin can set it in Edit Student → Weekly Timetable.</p>` : ''}
-      </div>
-    `;
-
+    // Default: teacher-schedule — Tours-style timeline (date strip + day timeline)
+    bodyContent = renderTeacherScheduleTimeline(currentTeacher);
   }
 
   return `

@@ -923,7 +923,8 @@ body:not(.auth-locked) #auth-screen-root { display: none; }
 
 /* Photo panel (desktop) / top banner (mobile), drawn with ::before so no
    app.js markup change is needed. Layers, top to bottom: official logo,
-   dark-teal overlay, Quran photo. Solid teal fallback if the photo fails.
+   seam-blend gradient, dark-teal overlay, Quran photo. Solid teal fallback
+   if the photo fails.
    2026-11-25 update: logo made MUCH bigger (480px desktop / 300px mobile,
    was 300px / 196px) and photo changed to an open Quran on a wooden rehal
    in a mosque (Pexels 10571111) — the old closed-Quran cover is gone.
@@ -931,17 +932,25 @@ body:not(.auth-locked) #auth-screen-root { display: none; }
    + a #093A33 overlay tinted it. The overlay is now the LMS green itself
    (#0E4D45, same flat green as the LMS header and buttons) at 0.82→0.90,
    so the panel matches the LMS exactly and the photo shows through faintly
-   as texture behind it. */
+   as texture behind it.
+   GRADIENT BLEND (no hard line): like the LIBRARIIS reference, there is no
+   sharp edge between photo and form — the seam-blend layer fades the panel
+   into the cream form colour (#F9F8F5). Desktop: the panel's right edge
+   fades to cream (to right, last 20%); mobile: the banner's bottom edge
+   fades to cream (to bottom, last 18% — overridden in the mobile query).
+   The blend sits BELOW the logo and ABOVE the overlay+photo, and the logo
+   never reaches the faded edge, so the logo stays crisp. */
 #auth-screen-root > div.min-h-screen::before {
   content: "";
   display: block;
   background-color: #0E4D45;
   background-image:
     url("assets/logo-full.png"),
+    linear-gradient(to right, rgba(249, 248, 245, 0) 80%, rgba(249, 248, 245, 1) 100%),
     linear-gradient(rgba(14, 77, 69, 0.82), rgba(14, 77, 69, 0.90)),
     url("https://images.pexels.com/photos/10571111/pexels-photo-10571111.jpeg?auto=compress&cs=tinysrgb&w=1200");
-  background-repeat: no-repeat, no-repeat, no-repeat;
-  background-position: center, center, 72% center;
+  background-repeat: no-repeat, no-repeat, no-repeat, no-repeat;
+  background-position: center, center, center, 72% center;
 }
 
 /* The shell's text heading is removed: the logo IS the name. The small
@@ -966,7 +975,7 @@ body:not(.auth-locked) #auth-screen-root { display: none; }
   #auth-screen-root > div.min-h-screen::before {
     flex: 1 1 50%;
     min-height: 100vh;
-    background-size: 480px auto, cover, cover;
+    background-size: 480px auto, cover, cover, cover;
   }
   #auth-screen-root > div.min-h-screen > .w-full.max-w-md {
     flex: 1 1 50%;
@@ -992,7 +1001,13 @@ body:not(.auth-locked) #auth-screen-root { display: none; }
     flex: none;
     width: 100%;
     height: 320px;
-    background-size: 300px auto, cover, cover;
+    /* Mobile blend is vertical: banner bottom fades into the cream form. */
+    background-image:
+      url("assets/logo-full.png"),
+      linear-gradient(to bottom, rgba(249, 248, 245, 0) 82%, rgba(249, 248, 245, 1) 100%),
+      linear-gradient(rgba(14, 77, 69, 0.82), rgba(14, 77, 69, 0.90)),
+      url("https://images.pexels.com/photos/10571111/pexels-photo-10571111.jpeg?auto=compress&cs=tinysrgb&w=1200");
+    background-size: 300px auto, cover, cover, cover;
   }
   #auth-screen-root > div.min-h-screen > .w-full.max-w-md {
     width: 100%;

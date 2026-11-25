@@ -967,6 +967,39 @@ body:not(.auth-locked) #auth-screen-root { display: none; }
    centred too; labels and fields stay left-aligned. */
 #auth-screen-root .max-w-md > .bg-white > h1 { text-align: center; }
 
+/* Pills, LIBRARIIS-style (Majid 2026-11-25): the long full-width pill boxes
+   were wrong — the reference has UNDERLINE fields and a compact centred
+   LOGIN pill. So: Email/Password inputs become underline fields (no box,
+   hairline bottom border, teal on focus), and every pill button in the auth
+   card becomes a compact 220px pill centred in the form — on mobile AND on
+   PC. Text links (Forgot password? etc.) align left like the reference. */
+#auth-screen-root input[type="email"],
+#auth-screen-root input[type="password"] {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid #D8D5CC;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 6px 2px 8px;
+}
+#auth-screen-root input[type="email"]:focus,
+#auth-screen-root input[type="password"]:focus {
+  border-bottom-color: #0E4D45;
+  outline: none;
+}
+#auth-screen-root .max-w-md > .bg-white button.rounded-full {
+  display: block;
+  width: 220px;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+#auth-screen-root button[onclick="handleAuthShowReset()"],
+#auth-screen-root button[onclick="handleAuthBackToLogin()"],
+#auth-screen-root button[onclick="handleSignOut()"] {
+  text-align: left;
+}
+
 /* Flatten the white card: the form sits directly on the cream panel. */
 #auth-screen-root .max-w-md > .bg-white {
   background: transparent;

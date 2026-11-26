@@ -5,7 +5,7 @@
  * 2. Role-Based Access Control & PII Masking (Admin vs Manager/Teacher/Parent)
  * 3. Chronological FIFO Waterfall Fee Calculation (Partial, Defaulter, Advance)
  * 4. Multi-Currency & Sibling Combined Ledger
- * 5. 30-Second Zero-Typing Teacher Logger
+ * 5. Lesson Logger
  * 6. Live Radar & Substitute Teacher Dispatcher
  */
 
@@ -3441,7 +3441,7 @@ function renderCommandPaletteResults(query) {
     { label: 'Add New Teacher / Faculty (+)', category: 'Quick Action', icon: 'teacher', action: () => openAddTeacherModal() },
     { label: 'Schedule Student Trial Candidate', category: 'Quick Action', icon: 'calendar', action: () => openAddTrialModal() },
     { label: 'Post Academy Notice', category: 'Quick Action', icon: 'notice', action: () => openPublishNoticeModal() },
-    { label: '30-Sec Sabaq / Lesson Logger', category: 'Quick Action', icon: 'log', action: () => openSabaqLoggerModal() },
+    { label: 'Lesson Logger', category: 'Quick Action', icon: 'log', action: () => openSabaqLoggerModal() },
     { label: 'Keyboard Shortcuts Cheatsheet', category: 'Quick Action', icon: 'shortcuts', action: () => openKeyboardShortcutsModal() }
   ];
 
@@ -4519,7 +4519,7 @@ function renderTeacherScheduleTimeline(teacher) {
     const action = isToday && status === 'Scheduled'
       ? `<button onclick="joinClassRoom('${s.id}')" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-[11px] font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors cursor-pointer">Start Class</button>`
       : (status === 'Completed' || status === 'Not logged')
-      ? `<button onclick="openSabaqLoggerModal('${s.id}')" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-[11px] font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors cursor-pointer">+ Log Sabaq</button>`
+      ? `<button onclick="openSabaqLoggerModal('${s.id}')" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-[11px] font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors cursor-pointer">+ Log Lesson</button>`
       : '';
     return `
       <div class="flex gap-3 mb-3">
@@ -4783,8 +4783,8 @@ function openTeacherProgressModal(studentId) {
       </div>`}
     </div>` : ''}
     <div>
-      <p class="text-[11px] font-semibold text-[#7A8684] mb-2">Recent Sabaq</p>
-      ${p.recentHistory.length === 0 ? `<p class="text-xs text-[#7A8684]">No sabaq logged yet.</p>` : `
+      <p class="text-[11px] font-semibold text-[#7A8684] mb-2">Recent Lessons</p>
+      ${p.recentHistory.length === 0 ? `<p class="text-xs text-[#7A8684]">No lessons logged yet.</p>` : `
       <div class="space-y-2">
         ${p.recentHistory.map(e => `
         <div class="flex items-center justify-between gap-3 py-2 border-b border-[#F8F6F1] last:border-0">
@@ -8984,7 +8984,7 @@ const PORTAL_ROLES = {
     title: 'Senior Qari & Teacher',
     badge: 'Faculty',
     initials: 'BT',
-    desc: '30-Sec Sabaq Logger & Student Schedule',
+    desc: 'Lesson Logger & Student Schedule',
     icon: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />`
   },
   student: {
@@ -9721,7 +9721,7 @@ function renderNavLinks() {
   } else if (AppState.currentRole === 'teacher') {
     links = [
       { id: 'teacher-schedule', label: "Today's Schedule", shortLabel: 'Schedule', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
-      { id: 'teacher-logger', label: '30-Sec Sabaq Logger', shortLabel: 'Logger', icon: 'M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z' },
+      { id: 'teacher-logger', label: 'Lesson Logger', shortLabel: 'Logger', icon: 'M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z' },
       { id: 'teacher-my-students', label: 'My Students', shortLabel: 'Students', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
       { id: 'teacher-salary', label: 'My Salary', shortLabel: 'Salary', icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z' },
       { id: 'teacher-leave', label: 'Leave Request', shortLabel: 'Leave', icon: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
@@ -16666,7 +16666,7 @@ function renderTeacherPortalView() {
         </label>` : ''}
         <button onclick="openSabaqLoggerModal()" class="px-5 py-2.5 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors shadow-sm flex items-center gap-2">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-          <span>Open 30-Sec Sabaq Logger</span>
+          <span>Open Lesson Logger</span>
         </button>
       </div>
     </div>
@@ -16680,7 +16680,7 @@ function renderTeacherPortalView() {
       <div class="ts-card p-6">
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-[#ECEAE4]">
           <div>
-            <h3 class="text-base font-bold text-[#141F1E]">Sabaq Logger</h3>
+            <h3 class="text-base font-bold text-[#141F1E]">Lesson Logger</h3>
             <p class="text-xs text-[#7A8684]">Log a lesson in seconds with one-tap pills</p>
           </div>
           <button onclick="openSabaqLoggerModal()" class="px-5 py-2.5 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors shadow-sm flex items-center gap-2">
@@ -16689,7 +16689,7 @@ function renderTeacherPortalView() {
         </div>
 
         <div>
-          <h4 class="text-xs font-bold text-[#7A8684] uppercase tracking-wider mb-3">Recent Sabaq Submissions</h4>
+          <h4 class="text-xs font-bold text-[#7A8684] uppercase tracking-wider mb-3">Recent Lesson Submissions</h4>
           <div class="space-y-3">
           ${myStudents.filter(s => s.lastSabaq).map(s => {
             const display = getStudentDisplay(s, 'teacher');
@@ -16717,7 +16717,7 @@ function renderTeacherPortalView() {
             `;
           }).join('')}
           </div>
-          ${myStudents.filter(s => s.lastSabaq).length === 0 ? `<p class="text-xs text-[#7A8684]">No Sabaq logged yet — log the first Sabaq from "Log New Lesson" above.</p>` : ''}
+          ${myStudents.filter(s => s.lastSabaq).length === 0 ? `<p class="text-xs text-[#7A8684]">No lessons logged yet — log the first lesson from "Log New Lesson" above.</p>` : ''}
         </div>
       </div>
     `;
@@ -16778,7 +16778,7 @@ function renderTeacherPortalView() {
                         </button>
                         <button onclick="openSabaqLoggerModal('${s.id}')"
                           class="px-3 py-1 text-[11px] font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors whitespace-nowrap shadow-sm">
-                          Log Sabaq
+                          Log Lesson
                         </button>
                       </div>
                     </td>
@@ -17883,11 +17883,11 @@ let currentLoggerRating = 5;
 
 function setLoggerMode(isEdit) {
   const title = document.getElementById('logger-modal-title');
-  if (title) title.textContent = isEdit ? 'Edit Sabaq Log' : 'Log Sabaq';
+  if (title) title.textContent = isEdit ? 'Edit Lesson Log' : 'Log Lesson';
   const sub = document.getElementById('logger-modal-subtitle');
   if (sub) sub.textContent = isEdit ? 'Update the saved lesson for this student.' : 'Select the pills and save — it takes seconds.';
   const saveBtn = document.getElementById('logger-save-btn');
-  if (saveBtn) saveBtn.textContent = isEdit ? 'Save Changes' : 'Save Sabaq & Attendance';
+  if (saveBtn) saveBtn.textContent = isEdit ? 'Save Changes' : 'Save Lesson & Attendance';
 }
 
 function setLoggerRating(n) {
@@ -18078,7 +18078,7 @@ function handleSaveSabaq() {
         status: attendanceStatus,
         rating: currentLoggerRating || 5,
         tags: tags.length ? tags : (prev.tags && prev.tags.length ? prev.tags : ['MashaAllah Good']),
-        teacherNote: note || prev.teacherNote || 'Logged in 30 seconds via zero-typing workflow.'
+        teacherNote: note || prev.teacherNote || ''
       };
       student.lastSabaq = updated;
       if (!student.sabaqHistory) student.sabaqHistory = [];
@@ -18089,7 +18089,7 @@ function handleSaveSabaq() {
       dbSaveStudent(student);
       closeSabaqLoggerModal();
       renderApp();
-      showToastNotification(`✓ Sabaq updated for ${student?.firstName || 'Student'}.`);
+      showToastNotification(`✓ Lesson updated for ${student?.firstName || 'Student'}.`);
       return;
     }
     const sabaqEntry = {
@@ -18099,7 +18099,7 @@ function handleSaveSabaq() {
       status: attendanceStatus,
       rating: currentLoggerRating || 5,
       tags: tags.length ? tags : ['MashaAllah Good'],
-      teacherNote: note || 'Logged in 30 seconds via zero-typing workflow.'
+      teacherNote: note || ''
     };
     student.lastSabaq = sabaqEntry;
     if (!student.sabaqHistory) student.sabaqHistory = [];
@@ -18125,7 +18125,7 @@ function handleSaveSabaq() {
 
   closeSabaqLoggerModal();
   renderApp();
-  showToastNotification(`✓ Sabaq successfully logged for ${student?.firstName || 'Student'} in under 30 seconds!`);
+  showToastNotification(`✓ Lesson logged for ${student?.firstName || 'Student'}.`);
 }
 
 /**

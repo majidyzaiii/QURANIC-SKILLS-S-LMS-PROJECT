@@ -16676,12 +16676,12 @@ function renderTeacherPortalView() {
 
   if (activeNav === 'teacher-logger') {
     bodyContent = `
-      <!-- 30-Sec Fast Sabaq Logger Hub -->
+      <!-- Sabaq Logger Hub -->
       <div class="ts-card p-6">
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-[#ECEAE4]">
           <div>
-            <h3 class="text-base font-bold text-[#141F1E]">Rapid Zero-Typing Sabaq Logger</h3>
-            <p class="text-xs text-[#7A8684]">Log Sabaq, Sabqi, and Manzil in under 30 seconds using one-tap pills</p>
+            <h3 class="text-base font-bold text-[#141F1E]">Sabaq Logger</h3>
+            <p class="text-xs text-[#7A8684]">Log a lesson in seconds with one-tap pills</p>
           </div>
           <button onclick="openSabaqLoggerModal()" class="px-5 py-2.5 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors shadow-sm flex items-center gap-2">
             <span>+ Log New Lesson</span>
@@ -16689,26 +16689,28 @@ function renderTeacherPortalView() {
         </div>
 
         <div>
-          <h4 class="text-xs font-bold text-[#7A8684] uppercase tracking-wider mb-1">Recent Sabaq Submissions</h4>
-          <div class="divide-y divide-[#ECEAE4]">
+          <h4 class="text-xs font-bold text-[#7A8684] uppercase tracking-wider mb-3">Recent Sabaq Submissions</h4>
+          <div class="space-y-3">
           ${myStudents.filter(s => s.lastSabaq).map(s => {
             const display = getStudentDisplay(s, 'teacher');
             return `
-              <div class="flex items-center gap-3 py-3">
-                <img src="${s.avatar || s.photo || getAvatarUrl(display.displayName)}" alt="${display.displayName}" class="w-9 h-9 rounded-full object-cover shrink-0 border border-[#ECEAE4] shadow-2xs" onerror="this.onerror=null; this.src='${getAvatarUrl(display.displayName)}';">
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center gap-2 flex-wrap">
-                    <span class="font-bold text-xs text-[#141F1E]">${display.displayName}</span>
-                    <span class="ts-badge ts-badge-sage">${s.lastSabaq.type}</span>
-                    <span class="text-[11px] text-[#7A8684]">${s.lastSabaq.date}</span>
+              <div class="rounded-2xl border border-[#E8E6DF] bg-white p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6 sm:p-5">
+                <div class="flex items-center gap-3 flex-1 min-w-0">
+                  <img src="${s.avatar || s.photo || getAvatarUrl(display.displayName)}" alt="${display.displayName}" class="w-10 h-10 rounded-full object-cover shrink-0 border border-[#ECEAE4] shadow-2xs" onerror="this.onerror=null; this.src='${getAvatarUrl(display.displayName)}';">
+                  <div class="flex-1 min-w-0">
+                    <span class="font-bold text-sm text-[#141F1E]">${display.displayName}</span>
+                    <p class="text-xs text-[#7A8684] truncate mt-0.5">${s.course || 'Quran Class'} • ${formatFullDate(s.lastSabaq.date)}</p>
                   </div>
-                  <p class="text-xs font-semibold text-[#0E4D45] truncate mt-0.5">${s.lastSabaq.surah}${(s.lastSabaq.tags || []).length ? ` <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#E8EFEE] text-[#0E4D45] font-semibold ml-1">${(s.lastSabaq.tags || []).join(', ')}</span>` : ''}</p>
-                  ${s.lastSabaq.teacherNote ? `<p class="text-[11px] text-[#334E4B] italic truncate mt-0.5">"${s.lastSabaq.teacherNote}"</p>` : ''}
+                  <span class="sm:hidden shrink-0">${sabaqStatusBadge(s.lastSabaq)}</span>
                 </div>
-                <div class="shrink-0 flex flex-col items-end gap-1.5">
-                  ${renderStars(s.lastSabaq.rating || 5)}
-                  <button onclick="openSabaqLoggerModal('${s.id}')" class="px-3 py-1 text-[11px] font-bold rounded-full bg-[#FFFFFF] border border-[#ECEAE4] text-[#0E4D45] hover:bg-[#0E4D45] hover:text-white transition-all shadow-sm whitespace-nowrap">
-                    Re-log Lesson
+                <div class="hidden sm:flex shrink-0 w-28 justify-center">${sabaqStatusBadge(s.lastSabaq)}</div>
+                <div class="flex flex-col gap-2 sm:flex-row sm:shrink-0">
+                  <button onclick="openSabaqDetailModal('${s.id}')" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 px-3.5 py-1.5 text-[11px] font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors shadow-sm whitespace-nowrap flex items-center justify-center">
+                    Open Lesson
+                  </button>
+                  <button onclick="openSabaqEditModal('${s.id}')" class="w-full sm:w-auto min-h-[44px] sm:min-h-0 px-3.5 py-1.5 text-[11px] font-bold rounded-full bg-[#FFFFFF] border border-[#0E4D45] text-[#0E4D45] hover:bg-[#F8F6F1] transition-all shadow-sm whitespace-nowrap flex items-center justify-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                    Edit Log
                   </button>
                 </div>
               </div>
@@ -17850,12 +17852,109 @@ function quickRecordMonthPayment(studentId, monthIndex) {
   }, 100);
 }
 
+// ---------- Sabaq Logger redesign (Majid, 2026-11-26) ----------
+// "Nov 24, 2026" from an ISO date; falls back to the raw value.
+// (Named formatFullDate: formatShortDate already exists for leave dates.)
+function formatFullDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso + 'T00:00:00');
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+// A row is "Submitted" only for a real logged lesson; the enrollment
+// seed is not a lesson, so it reads "Enrolled". Dot is CSS, never emoji.
+function sabaqStatusBadge(last) {
+  if (!last) return '';
+  if (last.type === 'Daily Sabaq') {
+    return `<span class="ts-badge ts-badge-paid"><span class="w-1.5 h-1.5 rounded-full bg-[#1E9E6A] shrink-0"></span>Submitted</span>`;
+  }
+  if (last.type === 'Initial Enrollment') {
+    return `<span class="ts-badge ts-badge-sage"><span class="w-1.5 h-1.5 rounded-full bg-[#9AA5A2] shrink-0"></span>Enrolled</span>`;
+  }
+  return `<span class="ts-badge ts-badge-sage">${last.type}</span>`;
+}
+
+// ---------- Edit an existing Sabaq log (Edit Log) ----------
+// Reuses the logger modal: pre-fills the saved lesson, and saving updates
+// that lesson in place instead of logging a new one.
+let currentEditSabaqStudentId = null;
+let currentLoggerRating = 5;
+
+function setLoggerMode(isEdit) {
+  const title = document.getElementById('logger-modal-title');
+  if (title) title.textContent = isEdit ? 'Edit Sabaq Log' : 'Log Sabaq';
+  const sub = document.getElementById('logger-modal-subtitle');
+  if (sub) sub.textContent = isEdit ? 'Update the saved lesson for this student.' : 'Select the pills and save — it takes seconds.';
+  const saveBtn = document.getElementById('logger-save-btn');
+  if (saveBtn) saveBtn.textContent = isEdit ? 'Save Changes' : 'Save Sabaq & Attendance';
+}
+
+function setLoggerRating(n) {
+  currentLoggerRating = Math.max(1, Math.min(5, n || 5));
+  document.querySelectorAll('#logger-rating-row svg').forEach((svg, i) => {
+    const on = i < currentLoggerRating;
+    svg.classList.toggle('fill-amber-400', on);
+    svg.classList.toggle('text-amber-400', on);
+    svg.classList.toggle('fill-[#E8E6DF]', !on);
+    svg.classList.toggle('text-[#E8E6DF]', !on);
+  });
+  const label = document.getElementById('logger-rating-label');
+  if (label) {
+    const word = currentLoggerRating >= 5 ? 'Excellent' : currentLoggerRating === 4 ? 'Very Good' : currentLoggerRating === 3 ? 'Good' : currentLoggerRating === 2 ? 'Fair' : 'Needs Work';
+    label.textContent = `(${currentLoggerRating}/5 ${word})`;
+  }
+}
+
+function resetLoggerForm() {
+  const surahInput = document.getElementById('logger-surah-input');
+  if (surahInput) surahInput.value = 'Surah Maryam (Ayah 1-22)';
+  const noteInput = document.getElementById('logger-note-input');
+  if (noteInput) noteInput.value = '';
+  document.querySelectorAll('.attendance-pill').forEach((el) => {
+    el.classList.toggle('selected', el.dataset.status === 'Present');
+  });
+  const defaultTags = ['MashaAllah Good', 'Tajweed Focus'];
+  document.querySelectorAll('.remark-tag-pill').forEach((el) => {
+    el.classList.toggle('selected', defaultTags.includes(el.textContent.trim()));
+  });
+  setLoggerRating(5);
+}
+
+function openSabaqEditModal(studentId) {
+  const student = (AppState.students || []).find((x) => x.id === studentId);
+  if (!student || !student.lastSabaq) return;
+  if (AppState.authRole === 'teacher' && !getTeacherStudents().some((x) => x.id === student.id)) {
+    showToastNotification('You can only edit your own students.', 'error');
+    return;
+  }
+  openSabaqLoggerModal(student.id);
+  currentEditSabaqStudentId = student.id;
+  const last = student.lastSabaq;
+  const surahInput = document.getElementById('logger-surah-input');
+  if (surahInput) surahInput.value = last.surah || '';
+  const noteInput = document.getElementById('logger-note-input');
+  if (noteInput) noteInput.value = last.teacherNote || '';
+  document.querySelectorAll('.attendance-pill').forEach((el) => {
+    el.classList.toggle('selected', el.dataset.status === (last.status || 'Present'));
+  });
+  const tags = last.tags || [];
+  document.querySelectorAll('.remark-tag-pill').forEach((el) => {
+    el.classList.toggle('selected', tags.includes(el.textContent.trim()));
+  });
+  setLoggerRating(last.rating || 5);
+  setLoggerMode(true);
+}
+
 /**
- * 30-Second Zero-Typing Sabaq Logger Modal
+ * Sabaq Logger Modal
  */
 function openSabaqLoggerModal(preselectedStudentId = 'QA-1042') {
   const modal = document.getElementById('sabaq-logger-modal');
   if (!modal) return;
+  currentEditSabaqStudentId = null;
+  resetLoggerForm();
+  setLoggerMode(false);
 
   const select = document.getElementById('logger-student-select');
   if (select) {
@@ -17876,6 +17975,66 @@ function openSabaqLoggerModal(preselectedStudentId = 'QA-1042') {
 function closeSabaqLoggerModal() {
   const modal = document.getElementById('sabaq-logger-modal');
   if (modal) modal.classList.remove('active');
+  currentEditSabaqStudentId = null;
+}
+
+// ---------- Sabaq detail modal (Open Lesson) ----------
+// The list shows only who + when; the full lesson opens on demand.
+let currentDetailStudentId = null;
+
+function openSabaqDetailModal(studentId) {
+  const modal = document.getElementById('sabaq-detail-modal');
+  const body = document.getElementById('sabaq-detail-body');
+  if (!modal || !body) return;
+  const student = (AppState.students || []).find((x) => x.id === studentId);
+  if (!student || !student.lastSabaq) return;
+  if (AppState.authRole === 'teacher' && !getTeacherStudents().some((x) => x.id === student.id)) {
+    showToastNotification('You can only view your own students.', 'error');
+    return;
+  }
+  currentDetailStudentId = student.id;
+  const display = getStudentDisplay(student, 'teacher');
+  const last = student.lastSabaq;
+  const avatar = student.avatar || student.photo || getAvatarUrl(display.displayName);
+  body.innerHTML = `
+    <div class="p-4 bg-[#FFFFFF] rounded-2xl border border-[#ECEAE4] flex items-center gap-3">
+      <img src="${avatar}" alt="${display.displayName}" class="w-12 h-12 rounded-full object-cover shrink-0 border border-[#ECEAE4]" onerror="this.onerror=null; this.src='${getAvatarUrl(display.displayName)}';">
+      <div class="min-w-0">
+        <div class="flex items-center gap-2 flex-wrap">
+          <h3 class="text-base font-bold text-[#141F1E]">${display.displayName}</h3>
+          <span class="ts-badge ts-badge-sage">${last.type}</span>
+        </div>
+        <p class="text-xs text-[#7A8684] mt-0.5">${student.course || 'Quran Class'} • ${last.date}${last.status ? ` • ${last.status}` : ''}</p>
+      </div>
+    </div>
+    <div class="p-4 bg-[#F8F6F1] rounded-2xl border border-[#ECEAE4]">
+      <span class="text-[10px] font-bold text-[#7A8684] uppercase tracking-wider">Surah</span>
+      <p class="text-sm font-bold text-[#141F1E] mt-1">${last.surah || 'Sabaq'}</p>
+      <div class="mt-2">${renderStars(last.rating || 5)}</div>
+    </div>
+    ${(last.tags || []).length ? `
+    <div>
+      <span class="text-[10px] font-bold text-[#7A8684] uppercase tracking-wider">Remarks</span>
+      <div class="flex flex-wrap gap-1.5 mt-1.5">${last.tags.map((t) => `<span class="text-[11px] px-2.5 py-1 rounded-full bg-[#E8EFEE] text-[#0E4D45] font-semibold">${t}</span>`).join('')}</div>
+    </div>` : ''}
+    ${last.teacherNote ? `
+    <div>
+      <span class="text-[10px] font-bold text-[#7A8684] uppercase tracking-wider">Teacher Note</span>
+      <p class="text-xs text-[#334E4B] italic mt-1">"${last.teacherNote}"</p>
+    </div>` : ''}
+  `;
+  modal.classList.add('active');
+}
+
+function closeSabaqDetailModal() {
+  const modal = document.getElementById('sabaq-detail-modal');
+  if (modal) modal.classList.remove('active');
+}
+
+function relogSabaqFromDetail() {
+  const id = currentDetailStudentId;
+  closeSabaqDetailModal();
+  if (id) openSabaqLoggerModal(id);
 }
 
 function handleSaveSabaq() {
@@ -17897,6 +18056,7 @@ function handleSaveSabaq() {
     return;
   }
   const surah = document.getElementById('logger-surah-input')?.value || 'Surah Al-Mulk (Ayah 1-15)';
+  const note = (document.getElementById('logger-note-input')?.value || '').trim();
   const statusEl = document.querySelector('.attendance-pill.selected');
   const attendanceStatus = statusEl ? statusEl.dataset.status : 'Present';
 
@@ -17906,14 +18066,40 @@ function handleSaveSabaq() {
 
   if (student) {
     const todayIso = new Date().toISOString().split('T')[0];
+    // Edit mode: update the saved lesson in place (keep its date + type),
+    // and update the matching history entry instead of adding a new one.
+    // No new attendance log — an edit is a correction, not a new class.
+    if (currentEditSabaqStudentId && currentEditSabaqStudentId === student.id) {
+      const prev = student.lastSabaq || {};
+      const updated = {
+        date: prev.date || todayIso,
+        type: prev.type || 'Daily Sabaq',
+        surah: surah,
+        status: attendanceStatus,
+        rating: currentLoggerRating || 5,
+        tags: tags.length ? tags : (prev.tags && prev.tags.length ? prev.tags : ['MashaAllah Good']),
+        teacherNote: note || prev.teacherNote || 'Logged in 30 seconds via zero-typing workflow.'
+      };
+      student.lastSabaq = updated;
+      if (!student.sabaqHistory) student.sabaqHistory = [];
+      const idx = student.sabaqHistory.findIndex((h) => h.date === prev.date && h.surah === prev.surah);
+      if (idx >= 0) student.sabaqHistory[idx] = updated;
+      else student.sabaqHistory.push(updated);
+      saveToStorage('lms_students', AppState.students);
+      dbSaveStudent(student);
+      closeSabaqLoggerModal();
+      renderApp();
+      showToastNotification(`✓ Sabaq updated for ${student?.firstName || 'Student'}.`);
+      return;
+    }
     const sabaqEntry = {
       date: todayIso,
       type: 'Daily Sabaq',
       surah: surah,
       status: attendanceStatus,
-      rating: 5,
+      rating: currentLoggerRating || 5,
       tags: tags.length ? tags : ['MashaAllah Good'],
-      teacherNote: 'Logged in 30 seconds via zero-typing workflow.'
+      teacherNote: note || 'Logged in 30 seconds via zero-typing workflow.'
     };
     student.lastSabaq = sabaqEntry;
     if (!student.sabaqHistory) student.sabaqHistory = [];

@@ -4462,7 +4462,7 @@ window.setScheduleDay = setScheduleDay;
 // list (md:hidden). All positions come from the SAME real classes the
 // vertical list uses — PKT times, real status, no phantom classes.
 // Duration is shown as text, NOT as block width (like the reference
-// design): every block spans max(duration, 120) minutes so short classes
+// design): every block spans max(duration, 180) minutes so short classes
 // stay readable, and lanes keep visually overlapping blocks apart.
 function railMinutesForDuration(d) {
   if (typeof d === 'number' && isFinite(d) && d > 0) return Math.round(d);
@@ -4489,13 +4489,13 @@ function getScheduleRailRange(entries) {
   return { rangeStart, rangeEnd, step };
 }
 
-// Greedy lane assignment on VISUAL spans [start, max(end, start + 120)]:
+// Greedy lane assignment on VISUAL spans [start, max(end, start + 180)]:
 // blocks in one lane never visually overlap; returns { entries, laneCount }.
 function assignScheduleRailLanes(entries) {
   const sorted = entries.slice().sort((a, b) => a.start - b.start);
   const laneEnds = [];
   sorted.forEach((e) => {
-    const visualEnd = Math.max(e.end, e.start + 120);
+    const visualEnd = Math.max(e.end, e.start + 180);
     let lane = laneEnds.findIndex((end) => end <= e.start);
     if (lane === -1) { laneEnds.push(visualEnd); lane = laneEnds.length - 1; }
     else { laneEnds[lane] = visualEnd; }

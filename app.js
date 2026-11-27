@@ -4457,6 +4457,118 @@ function setScheduleDay(iso) {
 }
 window.setScheduleDay = setScheduleDay;
 
+// ---------- Teacher schedule — desktop time rail ("My Schedule") ----------
+// The rail is desktop-only (hidden md:block); phones keep the vertical
+// list (md:hidden). All positions come from the SAME real classes the
+// vertical list uses — PKT times, real status, no phantom classes.
+// Duration is shown as text, NOT as block width (like the reference
+// design): every block spans max(duration, 120) minutes so short classes
+// stay readable, and lanes keep visually overlapping blocks apart.
+function railMinutesForDuration(d) {
+  if (typeof d === 'number' && isFinite(d) && d > 0) return Math.round(d);
+  const m = String(d || '').match(/(\d+(?:\.\d+)?)/);
+  const n = m ? parseFloat(m[1]) : NaN;
+  return isFinite(n) && n > 0 ? Math.round(n) : 45;
+}
+
+// Time axis for one day: { rangeStart, rangeEnd, step } in PKT minutes.
+// Range runs hour-to-hour around the day's classes, at least 4 hours wide.
+function getScheduleRailRange(entries) {
+  const starts = entries.map((e) => e.start);
+  const ends = entries.map((e) => e.end);
+  let rangeStart = Math.floor(Math.min.apply(null, starts) / 60) * 60;
+  let rangeEnd = Math.ceil(Math.max.apply(null, ends) / 60) * 60;
+  rangeEnd = Math.min(rangeEnd, 24 * 60);
+  if (rangeEnd - rangeStart < 240) {
+    const mid = Math.round((rangeStart + rangeEnd) / 2);
+    rangeStart = Math.max(0, mid - 120);
+    rangeEnd = Math.min(24 * 60, mid + 120);
+    if (rangeEnd - rangeStart < 240) rangeEnd = Math.min(24 * 60, rangeStart + 240);
+  }
+  const step = (rangeEnd - rangeStart) > 480 ? 120 : 60;
+  return { rangeStart, rangeEnd, step };
+}
+
+// Greedy lane assignment on VISUAL spans [start, max(end, start + 120)]:
+// blocks in one lane never visually overlap; returns { entries, laneCount }.
+function assignScheduleRailLanes(entries) {
+  const sorted = entries.slice().sort((a, b) => a.start - b.start);
+  const laneEnds = [];
+  sorted.forEach((e) => {
+    const visualEnd = Math.max(e.end, e.start + 120);
+    let lane = laneEnds.findIndex((end) => end <= e.start);
+    if (lane === -1) { laneEnds.push(visualEnd); lane = laneEnds.length - 1; }
+    else { laneEnds[lane] = visualEnd; }
+    e.lane = lane;
+    e.visualEnd = visualEnd;
+  });
+  return { entries: sorted, laneCount: Math.max(1, laneEnds.length) };
+}
+
+// Desktop time rail for the selected day. Returns '' when there is
+// nothing to show (the caller keeps the empty state instead).
+function renderScheduleRail(classes, selDay, isToday, nowMinutes) {
+  const entries = classes.map((c) => {
+    const start = parsePktTimeToMinutes(c.slot.pktTime);
+    const dur = railMinutesForDuration(c.slot.duration);
+    return { cls: c, start, end: start + dur, dur };
+  }).filter((e) => e.start < 24 * 60).sort((a, b) => a.start - b.start);
+  if (entries.length === 0) return '';
+  const range = getScheduleRailRange(entries);
+  const span = range.rangeEnd - range.rangeStart;
+  const lanes = assignScheduleRailLanes(entries);
+  const laneH = 92;
+  const pct = (m) => ((m - range.rangeStart) / span) * 100;
+  const labels = [];
+  for (let t = range.rangeStart; t <= range.rangeEnd; t += range.step) labels.push(t);
+  const axis = labels.map((t) => {
+    const p = pct(t);
+    const edge = p <= 0 ? 'translateX(0)' : p >= 100 ? 'translateX(-100%)' : 'translateX(-50%)';
+    return `<span class="absolute top-0 text-[11px] font-semibold text-[#7A8684] whitespace-nowrap" style="left:${p.toFixed(2)}%; transform:${edge};">${formatMinutesTo12h(t)}</span>`;
+  }).join('');
+  const guides = labels.map((t) => `<span class="absolute top-0 bottom-0 border-l border-dashed border-[#ECEAE4]" style="left:${pct(t).toFixed(2)}%;"></span>`).join('');
+  const inRange = isToday && nowMinutes >= range.rangeStart && nowMinutes <= range.rangeEnd;
+  const nowPill = inRange ? `<span class="absolute top-0 z-10 text-[10px] font-bold text-white bg-[#141F1E] px-2 py-0.5 rounded-full whitespace-nowrap" style="left:${pct(nowMinutes).toFixed(2)}%; transform:translateX(-50%);">${formatMinutesTo12h(nowMinutes)}</span>` : '';
+  const nowLine = inRange ? `<span class="absolute top-0 bottom-0 w-px bg-[#141F1E] z-10" style="left:${pct(nowMinutes).toFixed(2)}%;"></span>` : '';
+  const blocks = lanes.entries.map((e) => {
+    const c = e.cls, s = c.student, slot = c.slot;
+    const display = getStudentDisplay(s, 'teacher');
+    const avatar = s.avatar || getAvatarUrl(display.displayName);
+    const pktLabel = String(slot.pktTime || '').replace(/\s*PKT\s*$/i, '');
+    const status = getTimelineClassStatus(s, selDay.iso, e.start, nowMinutes, isToday);
+    const dot = status === 'Completed' ? 'bg-[#0E4D45]' : status === 'Not logged' ? 'bg-[#D97706]' : 'bg-[#65A30D]';
+    const statusColor = status === 'Completed' ? 'text-[#0E4D45]' : status === 'Not logged' ? 'text-[#92400E]' : 'text-[#141F1E]';
+    const isActionToday = isToday && status === 'Scheduled';
+    const action = isActionToday
+      ? { on: `joinClassRoom('${s.id}')`, title: 'Join the class', icon: '<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>' }
+      : (status === 'Completed' || status === 'Not logged')
+      ? { on: `openSabaqLoggerModal('${s.id}')`, title: 'Open the lesson log', icon: '<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>' }
+      : null;
+    const left = pct(e.start);
+    let width = pct(e.visualEnd) - left;
+    if (left + width > 100) width = Math.max(8, 100 - left);
+    const top = e.lane * laneH;
+    return `
+      <div ${action ? `onclick="${action.on}" role="button" title="${action.title}"` : ''} class="absolute rounded-xl bg-white border border-[#ECEAE4] p-2.5 overflow-hidden ${action ? 'cursor-pointer hover:border-[#0E4D45] hover:shadow-sm' : ''} transition-all" style="left:${left.toFixed(2)}%; width:${width.toFixed(2)}%; top:${top}px; height:84px;">
+        <div class="flex items-center gap-1.5">
+          <img src="${avatar}" alt="" class="w-6 h-6 rounded-full object-cover shrink-0 border border-[#ECEAE4]" onerror="this.onerror=null; this.src='${getAvatarUrl(display.displayName)}';" />
+          <div class="flex-1 min-w-0 text-[11px] font-bold text-[#141F1E] truncate">${display.displayName} • ${pktLabel}</div>
+          <span class="w-2 h-2 rounded-full shrink-0 ${dot}"></span>
+        </div>
+        <div class="text-[10px] text-[#7A8684] truncate mt-1">${s.course || 'Quran Class'} • ${slot.duration || '45m'} • ${format24hTo12h(slot.time)} student time</div>
+        <div class="flex items-center justify-between gap-1 mt-1.5">
+          <span class="text-[10px] font-bold ${statusColor}">${status}</span>
+          ${action ? `<span class="w-5 h-5 rounded-full bg-[#0E4D45] text-white inline-flex items-center justify-center shrink-0">${action.icon}</span>` : '<span></span>'}
+        </div>
+      </div>`;
+  }).join('');
+  return `
+    <div class="relative">
+      <div class="relative h-[28px] mb-1">${axis}${nowPill}</div>
+      <div class="relative" style="height:${lanes.laneCount * laneH}px;">${guides}${nowLine}${blocks}</div>
+    </div>`;
+}
+
 // The whole Schedule tab: week date strip + timeline for the selected day.
 function renderTeacherScheduleTimeline(teacher) {
   const weekClasses = getTeacherWeekClasses(teacher);
@@ -4543,6 +4655,10 @@ function renderTeacherScheduleTimeline(teacher) {
       </div>`;
   }).join('');
 
+  // Desktop time rail ("My Schedule"): same classes, positioned by PKT
+  // time. Phones keep the vertical list below (md:hidden).
+  const railHtml = classes.length === 0 ? '' : renderScheduleRail(classes, selDay, isToday, nowMinutes);
+
   return `
       <!-- Schedule — Tours-style timeline -->
       <div class="ts-card p-6">
@@ -4557,7 +4673,8 @@ function renderTeacherScheduleTimeline(teacher) {
           <h4 class="text-sm font-bold text-[#141F1E]">Daily Timetable</h4>
           <span class="text-[11px] font-semibold text-[#7A8684]">${selLabel}</span>
         </div>
-        ${timeline}
+        ${railHtml ? `<div class="hidden md:block">${railHtml}</div>` : ''}
+        <div class="${railHtml ? 'md:hidden' : ''}">${timeline}</div>
         ${unscheduledCount > 0 ? `<p class="text-[11px] text-[#7A8684] mt-3">${unscheduledCount} student${unscheduledCount === 1 ? '' : 's'} have no weekly schedule set — Admin can set it in Edit Student → Weekly Timetable.</p>` : ''}
       </div>
     `;

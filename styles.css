@@ -842,6 +842,15 @@ html, body {
   border-bottom: 1px solid #E8E6DF;
   margin: 0 0 12px;
 }
+/* Read-only detail views (Spik-style): small grey label above a bold value,
+   two-column grid. Used by the Sabaq Detail modal; Month Detail, Teacher
+   Progress and the timetable guardian card already use the same pattern
+   inline and are left untouched. */
+.modal-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 24px; }
+.modal-detail-label { font-size: 11px; font-weight: 600; color: #7A8684; display: block; margin-bottom: 2px; }
+.modal-detail-value { font-size: 13px; font-weight: 600; color: #141F1E; display: block; }
+@media (max-width: 640px) { .modal-detail-grid { grid-template-columns: 1fr; } }
+
 
 /* One label language inside modals and the bottom sheet. */
 .modal-content label,

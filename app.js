@@ -5193,13 +5193,13 @@ function renderWeeklyMatrixEditor(containerId, scheduleData, studentTz) {
 
   container.innerHTML = `
     <!-- Quick Preset Buttons -->
-    <div class="flex flex-wrap items-center gap-1.5 p-2 bg-[#F8F6F1]/50 rounded-xl border border-[#E5E7EB] mb-2.5">
+    <div class="flex flex-wrap items-center gap-1.5 p-2 bg-[#F8F6F1]/50 rounded-xl border border-[#E8E6DF] mb-2.5">
       <span class="text-[10px] font-bold uppercase text-[#7A8684] mr-1">Presets:</span>
-      <button type="button" onclick="applySchedulePreset('${containerId}', 'mon-thu', '${tz}')" class="px-2.5 py-1 text-[11px] font-semibold rounded-full bg-white border border-[#CBD5E1] text-[#0E4D45] hover:bg-[#0E4D45] hover:text-white transition-all cursor-pointer">Mon–Thu (4d)</button>
-      <button type="button" onclick="applySchedulePreset('${containerId}', 'mon-wed-fri', '${tz}')" class="px-2.5 py-1 text-[11px] font-semibold rounded-full bg-white border border-[#CBD5E1] text-[#0E4D45] hover:bg-[#0E4D45] hover:text-white transition-all cursor-pointer">Mon, Wed, Fri (3d)</button>
-      <button type="button" onclick="applySchedulePreset('${containerId}', 'weekend', '${tz}')" class="px-2.5 py-1 text-[11px] font-semibold rounded-full bg-white border border-[#CBD5E1] text-[#0E4D45] hover:bg-[#0E4D45] hover:text-white transition-all cursor-pointer">Weekend (Sat–Sun)</button>
-      <button type="button" onclick="applySchedulePreset('${containerId}', 'daily', '${tz}')" class="px-2.5 py-1 text-[11px] font-semibold rounded-full bg-white border border-[#CBD5E1] text-[#0E4D45] hover:bg-[#0E4D45] hover:text-white transition-all cursor-pointer">Daily (Mon–Fri)</button>
-      <button type="button" onclick="copyFirstDayTimeToAll('${containerId}', '${tz}')" class="w-7 h-7 rounded-full bg-[#E8EFEE] hover:bg-[#0E4D45] text-[#0E4D45] hover:text-white border border-[#CBD5E1] transition-all flex items-center justify-center cursor-pointer sm:ml-auto shadow-2xs" title="Copy Monday time to all active days">
+      <button type="button" onclick="applySchedulePreset('${containerId}', 'mon-thu', '${tz}')" class="px-2.5 py-1 text-[11px] font-semibold rounded-full bg-white border border-[#E8E6DF] text-[#0E4D45] hover:bg-[#0E4D45] hover:text-white transition-all cursor-pointer">Mon–Thu (4d)</button>
+      <button type="button" onclick="applySchedulePreset('${containerId}', 'mon-wed-fri', '${tz}')" class="px-2.5 py-1 text-[11px] font-semibold rounded-full bg-white border border-[#E8E6DF] text-[#0E4D45] hover:bg-[#0E4D45] hover:text-white transition-all cursor-pointer">Mon, Wed, Fri (3d)</button>
+      <button type="button" onclick="applySchedulePreset('${containerId}', 'weekend', '${tz}')" class="px-2.5 py-1 text-[11px] font-semibold rounded-full bg-white border border-[#E8E6DF] text-[#0E4D45] hover:bg-[#0E4D45] hover:text-white transition-all cursor-pointer">Weekend (Sat–Sun)</button>
+      <button type="button" onclick="applySchedulePreset('${containerId}', 'daily', '${tz}')" class="px-2.5 py-1 text-[11px] font-semibold rounded-full bg-white border border-[#E8E6DF] text-[#0E4D45] hover:bg-[#0E4D45] hover:text-white transition-all cursor-pointer">Daily (Mon–Fri)</button>
+      <button type="button" onclick="copyFirstDayTimeToAll('${containerId}', '${tz}')" class="w-7 h-7 rounded-full bg-[#E8EFEE] hover:bg-[#0E4D45] text-[#0E4D45] hover:text-white border border-[#E8E6DF] transition-all flex items-center justify-center cursor-pointer sm:ml-auto shadow-2xs" title="Copy Monday time to all active days">
         <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
           <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -5393,7 +5393,7 @@ function openViewWeeklyScheduleModal(studentId) {
           <div class="flex items-center gap-2 flex-wrap">
             <h3 class="text-base font-bold text-[#141F1E]">${student.firstName} ${student.lastName}</h3>
             <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#E8EFEE] text-[#0E4D45]">${student.id}</span>
-            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-[#7A8684] border border-[#CBD5E1]">${student.familyId}</span>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-[#7A8684] border border-[#E8E6DF]">${student.familyId}</span>
             ${renderStudentStatusPill(student.academicStatus)}
           </div>
           <p class="text-xs text-[#7A8684] mt-0.5">
@@ -5435,13 +5435,13 @@ function openViewWeeklyScheduleModal(studentId) {
     </div>`}
 
     <!-- Dual Timezone Synchronization Indicator -->
-    <div class="p-3 bg-[#E8EFEE] rounded-xl border border-[#CBD5E1] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+    <div class="p-3 bg-[#E8EFEE] rounded-xl border border-[#E8E6DF] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
       <div class="flex items-center gap-2">
         <span class="w-2.5 h-2.5 rounded-full bg-[#0E4D45] animate-pulse"></span>
         <span class="font-bold text-[#0E4D45]">Dual Timezone Live Bridge:</span>
         <span class="text-[#334E4B]">Student Local (${student.timezone}) ⇄ Teacher PKT (Pakistan GMT+5)</span>
       </div>
-      <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-white text-[#0E4D45] border border-[#CBD5E1] shadow-2xs">
+      <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-white text-[#0E4D45] border border-[#E8E6DF] shadow-2xs">
         ${tzDiff}
       </span>
     </div>
@@ -5493,7 +5493,7 @@ function openViewWeeklyScheduleModal(studentId) {
                 </td>
                 <td class="py-3 px-3" data-label="Pakistan Time">
                   ${day.active ? `
-                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#E8EFEE] text-[#0E4D45] font-semibold text-[11px] border border-[#CBD5E1] whitespace-nowrap">
+                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#E8EFEE] text-[#0E4D45] font-semibold text-[11px] border border-[#E8E6DF] whitespace-nowrap">
                       <span class="text-[10px] text-[#7A8684]">PKT</span>
                       <span>${pktTime}</span>
                     </span>
@@ -17700,7 +17700,7 @@ function openMonthDetailModal(studentId, monthIndex) {
     `;
   } else if (isAdvance) {
     statusBadge = `
-      <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#E8EFEE] text-[#0E4D45] border border-[#CBD5E1]">
+      <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#E8EFEE] text-[#0E4D45] border border-[#E8E6DF]">
         <span class="w-1.5 h-1.5 rounded-full bg-[#0E4D45]"></span>
         Advance Credit Active (${student.currency}${m.amountPaid})
       </span>
@@ -17891,7 +17891,7 @@ function openMonthDetailModal(studentId, monthIndex) {
         <button type="button" onclick="closeMonthDetailModal(); openReceiveFeeModal('${student.id}');" class="w-full sm:w-auto order-1 sm:order-2 py-3 px-5 rounded-full bg-[#0E4D45] text-white font-bold text-xs sm:text-sm hover:bg-[#14534B] transition-colors shadow-sm cursor-pointer text-center">
           Receive Fee
         </button>
-        <button type="button" onclick="closeMonthDetailModal()" class="w-full sm:w-auto order-2 sm:order-1 px-4 py-2.5 text-xs font-semibold rounded-lg bg-[#FFFFFF] border border-[#ECEAE4] text-[#7A8684] hover:text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer text-center">
+        <button type="button" onclick="closeMonthDetailModal()" class="w-full sm:w-auto order-2 sm:order-1 px-4 py-2.5 text-xs font-semibold text-[#7A8684] hover:text-[#141F1E] transition-colors cursor-pointer text-center">
           Dismiss
         </button>
       </div>
@@ -18125,18 +18125,18 @@ function openSabaqDetailModal(studentId) {
       </div>
     </div>
     <div class="p-4 bg-[#F8F6F1] rounded-2xl border border-[#ECEAE4]">
-      <span class="text-[10px] font-bold text-[#7A8684] uppercase tracking-wider">Surah</span>
-      <p class="text-sm font-bold text-[#141F1E] mt-1">${last.surah || 'Sabaq'}</p>
+      <span class="modal-detail-label">Surah</span>
+      <p class="modal-detail-value">${last.surah || 'Sabaq'}</p>
       <div class="mt-2">${renderStars(last.rating || 5)}</div>
     </div>
     ${(last.tags || []).length ? `
     <div>
-      <span class="text-[10px] font-bold text-[#7A8684] uppercase tracking-wider">Remarks</span>
+      <span class="modal-detail-label">Remarks</span>
       <div class="flex flex-wrap gap-1.5 mt-1.5">${last.tags.map((t) => `<span class="text-[11px] px-2.5 py-1 rounded-full bg-[#E8EFEE] text-[#0E4D45] font-semibold">${t}</span>`).join('')}</div>
     </div>` : ''}
     ${last.teacherNote ? `
     <div>
-      <span class="text-[10px] font-bold text-[#7A8684] uppercase tracking-wider">Teacher Note</span>
+      <span class="modal-detail-label">Teacher Note</span>
       <p class="text-xs text-[#334E4B] italic mt-1">"${last.teacherNote}"</p>
     </div>` : ''}
   `;

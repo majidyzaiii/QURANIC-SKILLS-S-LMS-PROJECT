@@ -10081,17 +10081,34 @@ function renderRecentPaymentsWidgetMarkup() {
     return head + `<p class="text-xs text-[#7A8684] mt-4">No payments recorded yet. Received fees will appear here.</p>`;
   }
   const list = rows.map(p => {
+    // Student for this payment: direct id, first allocation, or first
+    // family member (family payments carry the family id as studentId).
+    const allStudents = (typeof AppState !== 'undefined' && AppState.students) || [];
+    let payStudent = null;
+    if (p.studentId) payStudent = allStudents.find(s => String(s.id) === String(p.studentId)) || null;
+    if (!payStudent && Array.isArray(p.allocations) && p.allocations.length && p.allocations[0].studentId) {
+      payStudent = allStudents.find(s => String(s.id) === String(p.allocations[0].studentId)) || null;
+    }
+    if (!payStudent && p.studentId) {
+      payStudent = allStudents.find(s => s.familyId === p.studentId || s.familyTag === p.studentId) || null;
+    }
+    const avatarName = payStudent ? `${payStudent.firstName} ${payStudent.lastName}` : (p.studentName || 'Payment');
+    const avatarUrl = payStudent && payStudent.avatar ? payStudent.avatar : getAvatarUrl(avatarName);
+    const avatarImg = `<img src="${avatarUrl}" alt="" class="w-10 h-10 rounded-full object-cover shrink-0 border border-[#ECEAE4]" onerror="this.onerror=null; this.src='${getAvatarUrl(avatarName)}';" />`;
     let amountHtml;
     if (typeof p.pkrAmount === 'number') {
       amountHtml = `<p class="text-xs font-bold text-[#141F1E]">${formatPKRAmount(p.pkrAmount)}</p><p class="text-[11px] text-[#7A8684] mt-0.5">${p.currency || ''}${p.amount}</p>`;
     } else {
-      const conv = convertToPKR(p.amount, p.currencyCode);
+      // Old docs stored only a symbol — resolve the code through the
+      // student / family so the PKR rate is found.
+      const conv = convertToPKR(p.amount, getPaymentCurrencyCode(p));
       amountHtml = conv.hasRate
         ? `<p class="text-xs font-bold text-[#141F1E]">${formatPKRAmount(conv.pkr)}</p><p class="text-[11px] text-[#7A8684] mt-0.5">${p.currency || ''}${p.amount}</p>`
         : `<p class="text-xs font-bold text-[#141F1E]">${p.currency || ''}${p.amount}</p><p class="text-[11px] text-[#7A8684] mt-0.5">No PKR rate</p>`;
     }
     return `
       <div class="flex items-center gap-3 py-3 border-b border-[#ECEAE4] last:border-0">
+        ${avatarImg}
         <div class="min-w-0 flex-1">
           <p class="text-xs font-bold text-[#141F1E] truncate">${p.studentName || 'Payment'}</p>
           <p class="text-[11px] text-[#7A8684] mt-0.5">${p.method || ''} &bull; ${formatShortDate(p.date)}</p>

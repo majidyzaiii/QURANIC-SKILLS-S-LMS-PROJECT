@@ -9963,6 +9963,174 @@ function renderQuranLibraryView() {
 // 5. ADMIN VIEWS (TALENTSYNC EXACT REPLICA)
 // ==========================================
 
+
+// ============================================================
+// ADMIN DASHBOARD — NEW WIDGETS (read-only)
+// Added 2026-11-28: Payroll, Pending Leave, Trials Follow-up,
+// Recent Payments, Monthly Fee Collection chart. Every number comes
+// from live AppState/helpers; nothing here writes data.
+// ============================================================
+
+function renderPayrollSummaryWidgetMarkup(monthIndex, year) {
+  const teachers = AppState.teachers || [];
+  const fullMonthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const monthName = (fullMonthNames[monthIndex] || '') + ' ' + year;
+  if (teachers.length === 0) {
+    return `
+      <h3 class="text-base font-bold text-[#141F1E]">Payroll This Month</h3>
+      <p class="text-[11px] text-[#7A8684] mt-1">${monthName}</p>
+      <p class="text-xs text-[#7A8684] mt-4">No teachers yet. Add a teacher to see this month's payroll.</p>`;
+  }
+  const rows = teachers.map(t => computeTeacherPayroll(t, monthIndex));
+  const totalNet = rows.reduce((s, r) => s + (Number(r.netPayable) || 0), 0);
+  const paidRows = rows.filter(r => r.isPaid);
+  const paidTotal = paidRows.reduce((s, r) => s + (Number(r.netPayable) || 0), 0);
+  const pendingTotal = totalNet - paidTotal;
+  return `
+    <div class="flex items-start justify-between gap-3">
+      <div>
+        <h3 class="text-base font-bold text-[#141F1E]">Payroll This Month</h3>
+        <p class="text-[11px] text-[#7A8684] mt-1">${monthName} &bull; ${teachers.length} teacher${teachers.length === 1 ? '' : 's'}</p>
+      </div>
+      <button type="button" onclick="setNavTab('teachers')" class="px-4 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors cursor-pointer shrink-0">View Payroll</button>
+    </div>
+    <p class="text-2xl font-bold text-[#141F1E] mt-4">${formatPKRAmount(totalNet)}</p>
+    <p class="text-[11px] text-[#7A8684] mt-0.5">Total net payable</p>
+    <div class="mt-4 space-y-2.5">
+      <div class="flex items-center justify-between gap-3">
+        <span class="flex items-center gap-2 text-xs text-[#141F1E]"><span class="w-2 h-2 rounded-full bg-emerald-600 shrink-0"></span>Paid</span>
+        <span class="text-xs font-bold text-[#141F1E]">${formatPKRAmount(paidTotal)} <span class="text-[#7A8684] font-medium">&bull; ${paidRows.length}</span></span>
+      </div>
+      <div class="flex items-center justify-between gap-3">
+        <span class="flex items-center gap-2 text-xs text-[#141F1E]"><span class="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>Pending</span>
+        <span class="text-xs font-bold text-[#141F1E]">${formatPKRAmount(pendingTotal)} <span class="text-[#7A8684] font-medium">&bull; ${rows.length - paidRows.length}</span></span>
+      </div>
+    </div>`;
+}
+
+function renderPendingLeaveWidgetMarkup() {
+  const pending = getAllLeaveRequests().filter(r => r.status === 'Pending');
+  const head = `
+    <div class="flex items-start justify-between gap-3">
+      <div>
+        <h3 class="text-base font-bold text-[#141F1E]">Pending Leave Requests</h3>
+        <p class="text-[11px] text-[#7A8684] mt-1">${pending.length === 0 ? 'Nothing awaiting review' : pending.length + ' awaiting review'}</p>
+      </div>
+      <button type="button" onclick="switchRole('manager'); setNavTab('manager-substitute')" class="px-4 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors cursor-pointer shrink-0">Review</button>
+    </div>`;
+  if (pending.length === 0) {
+    return head + `<p class="text-xs text-[#7A8684] mt-4">No pending leave requests. New requests from teachers will appear here.</p>`;
+  }
+  const rows = pending.slice(0, 4).map(r => {
+    const sub = leaveSubstituteName(r);
+    return `
+      <div class="py-3 border-b border-[#ECEAE4] last:border-0">
+        <p class="text-xs font-bold text-[#141F1E]">${r.teacherName || 'Teacher'} <span class="text-[#7A8684] font-medium">&bull; ${formatShortDate(r.fromDate)} &rarr; ${formatShortDate(r.toDate)}</span></p>
+        <p class="text-[11px] text-[#7A8684] mt-0.5">${r.reason || ''}${sub ? ' &bull; Preferred substitute: ' + sub : ''}</p>
+      </div>`;
+  }).join('');
+  return head + `<div class="mt-2">${rows}</div>` + (pending.length > 4 ? `<p class="text-[11px] text-[#7A8684] mt-2">+ ${pending.length - 4} more pending request${pending.length - 4 === 1 ? '' : 's'}</p>` : '');
+}
+
+function renderTrialsFollowupWidgetMarkup() {
+  const awaiting = (typeof TRIAL_PIPELINE !== 'undefined' ? TRIAL_PIPELINE : [])
+    .filter(t => t.status !== 'Enrolled \u2713' && t.status !== 'Trial Completed');
+  const head = `
+    <div class="flex items-start justify-between gap-3">
+      <div>
+        <h3 class="text-base font-bold text-[#141F1E]">Trials Awaiting Follow-up</h3>
+        <p class="text-[11px] text-[#7A8684] mt-1">${awaiting.length === 0 ? 'Pipeline is clear' : awaiting.length + ' trial' + (awaiting.length === 1 ? '' : 's') + ' to follow up'}</p>
+      </div>
+      <button type="button" onclick="setNavTab('trials-notices')" class="px-4 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors cursor-pointer shrink-0">View Trials</button>
+    </div>`;
+  if (awaiting.length === 0) {
+    return head + `<p class="text-xs text-[#7A8684] mt-4">No trials awaiting follow-up. New trial bookings will appear here.</p>`;
+  }
+  const rows = awaiting.slice(0, 5).map(t => {
+    const pill = t.status === 'Pending Review'
+      ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200/80 shrink-0"><span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>Pending Review</span>`
+      : `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200/60 shrink-0"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>Trial Booked</span>`;
+    const avatar = t.avatar || getAvatarUrl(t.studentName || 'Trial');
+    return `
+      <div class="flex items-center gap-3 py-3 border-b border-[#ECEAE4] last:border-0">
+        <img src="${avatar}" alt="" class="w-9 h-9 rounded-full object-cover shrink-0" />
+        <div class="min-w-0 flex-1">
+          <p class="text-xs font-bold text-[#141F1E] truncate">${t.studentName || 'Trial candidate'}</p>
+          <p class="text-[11px] text-[#7A8684] truncate mt-0.5">${t.course || ''}${t.assignedTeacher ? ' &bull; ' + t.assignedTeacher : ''}</p>
+        </div>
+        <div class="text-right shrink-0">
+          ${pill}
+          <p class="text-[11px] text-[#7A8684] mt-1">${formatShortDate(t.date)}</p>
+        </div>
+      </div>`;
+  }).join('');
+  return head + `<div class="mt-2">${rows}</div>`;
+}
+
+function renderRecentPaymentsWidgetMarkup() {
+  const rows = (typeof PAYMENT_LEDGER !== 'undefined' ? PAYMENT_LEDGER : []).slice(0, 6);
+  const head = `
+    <div class="flex items-start justify-between gap-3">
+      <div>
+        <h3 class="text-base font-bold text-[#141F1E]">Recent Payments</h3>
+        <p class="text-[11px] text-[#7A8684] mt-1">Latest fee payments received</p>
+      </div>
+      <button type="button" onclick="setNavTab('fee-matrix')" class="px-4 py-2 text-xs font-bold rounded-full bg-[#0E4D45] text-white hover:bg-[#14534B] transition-colors cursor-pointer shrink-0">View Ledger</button>
+    </div>`;
+  if (rows.length === 0) {
+    return head + `<p class="text-xs text-[#7A8684] mt-4">No payments recorded yet. Received fees will appear here.</p>`;
+  }
+  const list = rows.map(p => {
+    let amountHtml;
+    if (typeof p.pkrAmount === 'number') {
+      amountHtml = `<p class="text-xs font-bold text-[#141F1E]">${formatPKRAmount(p.pkrAmount)}</p><p class="text-[11px] text-[#7A8684] mt-0.5">${p.currency || ''}${p.amount}</p>`;
+    } else {
+      const conv = convertToPKR(p.amount, p.currencyCode);
+      amountHtml = conv.hasRate
+        ? `<p class="text-xs font-bold text-[#141F1E]">${formatPKRAmount(conv.pkr)}</p><p class="text-[11px] text-[#7A8684] mt-0.5">${p.currency || ''}${p.amount}</p>`
+        : `<p class="text-xs font-bold text-[#141F1E]">${p.currency || ''}${p.amount}</p><p class="text-[11px] text-[#7A8684] mt-0.5">No PKR rate</p>`;
+    }
+    return `
+      <div class="flex items-center gap-3 py-3 border-b border-[#ECEAE4] last:border-0">
+        <div class="min-w-0 flex-1">
+          <p class="text-xs font-bold text-[#141F1E] truncate">${p.studentName || 'Payment'}</p>
+          <p class="text-[11px] text-[#7A8684] mt-0.5">${p.method || ''} &bull; ${formatShortDate(p.date)}</p>
+        </div>
+        <div class="text-right shrink-0">${amountHtml}</div>
+        ${p.id ? `<button type="button" onclick="openReceiptModal('${p.id}')" class="px-3 py-1.5 text-[11px] font-bold rounded-full bg-white border border-[#ECEAE4] text-[#141F1E] hover:bg-[#F8F6F1] transition-colors cursor-pointer shrink-0">Receipt</button>` : ''}
+      </div>`;
+  }).join('');
+  return head + `<div class="mt-2">${list}</div>`;
+}
+
+function renderFeeCollectionChartWidgetMarkup(monthIndex, year) {
+  const fullMonthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const values = MONTHS_LIST.map((_, m) => getMonthFeeCollectedPKR(m, year).pkr);
+  const total = values.reduce((a, b) => a + b, 0);
+  const max = Math.max.apply(null, values.concat([1]));
+  const bars = values.map((v, m) => {
+    const isCurrent = m === monthIndex;
+    const pct = v > 0 ? Math.max(4, Math.round(v / max * 100)) : 0;
+    const bar = pct > 0
+      ? `<div class="w-full max-w-[28px] rounded-t-md ${isCurrent ? 'bg-[#0E4D45]' : 'bg-[#3B7A72]/50'}" style="height: ${pct}%"></div>`
+      : `<div class="w-full max-w-[28px] rounded-t-md bg-[#ECEAE4]" style="height: 2px"></div>`;
+    return `
+      <div class="flex-1 flex flex-col items-center gap-1.5 min-w-0" title="${MONTHS_LIST[m]} ${year}: ${formatPKRAmount(v)}">
+        <div class="w-full h-32 flex items-end justify-center">${bar}</div>
+        <span class="text-[10px] ${isCurrent ? 'font-bold text-[#0E4D45]' : 'text-[#7A8684]'}">${MONTHS_LIST[m]}</span>
+      </div>`;
+  }).join('');
+  return `
+    <div class="flex items-start justify-between gap-3">
+      <div>
+        <h3 class="text-base font-bold text-[#141F1E]">Monthly Fee Collection</h3>
+        <p class="text-[11px] text-[#7A8684] mt-1">${year} &bull; Total collected ${formatPKRAmount(total)}</p>
+      </div>
+      <span class="text-[11px] font-semibold text-[#0E4D45] shrink-0">${fullMonthNames[monthIndex] || ''}: ${formatPKRAmount(values[monthIndex] || 0)}</span>
+    </div>
+    <div class="flex items-end gap-1 mt-5">${bars}</div>`;
+}
+
 function renderAdminDashboardView() {
   // Aggregate dynamic KPI metrics
   const totalStudents = AppState.students ? AppState.students.length : 0;
@@ -10377,6 +10545,28 @@ function renderAdminDashboardView() {
         ${renderAttendanceVsPassCardMarkup()}
       </div>
 
+    </div>
+
+    <!-- New Dashboard Widgets: Payroll, Leave, Trials, Payments, Fee Chart -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      <div class="ts-card p-6" id="payroll-summary-card">
+        ${renderPayrollSummaryWidgetMarkup(activeMonthIndex, activeYear)}
+      </div>
+      <div class="ts-card p-6" id="pending-leave-card">
+        ${renderPendingLeaveWidgetMarkup()}
+      </div>
+      <div class="ts-card p-6" id="trials-followup-card">
+        ${renderTrialsFollowupWidgetMarkup()}
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div class="ts-card p-6" id="recent-payments-card">
+        ${renderRecentPaymentsWidgetMarkup()}
+      </div>
+      <div class="ts-card p-6" id="fee-collection-chart-card">
+        ${renderFeeCollectionChartWidgetMarkup(activeMonthIndex, activeYear)}
+      </div>
     </div>
 
     <!-- Live Class Monitoring Section (Replaces Recent Tuition Settlements) -->
